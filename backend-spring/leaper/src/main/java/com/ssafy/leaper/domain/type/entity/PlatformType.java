@@ -1,11 +1,8 @@
 package com.ssafy.leaper.domain.type.entity;
 
-import com.ssafy.leaper.domain.influencer.entity.Influencer;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
