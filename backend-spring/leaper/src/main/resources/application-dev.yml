@@ -1,5 +1,8 @@
 spring:
-  # datasource - MySQL
+  config:
+    import:
+      - optional:file:.env.dev
+
   datasource:
     url: jdbc:mysql://localhost:3306/leaper?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Seoul
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -47,6 +50,34 @@ cloud:
       static: ap-northeast-2
       stack:
         auto: false
+        dialect: ${JPA_DIALECT:org.hibernate.dialect.H2Dialect}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+            scope:
+              - email
+              - profile
+
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://openidconnect.googleapis.com/v1/userinfo
+            user-name-attribute: sub
+
+#  mvc:
+#    favicon:
+#      enabled: false
+
+# Frontend URL for CORS configuration
+front:
+  url: ${FRONT_URL:http://localhost:8080}
 
 logging:
   level:
