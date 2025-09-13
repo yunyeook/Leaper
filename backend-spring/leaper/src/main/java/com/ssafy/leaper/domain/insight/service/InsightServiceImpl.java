@@ -1,18 +1,20 @@
 package com.ssafy.leaper.domain.insight.service;
 
-import com.ssafy.leaper.domain.insight.dto.response.*;
+import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.AccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.DailyAccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.DailyAccountViewsResponse;
+import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.InfluencerViewsResponse;
+import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.MonthlyAccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.MonthlyAccountViewsResponse;
 import com.ssafy.leaper.domain.insight.entity.DailyAccountInsight;
 import com.ssafy.leaper.domain.insight.repository.DailyAccountInsightRepository;
 import com.ssafy.leaper.global.common.response.ServiceResult;
-import com.ssafy.leaper.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigInteger;
 import java.time.YearMonth;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -21,71 +23,50 @@ public class InsightServiceImpl implements InsightService {
 
   private final DailyAccountInsightRepository dailyAccountInsightRepository;
 
+  // ✅ 인플루언서 단위 풀데이터
   @Override
   public ServiceResult<AccountInsightResponse> getAccountInsights(Long influencerId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId);
 
-//    if (entities.isEmpty()) {
-//      return ServiceResult.fail(ErrorCode.ACCOUNT_INSIGHT_NOT_FOUND);
-//    }
-
-    // Daily 변환
     List<DailyAccountInsightResponse> dailyResponses = entities.stream()
         .map(DailyAccountInsightResponse::from)
         .toList();
 
-    // Daily → Monthly 집계
     List<MonthlyAccountInsightResponse> monthlyResponses = aggregateToMonthly(entities);
 
     return ServiceResult.ok(AccountInsightResponse.of(dailyResponses, monthlyResponses));
   }
 
+  // ✅ 플랫폼 계정 단위 풀데이터 (추가)
+  @Override
+  public ServiceResult<AccountInsightResponse> getPlatformAccountInsights(Long platformAccountId) {
+    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId);
+
+    List<DailyAccountInsightResponse> dailyResponses = entities.stream()
+        .map(DailyAccountInsightResponse::from)
+        .toList();
+
+    List<MonthlyAccountInsightResponse> monthlyResponses = aggregateToMonthly(entities);
+
+    return ServiceResult.ok(AccountInsightResponse.of(dailyResponses, monthlyResponses));
+  }
+
+  // ✅ 인플루언서 단위 조회수 전용
   @Override
   public ServiceResult<InfluencerViewsResponse> getInfluencerViews(Long influencerId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId);
-
-    // Daily 조회수만
-    List<DailyAccountViewsResponse> dailyViews = entities.stream()
-        .map(DailyAccountViewsResponse::from)
-        .toList();
-
-    // Monthly 조회수 집계
-    List<MonthlyAccountViewsResponse> monthlyViews = aggregateToMonthlyViews(entities);
-
-    return ServiceResult.ok(InfluencerViewsResponse.of(dailyViews, monthlyViews));
+    return ServiceResult.ok(aggregateDailyAndMonthlyViews(entities));
   }
 
+  // ✅ 플랫폼 계정 단위 조회수 전용
+  @Override
+  public ServiceResult<InfluencerViewsResponse> getPlatformAccountViews(Long platformAccountId) {
+    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId);
+    return ServiceResult.ok(aggregateDailyAndMonthlyViews(entities));
+  }
 
-
-  // 📌 공통: 풀데이터 월별 집계
+  // 📌 공통: 풀데이터 → 월별 집계
   private List<MonthlyAccountInsightResponse> aggregateToMonthly(List<DailyAccountInsight> dailyInsights) {
-    Map<String, Map<YearMonth, DailyAccountInsight>> map = new HashMap<>();
-
-    for (DailyAccountInsight dai : dailyInsights) {
-      YearMonth ym = YearMonth.from(dai.getSnapshotDate());
-      String key = dai.getPlatformAccount().getId() + "-" + ym;
-
-      map.computeIfAbsent(key, k -> new HashMap<>())
-          .put(ym, dai);
-    }
-
-    return map.values().stream()
-        .flatMap(m -> m.values().stream())
-        .map(dai -> MonthlyAccountInsightResponse.of(
-            dai.getPlatformAccount().getId(),
-            dai.getPlatformAccount().getPlatformType().getId(),
-            dai.getTotalViews(),
-            dai.getTotalFollowers(),
-            dai.getTotalContents(),
-            dai.getTotalLikes(),
-            dai.getTotalComments(),
-            YearMonth.from(dai.getSnapshotDate())
-        ))
-        .toList();
-  }
-
-  // 📌 조회수 전용 월별 집계
-  private List<MonthlyAccountViewsResponse> aggregateToMonthlyViews(List<DailyAccountInsight> dailyInsights) {
     Map<String, DailyAccountInsight> latestByMonth = new HashMap<>();
 
     for (DailyAccountInsight dai : dailyInsights) {
@@ -99,6 +80,37 @@ public class InsightServiceImpl implements InsightService {
     }
 
     return latestByMonth.values().stream()
+        .map(dai -> MonthlyAccountInsightResponse.of(
+            dai.getPlatformAccount().getId(),
+            dai.getPlatformAccount().getPlatformType().getId(),
+            dai.getTotalViews(),
+            dai.getTotalFollowers(),
+            dai.getTotalContents(),
+            dai.getTotalLikes(),
+            dai.getTotalComments(),
+            YearMonth.from(dai.getSnapshotDate())
+        ))
+        .toList();
+  }
+
+  // 📌 공통: 조회수 전용 → Daily + Monthly
+  private InfluencerViewsResponse aggregateDailyAndMonthlyViews(List<DailyAccountInsight> dailyInsights) {
+    List<DailyAccountViewsResponse> dailyResponses = dailyInsights.stream()
+        .map(DailyAccountViewsResponse::from)
+        .toList();
+
+    Map<String, DailyAccountInsight> latestByMonth = new HashMap<>();
+    for (DailyAccountInsight dai : dailyInsights) {
+      YearMonth ym = YearMonth.from(dai.getSnapshotDate());
+      String key = dai.getPlatformAccount().getId() + "-" + ym;
+
+      DailyAccountInsight existing = latestByMonth.get(key);
+      if (existing == null || dai.getSnapshotDate().isAfter(existing.getSnapshotDate())) {
+        latestByMonth.put(key, dai);
+      }
+    }
+
+    List<MonthlyAccountViewsResponse> monthlyResponses = latestByMonth.values().stream()
         .map(dai -> MonthlyAccountViewsResponse.of(
             dai.getPlatformAccount().getId(),
             dai.getPlatformAccount().getPlatformType().getId(),
@@ -106,5 +118,7 @@ public class InsightServiceImpl implements InsightService {
             YearMonth.from(dai.getSnapshotDate())
         ))
         .toList();
+
+    return InfluencerViewsResponse.of(dailyResponses, monthlyResponses);
   }
 }

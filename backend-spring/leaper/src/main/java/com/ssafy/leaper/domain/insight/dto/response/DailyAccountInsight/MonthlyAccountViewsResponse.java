@@ -1,4 +1,4 @@
-package com.ssafy.leaper.domain.insight.dto.response;
+package com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight;
 
 import java.math.BigInteger;
 import java.time.YearMonth;
