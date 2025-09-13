@@ -2,12 +2,15 @@ package com.ssafy.leaper.domain.insight.controller;
 
 import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.AccountInsightResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.InfluencerViewsResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyTrendingInsight.DailyTrendingContentResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyTrendingInsight.DailyTrendingInfluencerResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.TypeInsightResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyMyPopularContentResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyPopularContentResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyPopularInfluencerResponse;
 import com.ssafy.leaper.domain.insight.service.DailyAccountInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyPopularInsightService;
+import com.ssafy.leaper.domain.insight.service.DailyTrendingInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyTypeInsightService;
 import com.ssafy.leaper.global.common.controller.BaseController;
 import com.ssafy.leaper.global.common.response.ApiResponse;
@@ -26,6 +29,7 @@ public class InsightController implements BaseController {
     private final DailyAccountInsightService dailyAccountInsightService;
     private final DailyTypeInsightService dailyTypeInsightService;
     private final DailyPopularInsightService dailyPopularInsightService;
+    private final DailyTrendingInsightService dailyTrendingInsightService;
 
 
     @Operation(
@@ -130,5 +134,30 @@ public class InsightController implements BaseController {
     ) {
         return handle(dailyPopularInsightService.getMyPopularContents(platformAccountId));
     }
+
+    @Operation(
+        summary = "일별 급상승 콘텐츠 조회",
+        description = "특정 플랫폼, 카테고리에서 급상승하는 콘텐츠 10개를 조회합니다"
+    )
+    @GetMapping("/dailyTrendingContent/content")
+    public ResponseEntity<ApiResponse<DailyTrendingContentResponse>> getDailyTrendingContents(
+        @RequestParam String platformType,
+        @RequestParam Long categoryType
+    ) {
+        return handle(dailyTrendingInsightService.getTrendingContents(platformType, categoryType));
+    }
+
+    @Operation(
+        summary = "일별 급상승 인플루언서 조회",
+        description = "특정 플랫폼, 카테고리에서 급상승하는 인플루언서 10명을 조회합니다."
+    )
+    @GetMapping("/dailyTrendingContent/influencer")
+    public ResponseEntity<ApiResponse<DailyTrendingInfluencerResponse>> getTrendingInfluencers(
+        @RequestParam String platformType,
+        @RequestParam Long categoryType
+    ) {
+        return handle(dailyTrendingInsightService.getTrendingInfluencers(platformType, categoryType));
+    }
+
 
 }
