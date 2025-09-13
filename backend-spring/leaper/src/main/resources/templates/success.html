@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaper - 로그인 성공</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            max-width: 500px;
+            width: 90%;
+        }
+        .success-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .welcome-message {
+            font-size: 1.3em;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .user-info {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .info-label {
+            font-weight: bold;
+            opacity: 0.8;
+        }
+        .info-value {
+            font-weight: normal;
+        }
+        .btn {
+            padding: 12px 30px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-block;
+            margin: 10px;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn-logout {
+            background: rgba(244, 67, 54, 0.3);
+            border-color: rgba(244, 67, 54, 0.5);
+        }
+        .btn-logout:hover {
+            background: rgba(244, 67, 54, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✅</div>
+        <h1>로그인 성공!</h1>
+        <p class="welcome-message">
+            <span th:text="${name != null ? name + '님,' : ''}">사용자님,</span><br>
+            Leaper에 오신 것을 환영합니다!
+        </p>
+
+        <div class="user-info" th:if="${name != null or email != null}">
+            <div class="info-item" th:if="${name != null}">
+                <span class="info-label">이름:</span>
+                <span class="info-value" th:text="${name}">사용자명</span>
+            </div>
+            <div class="info-item" th:if="${email != null}">
+                <span class="info-label">이메일:</span>
+                <span class="info-value" th:text="${email}">이메일주소</span>
+            </div>
+            <div class="info-item" th:if="${provider != null}">
+                <span class="info-label">로그인 방식:</span>
+                <span class="info-value" th:text="${provider}">OAuth Provider</span>
+            </div>
+        </div>
+
+        <div>
+            <a href="/home" class="btn">홈으로 돌아가기</a>
+            <a href="/logout" class="btn btn-logout">로그아웃</a>
+        </div>
+    </div>
+</body>
+</html>
