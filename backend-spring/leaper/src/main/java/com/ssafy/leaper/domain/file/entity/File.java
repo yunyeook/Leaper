@@ -17,7 +17,7 @@ public class File {
 
   @Id
   @Column(name = "file_id")
-  private Integer fileId;
+  private Integer id;
 
   @Column(name = "name", length = 100)
   private String name;
