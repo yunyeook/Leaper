@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Insight API", description = "인플루언서 인사이트 관련 API")
 public class InsightController {
 
-    private final DailyAccountInsightService insightService;
-    private final DailyTypeInsightService typeInsightService;
+    private final DailyAccountInsightService dailyAccountInsightService;
+    private final DailyTypeInsightService dailyTypeInsightService;
 
 
     @Operation(
@@ -29,7 +29,7 @@ public class InsightController {
     public ServiceResult<AccountInsightResponse> getAccountInsights(
         @PathVariable Long influencerId
     ) {
-        return insightService.getAccountInsights(influencerId);
+        return dailyAccountInsightService.getAccountInsights(influencerId);
     }
 
     @Operation(
@@ -40,7 +40,7 @@ public class InsightController {
     public ServiceResult<InfluencerViewsResponse> getInfluencerViews(
         @PathVariable Long influencerId
     ) {
-        return insightService.getInfluencerViews(influencerId);
+        return dailyAccountInsightService.getInfluencerViews(influencerId);
     }
 
     @Operation(
@@ -51,7 +51,7 @@ public class InsightController {
     public ServiceResult<AccountInsightResponse> getPlatformAccountInsights(
         @PathVariable Long platformAccountId
     ) {
-        return insightService.getPlatformAccountInsights(platformAccountId);
+        return dailyAccountInsightService.getPlatformAccountInsights(platformAccountId);
     }
 
     @Operation(
@@ -62,7 +62,7 @@ public class InsightController {
     public ServiceResult<InfluencerViewsResponse> getPlatformAccountViews(
         @PathVariable Long platformAccountId
     ) {
-        return insightService.getPlatformAccountViews(platformAccountId);
+        return dailyAccountInsightService.getPlatformAccountViews(platformAccountId);
     }
 
     @Operation(
@@ -74,7 +74,7 @@ public class InsightController {
         @PathVariable Long influencerId,
         @RequestParam("contentType") String contentTypeId
     ) {
-        return typeInsightService.getTypeInsightsByInfluencer(influencerId, contentTypeId);
+        return dailyTypeInsightService.getTypeInsightsByInfluencer(influencerId, contentTypeId);
     }
 
     @Operation(
@@ -86,6 +86,6 @@ public class InsightController {
         @PathVariable Long platformAccountId,
         @RequestParam("contentType") String contentTypeId
     ) {
-        return typeInsightService.getTypeInsightsByPlatformAccount(platformAccountId, contentTypeId);
+        return dailyTypeInsightService.getTypeInsightsByPlatformAccount(platformAccountId, contentTypeId);
     }
 }
