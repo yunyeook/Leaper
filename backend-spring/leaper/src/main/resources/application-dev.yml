@@ -19,6 +19,20 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
 
+cloud:
+  aws:
+    s3:
+      bucket: ${S3_BUCKET_NAME}
+      expirationForPut: 1
+      expirationForGet: 24
+    credentials:
+      accessKey: ${S3_ACCESS_KEY}
+      secretKey: ${S3_SECRET_KEY}
+    region:
+      static: ap-northeast-2
+      stack:
+        auto: false
+
 logging:
   level:
     org.hibernate.SQL: DEBUG

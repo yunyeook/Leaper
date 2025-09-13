@@ -1,26 +1,31 @@
 package com.ssafy.leaper.domain.file.entity;
 
+
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
+import java.util.UUID;
 
 @Entity
-@Getter
+@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Getter
 @Builder
 public class File {
 
-  @Id
-  @Column(name = "file_id")
-  private Integer id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "file_id")
+    private Integer id;
 
-  @Column(length = 100)
-  private String name;
+    private String accessKey; // 파일 저장 키
 
-  @Column(length = 1025)
-  private String accessUrl;
+    private String contentType; // 파일 타입
+
+    /**  파일 이름을 S3 내 저장 파일 이름으로 변환하는 메소드
+     *
+     */
+     public static String generateUniqueKey(String fileName, String fileType) {
+        return fileType+ "/" + UUID.randomUUID() + fileName;
+    }
 }
