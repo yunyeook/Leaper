@@ -1,4 +1,4 @@
-package com.ssafy.leaper.domain.insight.dto.response.dailypPopularInsight;
+package com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight;
 
 import java.util.List;
 

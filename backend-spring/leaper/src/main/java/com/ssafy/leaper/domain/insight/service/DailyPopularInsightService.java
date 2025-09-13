@@ -1,9 +1,11 @@
 package com.ssafy.leaper.domain.insight.service;
 
-import com.ssafy.leaper.domain.insight.dto.response.dailypPopularInsight.*;
+import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.*;
+import com.ssafy.leaper.domain.insight.entity.DailyMyPopularContent;
 import com.ssafy.leaper.domain.insight.entity.DailyPopularContent;
 import com.ssafy.leaper.domain.insight.entity.DailyPopularInfluencer;
 import com.ssafy.leaper.domain.insight.entity.DailyAccountInsight;
+import com.ssafy.leaper.domain.insight.repository.DailyMyPopularContentRepository;
 import com.ssafy.leaper.domain.insight.repository.DailyPopularContentRepository;
 import com.ssafy.leaper.domain.insight.repository.DailyPopularInfluencerRepository;
 import com.ssafy.leaper.domain.insight.repository.DailyAccountInsightRepository;
@@ -23,9 +25,10 @@ public class DailyPopularInsightService {
   private final DailyPopularContentRepository dailyPopularContentRepository;
   private final DailyPopularInfluencerRepository dailyPopularInfluencerRepository;
   private final DailyAccountInsightRepository dailyAccountInsightRepository;
+  private final DailyMyPopularContentRepository dailyMyPopularContentRepository;
 
   /**
-   * 🔹 플랫폼/카테고리별 인기 콘텐츠 조회 (오늘 기준, TOP10)
+   * 플랫폼/카테고리별 인기 콘텐츠 조회 (오늘 기준, TOP10)
    */
   public ServiceResult<DailyPopularContentResponse> getPopularContents(String platformTypeId, Long categoryTypeId) {
     LocalDate today = LocalDate.now();
@@ -41,7 +44,7 @@ public class DailyPopularInsightService {
   }
 
   /**
-   * 🔹 플랫폼/카테고리별 인기 인플루언서 조회 (오늘 기준, TOP10)
+   * 플랫폼/카테고리별 인기 인플루언서 조회 (오늘 기준, TOP10)
    */
   public ServiceResult<DailyPopularInfluencerResponse> getPopularInfluencers(String platformTypeId, Long categoryTypeId) {
     LocalDate today = LocalDate.now();
@@ -61,4 +64,23 @@ public class DailyPopularInsightService {
 
     return ServiceResult.ok(DailyPopularInfluencerResponse.from(responses));
   }
+
+  /**
+   * 해당 계정의 인기 콘텐츠 조회 (오늘 기준, TOP10)
+   */
+  public ServiceResult<DailyMyPopularContentResponse> getMyPopularContents(Long platformAccountId) {
+    LocalDate today = LocalDate.now();
+
+    List<DailyMyPopularContent> entities =
+        dailyMyPopularContentRepository.findByPlatformAccountIdAndSnapshotDateOrderByContentRankAsc(
+            platformAccountId, today
+        );
+
+    List<MyPopularContentResponse> responses = entities.stream()
+        .map(MyPopularContentResponse::of)
+        .toList();
+
+    return ServiceResult.ok(DailyMyPopularContentResponse.from(responses));
+  }
+
 }
