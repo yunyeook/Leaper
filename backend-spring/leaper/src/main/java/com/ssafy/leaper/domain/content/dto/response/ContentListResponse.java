@@ -1,4 +1,4 @@
-package com.ssafy.leaper.domain.content.dto;
+package com.ssafy.leaper.domain.content.dto.response;
 
 import java.util.List;
 

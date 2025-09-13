@@ -1,9 +1,11 @@
 package com.ssafy.leaper.domain.content.controller;
 
+import com.ssafy.leaper.domain.content.dto.response.ContentDetailResponse;
 import com.ssafy.leaper.global.common.response.ApiResponse;
-import com.ssafy.leaper.domain.content.dto.ContentListResponse;
+import com.ssafy.leaper.domain.content.dto.response.ContentListResponse;
 import com.ssafy.leaper.domain.content.service.ContentService;
 import com.ssafy.leaper.global.common.controller.BaseController;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,4 +29,14 @@ public class ContentController implements BaseController {
       @PathVariable Long platformAccountId) {
    return handle(contentService.getContentsByPlatformAccountId(platformAccountId));
   }
+  @Operation(
+      summary = "콘텐츠 상세 정보 조회",
+      description = "콘텐츠 ID로 특정 콘텐츠의 상세 정보를 조회합니다. 50위 이내일 경우 랭킹 정보도 포함됩니다."
+  )
+  @GetMapping("/{contentId}")
+  public ResponseEntity<ApiResponse<ContentDetailResponse>> getContent(
+      @PathVariable Long contentId) {
+    return handle(contentService.getContentById(contentId));
+  }
+
 }

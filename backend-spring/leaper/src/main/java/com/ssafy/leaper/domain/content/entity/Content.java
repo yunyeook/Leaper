@@ -1,7 +1,7 @@
 package com.ssafy.leaper.domain.content.entity;
 
 import com.ssafy.leaper.domain.file.entity.File;
-import com.ssafy.leaper.domain.type.entity.PlatformType.PlatformAccount;
+import com.ssafy.leaper.domain.platformAccount.entity.PlatformAccount;
 import com.ssafy.leaper.domain.type.entity.PlatformType;
 import com.ssafy.leaper.domain.type.entity.ContentType;
 import jakarta.persistence.*;

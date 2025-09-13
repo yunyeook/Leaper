@@ -1,7 +1,8 @@
 package com.ssafy.leaper.domain.content.service;
 
-import com.ssafy.leaper.domain.content.dto.ContentListResponse;
-import com.ssafy.leaper.domain.content.dto.ContentResponse;
+import com.ssafy.leaper.domain.content.dto.response.ContentDetailResponse;
+import com.ssafy.leaper.domain.content.dto.response.ContentListResponse;
+import com.ssafy.leaper.domain.content.dto.response.ContentResponse;
 import com.ssafy.leaper.domain.content.entity.Content;
 import com.ssafy.leaper.domain.content.repository.ContentRepository;
 import com.ssafy.leaper.domain.platformAccount.repository.PlatformAccountRepository;
@@ -26,7 +27,7 @@ public class ContentServiceImpl implements ContentService {
   @Override
   public ServiceResult<ContentListResponse> getContentsByPlatformAccountId(Long platformAccountId) {
 
-    if (!platformAccountRepository.existsByPlatformAccountIdAndIsDeletedFalse(platformAccountId)) {
+    if (!platformAccountRepository.existsByIdAndIsDeletedFalse(platformAccountId)) {
       return ServiceResult.fail(ErrorCode.PLATFORM_ACCOUNT_NOT_FOUND);
     }
     List<Content> contents = contentRepository.findByPlatformAccountIdWithContentType(platformAccountId);
@@ -36,6 +37,22 @@ public class ContentServiceImpl implements ContentService {
         .toList();
 
     ContentListResponse response = ContentListResponse.from(contentDtos);
+    return ServiceResult.ok(response);
+  }
+
+  @Override
+  public ServiceResult<ContentDetailResponse> getContentById(Long contentId) {
+
+    Content content = contentRepository.findByIdWithDetails(contentId).orElse(null);
+    if (content == null) {
+      return ServiceResult.fail(ErrorCode.CONTENT_NOT_FOUND);
+    }
+
+    Integer contentRank = contentRepository.findContentRankByContentId(contentId)
+        .filter(rank -> rank <= 50)
+        .orElse(null);
+
+    ContentDetailResponse response = ContentDetailResponse.from(content, contentRank);
     return ServiceResult.ok(response);
   }
 }

@@ -1,6 +1,5 @@
-package com.ssafy.leaper.domain.content.dto;
+package com.ssafy.leaper.domain.content.dto.response;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.leaper.domain.content.entity.Content;
 
 import java.time.LocalDateTime;
@@ -25,7 +24,7 @@ public record ContentResponse(
             content.getContentType().getId(),
             content.getTitle(),
             content.getDescription(),
-            content.getThumbnail() != null ? content.getThumbnail().getAccessUrl() : null,
+            content.getThumbnail() != null ? content.getThumbnail().getAccessKey() : null,
             content.getContentUrl(),
             content.getDurationSeconds(),
             content.getPublishedAt(),
