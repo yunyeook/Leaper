@@ -1,0 +1,41 @@
+package com.ssafy.leaper.domain.content.service;
+
+import com.ssafy.leaper.domain.content.dto.ContentListResponse;
+import com.ssafy.leaper.domain.content.dto.ContentResponse;
+import com.ssafy.leaper.domain.content.entity.Content;
+import com.ssafy.leaper.domain.content.repository.ContentRepository;
+import com.ssafy.leaper.domain.platformAccount.repository.PlatformAccountRepository;
+import com.ssafy.leaper.global.common.response.ServiceResult;
+import com.ssafy.leaper.global.error.ErrorCode;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class ContentServiceImpl implements ContentService {
+
+  private final ContentRepository contentRepository;
+  private final PlatformAccountRepository platformAccountRepository;
+
+  @Override
+  public ServiceResult<ContentListResponse> getContentsByPlatformAccountId(Long platformAccountId) {
+
+    if (!platformAccountRepository.existsByPlatformAccountIdAndIsDeletedFalse(platformAccountId)) {
+      return ServiceResult.fail(ErrorCode.PLATFORM_ACCOUNT_NOT_FOUND);
+    }
+    List<Content> contents = contentRepository.findByPlatformAccountIdWithContentType(platformAccountId);
+
+    List<ContentResponse> contentDtos = contents.stream()
+        .map(ContentResponse::from)
+        .toList();
+
+    ContentListResponse response = ContentListResponse.from(contentDtos);
+    return ServiceResult.ok(response);
+  }
+}

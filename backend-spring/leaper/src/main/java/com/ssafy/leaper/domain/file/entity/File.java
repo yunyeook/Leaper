@@ -18,9 +18,9 @@ public class File {
   @Column(name = "file_id")
   private Integer id;
 
-  @Column(name = "name", length = 100)
+  @Column(length = 100)
   private String name;
 
-  @Column(name = "accessUrl", length = 1025)
+  @Column(length = 1025)
   private String accessUrl;
 }

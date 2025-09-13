@@ -11,4 +11,10 @@ import java.util.List;
 @Repository
 public interface ContentRepository extends JpaRepository<Content, Long> {
 
+  @Query("SELECT c FROM Content c " +
+      "JOIN FETCH c.contentType " +
+      "LEFT JOIN FETCH c.thumbnail " +
+      "WHERE c.platformAccount.platformAccountId = :platformAccountId " +
+      "ORDER BY c.publishedAt DESC")
+  List<Content> findByPlatformAccountIdWithContentType(@Param("platformAccountId") Long platformAccountId);
 }
