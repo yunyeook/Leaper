@@ -26,11 +26,7 @@ public enum ErrorCode {
   USER_LOGIN_FAIL(HttpStatus.UNAUTHORIZED, "USER-005"),
   USER_SIGN_UP_FAIL(HttpStatus.UNAUTHORIZED, "USER-006"),
 
-  /* 4. PLATFORM_ACCOUNT – 계정 */
-  PLATFORM_ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "PLATFORM-001");
-
-
-
+  FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE-001");
 
   private final HttpStatus httpStatus;
   private final String code;
