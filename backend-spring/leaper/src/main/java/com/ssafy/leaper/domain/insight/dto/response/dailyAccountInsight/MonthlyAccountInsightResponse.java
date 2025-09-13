@@ -1,42 +1,36 @@
-package com.ssafy.leaper.domain.insight.dto.response.DailyTypeInsight;
+package com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight;
 
 import java.math.BigInteger;
 import java.time.YearMonth;
 
-public record MonthlyTypeInsightResponse(
+public record MonthlyAccountInsightResponse(
     Long platformAccountId,
     String platformTypeId,
-    String contentTypeId,
-    BigInteger monthViews,
-    Integer monthContents,
-    BigInteger monthLikes,
     BigInteger totalViews,
+    Integer totalFollowers,
     Integer totalContents,
     BigInteger totalLikes,
+    BigInteger totalComments,
     YearMonth snapshotDate
 ) {
-  public static MonthlyTypeInsightResponse of(
+  public static MonthlyAccountInsightResponse of(
       Long platformAccountId,
       String platformTypeId,
-      String contentTypeId,
-      BigInteger monthViews,
-      Integer monthContents,
-      BigInteger monthLikes,
       BigInteger totalViews,
+      Integer totalFollowers,
       Integer totalContents,
       BigInteger totalLikes,
+      BigInteger totalComments,
       YearMonth snapshotDate
   ) {
-    return new MonthlyTypeInsightResponse(
+    return new MonthlyAccountInsightResponse(
         platformAccountId,
         platformTypeId,
-        contentTypeId,
-        monthViews,
-        monthContents,
-        monthLikes,
         totalViews,
+        totalFollowers,
         totalContents,
         totalLikes,
+        totalComments,
         snapshotDate
     );
   }

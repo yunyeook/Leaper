@@ -1,8 +1,8 @@
 package com.ssafy.leaper.domain.insight.controller;
 
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.AccountInsightResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.InfluencerViewsResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyTypeInsight.TypeInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.AccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.InfluencerViewsResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.TypeInsightResponse;
 import com.ssafy.leaper.domain.insight.service.DailyAccountInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyTypeInsightService;
 import com.ssafy.leaper.global.common.response.ServiceResult;
