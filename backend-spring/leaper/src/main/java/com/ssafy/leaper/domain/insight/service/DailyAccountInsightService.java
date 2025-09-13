@@ -1,11 +1,11 @@
 package com.ssafy.leaper.domain.insight.service;
 
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.AccountInsightResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.DailyAccountInsightResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.DailyAccountViewsResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.InfluencerViewsResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.MonthlyAccountInsightResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.MonthlyAccountViewsResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.AccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.DailyAccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.DailyAccountViewsResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.InfluencerViewsResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.MonthlyAccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.MonthlyAccountViewsResponse;
 import com.ssafy.leaper.domain.insight.entity.DailyAccountInsight;
 import com.ssafy.leaper.domain.insight.repository.DailyAccountInsightRepository;
 import com.ssafy.leaper.global.common.response.ServiceResult;

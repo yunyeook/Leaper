@@ -1,8 +1,8 @@
 package com.ssafy.leaper.domain.insight.service;
 
-import com.ssafy.leaper.domain.insight.dto.response.DailyTypeInsight.DailyTypeInsightResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyTypeInsight.MonthlyTypeInsightResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyTypeInsight.TypeInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.DailyTypeInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.MonthlyTypeInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.TypeInsightResponse;
 import com.ssafy.leaper.domain.insight.entity.DailyTypeInsight;
 import com.ssafy.leaper.domain.insight.repository.DailyTypeInsightRepository;
 import com.ssafy.leaper.global.common.response.ServiceResult;

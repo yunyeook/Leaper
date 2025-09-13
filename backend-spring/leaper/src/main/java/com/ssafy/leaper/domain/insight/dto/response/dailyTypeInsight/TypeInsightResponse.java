@@ -1,4 +1,4 @@
-package com.ssafy.leaper.domain.insight.dto.response.DailyTypeInsight;
+package com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight;
 
 import java.util.List;
 

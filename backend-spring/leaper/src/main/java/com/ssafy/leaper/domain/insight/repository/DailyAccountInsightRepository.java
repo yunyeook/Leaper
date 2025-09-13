@@ -1,7 +1,9 @@
 package com.ssafy.leaper.domain.insight.repository;
 
 import com.ssafy.leaper.domain.insight.entity.DailyAccountInsight;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,5 +26,19 @@ public interface DailyAccountInsightRepository extends JpaRepository<DailyAccoun
         "WHERE pa.id = :platformAccountId " +
         "ORDER BY dai.snapshotDate ASC")
     List<DailyAccountInsight> findByPlatformAccountId(@Param("platformAccountId") Long platformAccountId);
+
+
+  @Query("""
+        SELECT SUM(dai.totalFollowers)
+        FROM DailyAccountInsight dai
+        WHERE dai.platformAccount.influencer.id = :influencerId
+          AND dai.snapshotDate = :snapshotDate
+    """)
+  Integer sumFollowersByInfluencerAndDate(Long influencerId, LocalDate snapshotDate);
+
+
+  Optional<DailyAccountInsight> findTopByPlatformAccountInfluencerIdOrderBySnapshotDateDesc(Long influencerId);
+
+
 
 }

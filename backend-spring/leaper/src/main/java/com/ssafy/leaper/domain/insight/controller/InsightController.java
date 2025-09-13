@@ -1,24 +1,31 @@
 package com.ssafy.leaper.domain.insight.controller;
 
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.AccountInsightResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight.InfluencerViewsResponse;
-import com.ssafy.leaper.domain.insight.dto.response.DailyTypeInsight.TypeInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.AccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.InfluencerViewsResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.TypeInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyMyPopularContentResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyPopularContentResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyPopularInfluencerResponse;
 import com.ssafy.leaper.domain.insight.service.DailyAccountInsightService;
+import com.ssafy.leaper.domain.insight.service.DailyPopularInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyTypeInsightService;
-import com.ssafy.leaper.global.common.response.ServiceResult;
+import com.ssafy.leaper.global.common.controller.BaseController;
+import com.ssafy.leaper.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/insight")
 @RequiredArgsConstructor
 @Tag(name = "Insight API", description = "인플루언서 인사이트 관련 API")
-public class InsightController {
+public class InsightController implements BaseController {
 
     private final DailyAccountInsightService dailyAccountInsightService;
     private final DailyTypeInsightService dailyTypeInsightService;
+    private final DailyPopularInsightService dailyPopularInsightService;
 
 
     @Operation(
@@ -26,10 +33,10 @@ public class InsightController {
         description = "특정 인플루언서의 모든 플랫폼 계정에 대해 일별 및 월별 누적 인사이트(조회수, 팔로워, 좋아요, 댓글 등)를 조회합니다."
     )
     @GetMapping("/dailyAccountInsight/influencer/{influencerId}")
-    public ServiceResult<AccountInsightResponse> getAccountInsights(
+    public ResponseEntity<ApiResponse<AccountInsightResponse>> getAccountInsights(
         @PathVariable Long influencerId
     ) {
-        return dailyAccountInsightService.getAccountInsights(influencerId);
+        return handle(dailyAccountInsightService.getAccountInsights(influencerId));
     }
 
     @Operation(
@@ -37,10 +44,10 @@ public class InsightController {
         description = "특정 인플루언서의 모든 플랫폼 계정에 대해 일별 및 월별 조회수를 조회합니다."
     )
     @GetMapping("/dailyAccountInsight/influencer/{influencerId}/view")
-    public ServiceResult<InfluencerViewsResponse> getInfluencerViews(
+    public ResponseEntity<ApiResponse<InfluencerViewsResponse>> getInfluencerViews(
         @PathVariable Long influencerId
     ) {
-        return dailyAccountInsightService.getInfluencerViews(influencerId);
+        return handle(dailyAccountInsightService.getInfluencerViews(influencerId));
     }
 
     @Operation(
@@ -48,10 +55,10 @@ public class InsightController {
         description = "특정 플랫폼 계정에 대해 일별 및 월별 누적 인사이트(조회수, 팔로워, 좋아요, 댓글 등)를 조회합니다."
     )
     @GetMapping("/dailyAccountInsight/platformAccount/{platformAccountId}")
-    public ServiceResult<AccountInsightResponse> getPlatformAccountInsights(
+    public ResponseEntity<ApiResponse<AccountInsightResponse>> getPlatformAccountInsights(
         @PathVariable Long platformAccountId
     ) {
-        return dailyAccountInsightService.getPlatformAccountInsights(platformAccountId);
+        return handle(dailyAccountInsightService.getPlatformAccountInsights(platformAccountId));
     }
 
     @Operation(
@@ -59,10 +66,10 @@ public class InsightController {
         description = "특정 플랫폼 계정에 대해 일별 및 월별 조회수를 조회합니다."
     )
     @GetMapping("/dailyAccountInsight/platformAccount/{platformAccountId}/view")
-    public ServiceResult<InfluencerViewsResponse> getPlatformAccountViews(
+    public ResponseEntity<ApiResponse<InfluencerViewsResponse>> getPlatformAccountViews(
         @PathVariable Long platformAccountId
     ) {
-        return dailyAccountInsightService.getPlatformAccountViews(platformAccountId);
+        return handle(dailyAccountInsightService.getPlatformAccountViews(platformAccountId));
     }
 
     @Operation(
@@ -70,11 +77,11 @@ public class InsightController {
         description = "특정 인플루언서의 계정별로 특정 ContentType(영상, 쇼츠, 포스트 등)의 일별 및 월별 인사이트를 조회합니다."
     )
     @GetMapping("/dailyTypeInsight/influencer/{influencerId}")
-    public ServiceResult<TypeInsightResponse> getTypeInsightsByInfluencer(
+    public ResponseEntity<ApiResponse<TypeInsightResponse>> getTypeInsightsByInfluencer(
         @PathVariable Long influencerId,
         @RequestParam("contentType") String contentTypeId
     ) {
-        return dailyTypeInsightService.getTypeInsightsByInfluencer(influencerId, contentTypeId);
+        return handle(dailyTypeInsightService.getTypeInsightsByInfluencer(influencerId, contentTypeId));
     }
 
     @Operation(
@@ -82,10 +89,46 @@ public class InsightController {
         description = "특정 플랫폼 계정에 대해 특정 ContentType의 일별 및 월별 인사이트를 조회합니다."
     )
     @GetMapping("/dailyTypeInsight/platformAccount/{platformAccountId}")
-    public ServiceResult<TypeInsightResponse> getTypeInsightsByPlatformAccount(
+    public ResponseEntity<ApiResponse<TypeInsightResponse>> getTypeInsightsByPlatformAccount(
         @PathVariable Long platformAccountId,
         @RequestParam("contentType") String contentTypeId
     ) {
-        return dailyTypeInsightService.getTypeInsightsByPlatformAccount(platformAccountId, contentTypeId);
+        return handle(dailyTypeInsightService.getTypeInsightsByPlatformAccount(platformAccountId, contentTypeId));
     }
+
+    @Operation(
+        summary = "일별 인기 콘텐츠 조회",
+        description = "특정 플랫폼, 카테고리에서 가장 인기 있는 콘텐츠 10개를 조회합니다"
+    )
+    @GetMapping("/dailyPopularContent/content")
+    public ResponseEntity<ApiResponse<DailyPopularContentResponse>> getDailyPopularContents(
+        @RequestParam String platformType,
+        @RequestParam Long categoryType
+    ) {
+        return handle(dailyPopularInsightService.getPopularContents(platformType, categoryType));
+    }
+
+    @Operation(
+        summary = "일별 인기 인플루언서 조회",
+        description = "특정 플랫폼, 카테고리에서 가장 인기 있는 인플루언서 10명을 조회합니다."
+    )
+    @GetMapping("/dailyPopularContent/influencer")
+    public ResponseEntity<ApiResponse<DailyPopularInfluencerResponse>> getPopularInfluencers(
+        @RequestParam String platformType,
+        @RequestParam Long categoryType
+    ) {
+        return handle(dailyPopularInsightService.getPopularInfluencers(platformType, categoryType));
+    }
+
+    @Operation(
+        summary = "특정 계정의 인기 콘텐츠 조회",
+        description = "해당 플랫폼 계정 ID 기준으로 오늘 날짜 인기 콘텐츠 TOP10을 조회합니다."
+    )
+    @GetMapping("/dailyMyPopularContent/platformAccount/{platformAccountId}")
+    public ResponseEntity<ApiResponse<DailyMyPopularContentResponse>> getMyPopularContents(
+        @PathVariable Long platformAccountId
+    ) {
+        return handle(dailyPopularInsightService.getMyPopularContents(platformAccountId));
+    }
+
 }

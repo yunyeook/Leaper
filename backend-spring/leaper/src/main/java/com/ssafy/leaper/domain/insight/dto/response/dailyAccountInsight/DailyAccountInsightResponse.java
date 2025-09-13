@@ -1,4 +1,4 @@
-package com.ssafy.leaper.domain.insight.dto.response.DailyAccountInsight;
+package com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight;
 
 import com.ssafy.leaper.domain.insight.entity.DailyAccountInsight;
 import java.math.BigInteger;
