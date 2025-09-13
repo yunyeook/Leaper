@@ -1,4 +1,4 @@
-package com.ssafy.leaper.domain.file.entity;
+package com.ssafy.leaper.domain.type.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -11,16 +11,13 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
-public class File {
+public class ContentType {
 
-  @Id
-  @Column(name = "file_id")
-  private Integer id;
+    @Id
+    @Column(name = "content_type_id", length = 31)
+    private String id;
 
-  @Column(name = "name", length = 100)
-  private String name;
+    @Column( nullable = false, length = 31)
+    private String typeName;
 
-  @Column(name = "accessUrl", length = 1025)
-  private String accessUrl;
 }
