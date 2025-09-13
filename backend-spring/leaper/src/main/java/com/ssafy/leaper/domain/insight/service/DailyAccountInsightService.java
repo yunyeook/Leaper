@@ -19,12 +19,11 @@ import java.util.*;
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class InsightServiceImpl implements InsightService {
+public class DailyAccountInsightService {
 
   private final DailyAccountInsightRepository dailyAccountInsightRepository;
 
-  // ✅ 인플루언서 단위 풀데이터
-  @Override
+  //  인플루언서 단위 풀데이터
   public ServiceResult<AccountInsightResponse> getAccountInsights(Long influencerId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId);
 
@@ -37,8 +36,7 @@ public class InsightServiceImpl implements InsightService {
     return ServiceResult.ok(AccountInsightResponse.of(dailyResponses, monthlyResponses));
   }
 
-  // ✅ 플랫폼 계정 단위 풀데이터 (추가)
-  @Override
+  // 플랫폼 계정 단위 풀데이터
   public ServiceResult<AccountInsightResponse> getPlatformAccountInsights(Long platformAccountId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId);
 
@@ -51,15 +49,13 @@ public class InsightServiceImpl implements InsightService {
     return ServiceResult.ok(AccountInsightResponse.of(dailyResponses, monthlyResponses));
   }
 
-  // ✅ 인플루언서 단위 조회수 전용
-  @Override
+  // 인플루언서 단위 조회수 전용
   public ServiceResult<InfluencerViewsResponse> getInfluencerViews(Long influencerId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId);
     return ServiceResult.ok(aggregateDailyAndMonthlyViews(entities));
   }
 
   // ✅ 플랫폼 계정 단위 조회수 전용
-  @Override
   public ServiceResult<InfluencerViewsResponse> getPlatformAccountViews(Long platformAccountId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId);
     return ServiceResult.ok(aggregateDailyAndMonthlyViews(entities));
