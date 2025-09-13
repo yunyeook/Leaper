@@ -3,6 +3,7 @@ package com.ssafy.leaper.domain.content.service;
 import com.ssafy.leaper.domain.content.dto.response.ContentDetailResponse;
 import com.ssafy.leaper.domain.content.dto.response.ContentListResponse;
 import com.ssafy.leaper.domain.content.dto.response.ContentResponse;
+import com.ssafy.leaper.domain.content.dto.response.SimilarContentListResponse;
 import com.ssafy.leaper.domain.content.entity.Content;
 import com.ssafy.leaper.domain.content.repository.ContentRepository;
 import com.ssafy.leaper.domain.platformAccount.repository.PlatformAccountRepository;
@@ -48,11 +49,37 @@ public class ContentServiceImpl implements ContentService {
       return ServiceResult.fail(ErrorCode.CONTENT_NOT_FOUND);
     }
 
-    Integer contentRank = contentRepository.findContentRankByContentId(contentId)
-        .filter(rank -> rank <= 50)
-        .orElse(null);
+    Integer contentRank = contentRepository.findContentRankByContentId(contentId).orElse(null);
 
     ContentDetailResponse response = ContentDetailResponse.from(content, contentRank);
     return ServiceResult.ok(response);
   }
+  @Override
+  public ServiceResult<SimilarContentListResponse> getSimilarContents(Long contentId) {
+    Content base = contentRepository.findByIdWithDetails(contentId).orElse(null);
+    if (base == null) {
+      return ServiceResult.fail(ErrorCode.CONTENT_NOT_FOUND);
+    }
+
+    String platformTypeId = base.getPlatformType().getId();
+    String contentTypeId = base.getContentType().getId();
+    Integer baseDuration = base.getDurationSeconds() != null ? base.getDurationSeconds() : 0;
+
+    Long categoryTypeId = contentRepository.findCategoryTypeById(contentId).orElse(null);
+    if (categoryTypeId == null) {
+      return ServiceResult.fail(ErrorCode.CONTENT_NOT_FOUND);
+    }
+
+    List<Content> similars = contentRepository.findSimilarByCategory(
+        contentId, platformTypeId, contentTypeId, categoryTypeId, baseDuration);
+
+    List<ContentDetailResponse> responses = similars.stream()
+        .map(c -> ContentDetailResponse.from(c, null))
+        .toList();
+
+    return ServiceResult.ok(SimilarContentListResponse.from(responses));
+  }
+
+
+
 }

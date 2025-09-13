@@ -1,11 +1,11 @@
 package com.ssafy.leaper.domain.content.controller;
 
 import com.ssafy.leaper.domain.content.dto.response.ContentDetailResponse;
+import com.ssafy.leaper.domain.content.dto.response.SimilarContentListResponse;
 import com.ssafy.leaper.global.common.response.ApiResponse;
 import com.ssafy.leaper.domain.content.dto.response.ContentListResponse;
 import com.ssafy.leaper.domain.content.service.ContentService;
 import com.ssafy.leaper.global.common.controller.BaseController;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +37,23 @@ public class ContentController implements BaseController {
   public ResponseEntity<ApiResponse<ContentDetailResponse>> getContent(
       @PathVariable Long contentId) {
     return handle(contentService.getContentById(contentId));
+  }
+
+  @Operation(
+      summary = "유사 콘텐츠 조회",
+      description = """
+            특정 콘텐츠 ID를 기준으로 같은 플랫폼·카테고리·컨텐츠타입 내 유사한 콘텐츠를 조회합니다.
+            정렬 기준:
+            1) 태그 겹치는 개수
+            2) 영상 길이 ±5분
+            3) 인플루언서 팔로워 수 (많은 순)
+            """
+  )
+  @GetMapping("/{contentId}/similar")
+  public ResponseEntity<ApiResponse<SimilarContentListResponse>> getSimilarContents(
+      @PathVariable Long contentId
+  ) {
+    return handle(contentService.getSimilarContents(contentId));
   }
 
 }

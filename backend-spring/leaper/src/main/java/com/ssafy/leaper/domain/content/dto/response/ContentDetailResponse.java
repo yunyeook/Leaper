@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record ContentDetailResponse(
+    Long contentId,
+    String contentType,
     String title,
     String description,
     String thumbnailUrl,
@@ -24,6 +26,8 @@ public record ContentDetailResponse(
 
   public static ContentDetailResponse from(Content content, Integer contentRank) {
     return new ContentDetailResponse(
+        content.getId(),
+        content.getContentType().getId(),
         content.getTitle(),
         content.getDescription(),
         content.getThumbnail() != null ? content.getThumbnail().getAccessKey() : null,
