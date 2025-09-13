@@ -3,7 +3,10 @@ package com.ssafy.leaper.domain.insight.controller;
 import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.AccountInsightResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.InfluencerViewsResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.TypeInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailypPopularInsight.DailyPopularContentResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailypPopularInsight.DailyPopularInfluencerResponse;
 import com.ssafy.leaper.domain.insight.service.DailyAccountInsightService;
+import com.ssafy.leaper.domain.insight.service.DailyPopularInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyTypeInsightService;
 import com.ssafy.leaper.global.common.response.ServiceResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +22,7 @@ public class InsightController {
 
     private final DailyAccountInsightService dailyAccountInsightService;
     private final DailyTypeInsightService dailyTypeInsightService;
+    private final DailyPopularInsightService dailyPopularInsightService;
 
 
     @Operation(
@@ -88,4 +92,29 @@ public class InsightController {
     ) {
         return dailyTypeInsightService.getTypeInsightsByPlatformAccount(platformAccountId, contentTypeId);
     }
+
+    @Operation(
+        summary = "일별 인기 콘텐츠 조회",
+        description = "특정 플랫폼, 카테고리에서 가장 인기 있는 콘텐츠 10개를 조회합니다"
+    )
+    @GetMapping("/dailyPopularContent/content")
+    public ServiceResult<DailyPopularContentResponse> getDailyPopularContents(
+        @RequestParam String platformType,
+        @RequestParam Long categoryType
+    ) {
+        return dailyPopularInsightService.getPopularContents(platformType, categoryType);
+    }
+
+    @Operation(
+        summary = "일별 인기 인플루언서 조회",
+        description = "특정 플랫폼, 카테고리에서 가장 인기 있는 인플루언서 10명을 조회합니다."
+    )
+    @GetMapping("/dailyPopularContent/influencer")
+    public ServiceResult<DailyPopularInfluencerResponse> getPopularInfluencers(
+        @RequestParam String platformType,
+        @RequestParam Long categoryType
+    ) {
+        return dailyPopularInsightService.getPopularInfluencers(platformType, categoryType);
+    }
+
 }

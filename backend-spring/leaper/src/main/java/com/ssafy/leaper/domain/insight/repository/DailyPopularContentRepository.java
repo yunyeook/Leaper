@@ -2,23 +2,24 @@ package com.ssafy.leaper.domain.insight.repository;
 
 import com.ssafy.leaper.domain.insight.entity.DailyPopularContent;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface DailyPopularContentRepository extends JpaRepository<DailyPopularContent, Long> {
 
-  List<DailyPopularContent> findByPlatformType_IdAndCategoryType_IdOrderBySnapshotDateDescContentRankAsc(
-      String platformTypeId,
-      Integer categoryTypeId
+  @Query("""
+        SELECT dpc FROM DailyPopularContent dpc
+        WHERE dpc.platformType.id = :platformTypeId
+          AND dpc.categoryType.id = :categoryTypeId
+          AND dpc.snapshotDate = :snapshotDate
+        ORDER BY dpc.contentRank ASC
+        """)
+  List<DailyPopularContent> findTop10ByPlatformAndCategoryAndDate(
+      @Param("platformTypeId") String platformTypeId,
+      @Param("categoryTypeId") Long categoryTypeId,
+      @Param("snapshotDate") LocalDate snapshotDate
   );
-
-  List<DailyPopularContent> findByPlatformType_IdOrderBySnapshotDateDescContentRankAsc(
-      String platformTypeId
-  );
-
-  List<DailyPopularContent> findByCategoryType_IdOrderBySnapshotDateDescContentRankAsc(
-      Integer categoryTypeId
-  );
-
-  List<DailyPopularContent> findAllByOrderBySnapshotDateDescContentRankAsc();
 }
