@@ -1,5 +1,6 @@
 package com.ssafy.leaper.domain.insight.controller;
 
+import com.ssafy.leaper.domain.insight.dto.response.contentCommentInsight.ContentCommentInsightResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.AccountInsightResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.InfluencerViewsResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyTrendingInsight.DailyTrendingContentResponse;
@@ -8,6 +9,7 @@ import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.TypeInsight
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyMyPopularContentResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyPopularContentResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyPopularInfluencerResponse;
+import com.ssafy.leaper.domain.insight.service.ContentCommentInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyAccountInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyPopularInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyTrendingInsightService;
@@ -30,6 +32,7 @@ public class InsightController implements BaseController {
     private final DailyTypeInsightService dailyTypeInsightService;
     private final DailyPopularInsightService dailyPopularInsightService;
     private final DailyTrendingInsightService dailyTrendingInsightService;
+    private final ContentCommentInsightService contentCommentInsightService;
 
 
     @Operation(
@@ -159,5 +162,15 @@ public class InsightController implements BaseController {
         return handle(dailyTrendingInsightService.getTrendingInfluencers(platformType, categoryType));
     }
 
+    @Operation(
+        summary = "콘텐츠 댓글 인사이트 조회",
+        description = "특정 콘텐츠의 댓글 분석 결과(긍정/부정 댓글, 키워드, 요약 등)를 조회합니다."
+    )
+    @GetMapping("/commentInsight/content/{contentId}")
+    public ResponseEntity<ApiResponse<ContentCommentInsightResponse>> getContentCommentInsight(
+        @PathVariable Long contentId
+    ) {
+        return handle(contentCommentInsightService.getContentCommentInsight(contentId));
+    }
 
 }
