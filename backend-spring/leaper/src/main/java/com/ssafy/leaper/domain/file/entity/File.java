@@ -1,6 +1,5 @@
 package com.ssafy.leaper.domain.file.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,6 +25,6 @@ public class File {
      *
      */
      public static String generateUniqueKey(String fileName, String fileType) {
-        return fileType+ "/" + UUID.randomUUID() + fileName;
-    }
+         return fileType + "/" + UUID.randomUUID() + fileName;
+     }
 }

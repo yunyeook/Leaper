@@ -20,7 +20,7 @@ public class PlatformType {
     @Column(name = "platform_type_id", length = 31)
     private String id;
 
-    @Column(name = "type_name", nullable = false, length = 31)
+    @Column(nullable = false, length = 31)
     private String typeName;
 
 
