@@ -9,19 +9,24 @@ import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.TypeInsight
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyMyPopularContentResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyPopularContentResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.DailyPopularInfluencerResponse;
+import com.ssafy.leaper.domain.insight.dto.response.trend.KeywordTrendResponse;
 import com.ssafy.leaper.domain.insight.service.ContentCommentInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyAccountInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyPopularInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyTrendingInsightService;
 import com.ssafy.leaper.domain.insight.service.DailyTypeInsightService;
+import com.ssafy.leaper.domain.insight.service.KeywordTrendService;
 import com.ssafy.leaper.global.common.controller.BaseController;
 import com.ssafy.leaper.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/insight")
 @RequiredArgsConstructor
@@ -33,6 +38,7 @@ public class InsightController implements BaseController {
     private final DailyPopularInsightService dailyPopularInsightService;
     private final DailyTrendingInsightService dailyTrendingInsightService;
     private final ContentCommentInsightService contentCommentInsightService;
+    private final KeywordTrendService keywordTrendService;
 
 
     @Operation(
@@ -172,5 +178,29 @@ public class InsightController implements BaseController {
     ) {
         return handle(contentCommentInsightService.getContentCommentInsight(contentId));
     }
+
+    @Operation(
+        summary = "인기 키워드 조회",
+        description = "특정 플랫폼의 인기 키워드를 조회합니다."
+    )
+    @GetMapping("/trend/platformType/{platformTypeId}")
+    public ResponseEntity<ApiResponse<KeywordTrendResponse>> getDailyKeywordTrend(
+        @PathVariable String platformTypeId
+
+        ) {
+        return handle(keywordTrendService.getDailyKeywordTrendLatestSnapshot(platformTypeId));
+    }
+
+    @Operation(
+        summary = "구글 트렌드 키워드 조회",
+        description = "구글 트렌드의 인기 키워드를 조회합니다."
+    )
+    @GetMapping("/trend/google")
+    public ResponseEntity<ApiResponse<KeywordTrendResponse>> getGoogleKeywordTrend(
+
+    ) {
+        return handle(keywordTrendService.getGoogleKeywordTrendLatestSnapshot());
+    }
+
 
 }
