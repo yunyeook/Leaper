@@ -9,11 +9,11 @@ import lombok.*;
 @AllArgsConstructor
 public class InfluencerSignupResponse {
 
-    private Long influencerId;
+    private Integer influencerId;
 
     public static InfluencerSignupResponse from(Influencer influencer) {
         return InfluencerSignupResponse.builder()
-                .influencerId(influencer.getInfluencerId())
+                .influencerId(influencer.getId())
                 .build();
     }
 }

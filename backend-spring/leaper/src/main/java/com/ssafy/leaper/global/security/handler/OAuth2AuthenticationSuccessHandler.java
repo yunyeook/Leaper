@@ -72,14 +72,14 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
 
         Influencer influencer = influencerOpt.get();
-        String jwtToken = jwtTokenProvider.generateInfluencerToken(influencer.getInfluencerId().toString(), email);
+        String jwtToken = jwtTokenProvider.generateInfluencerToken(influencer.getId().toString(), email);
 
-        log.info("Generated JWT token for existing influencer: {}", influencer.getInfluencerId());
+        log.info("Generated JWT token for existing influencer: {}", influencer.getId());
 
         // 기존 사용자 - JWT 토큰과 함께 리다이렉트
         String redirectUrl = frontUrl + "/auth/callback?" +
                 "isNew=false" +
-                "&influencerId=" + influencer.getInfluencerId() +
+                "&influencerId=" + influencer.getId() +
                 "&token=" + URLEncoder.encode(jwtToken, StandardCharsets.UTF_8);
 
         response.sendRedirect(redirectUrl);

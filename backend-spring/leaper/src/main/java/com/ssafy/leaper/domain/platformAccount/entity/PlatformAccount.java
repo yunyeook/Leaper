@@ -27,7 +27,7 @@ public class PlatformAccount {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "platform_account_id")
-  private Long id;
+  private Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "influencer_id", nullable = false)

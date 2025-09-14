@@ -5,15 +5,15 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 
 public record DailyAccountInsightResponse(
-    Long platformAccountId,
-    String platformTypeId,
-    BigInteger totalViews,
-    Integer totalFollowers,
-    Integer totalContents,
-    BigInteger totalLikes,
-    BigInteger totalComments,
-    BigInteger likeScore,
-    LocalDate snapshotDate
+        Integer platformAccountId,
+        String platformTypeId,
+        BigInteger totalViews,
+        Integer totalFollowers,
+        Integer totalContents,
+        BigInteger totalLikes,
+        BigInteger totalComments,
+        BigInteger likeScore,
+        LocalDate snapshotDate
 ) {
   public static DailyAccountInsightResponse from(DailyAccountInsight entity) {
     return new DailyAccountInsightResponse(

@@ -28,13 +28,6 @@ public class InfluencerSignupRequest {
     @Pattern(regexp = "^(MALE|FEMALE)$", message = "성별은 MALE 또는 FEMALE이어야 합니다")
     private String gender;
 
-    @NotBlank(message = "소셜 제공자 타입은 필수입니다")
-    @Pattern(regexp = "^(GOOGLE|NAVER|KAKAO)$", message = "지원되지 않는 소셜 제공자입니다")
-    private String providerTypeId;
-
-    @NotBlank(message = "소셜 제공자 고유 ID는 필수입니다")
-    @Size(max = 31, message = "소셜 제공자 고유 ID는 31자 이내여야 합니다")
-    private String providerMemberId;
 
     @NotBlank(message = "이메일은 필수입니다")
     @Email(message = "올바른 이메일 형식이 아닙니다")
@@ -43,7 +36,7 @@ public class InfluencerSignupRequest {
 
     private MultipartFile profileImage;
 
-    public Integer getGenderAsInteger() {
-        return "MALE".equals(gender) ? 0 : 1;
+    public Boolean getGenderAsBoolean() {
+        return "MALE".equals(gender);
     }
 }

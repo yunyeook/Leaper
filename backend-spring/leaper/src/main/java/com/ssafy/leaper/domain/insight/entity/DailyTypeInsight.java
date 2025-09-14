@@ -32,7 +32,7 @@ public class DailyTypeInsight {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "daily_type_insight_id")
-  private Long id;
+  private Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "content_type_id", nullable = false)

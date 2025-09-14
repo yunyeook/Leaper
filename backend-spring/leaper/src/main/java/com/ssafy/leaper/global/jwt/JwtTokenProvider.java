@@ -1,23 +1,24 @@
 package com.ssafy.leaper.global.jwt;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
-    private final SecretKey jwtSecretKey;
+    private final JwtEncoder jwtEncoder;
 
     @Value("${jwt.access-token-expiry}")
     private long accessTokenExpiry;
@@ -31,25 +32,25 @@ public class JwtTokenProvider {
     public String generateAccessToken(String userId, String role, String email) {
         log.info("Generating JWT token for userId: {}, role: {}, email: {}", userId, role, email);
         try {
-            Date now = new Date();
-            Date expiry = new Date(now.getTime() + accessTokenExpiry);
+            Instant now = Instant.now();
+            Instant expiry = now.plus(accessTokenExpiry, ChronoUnit.HOURS);
 
-            log.debug("Token expiry: {} (in {} milliseconds)", expiry, accessTokenExpiry);
+            log.debug("Token expiry: {} (in {} hours)", expiry, accessTokenExpiry);
 
-            Map<String, Object> claims = new HashMap<>();
-            claims.put("role", role);
-            claims.put("email", email);
+            JwsHeader jwsHeader = JwsHeader.with(MacAlgorithm.HS256).build();
 
-            log.debug("JWT Claims: {}", claims);
-
-            String token = Jwts.builder()
-                    .claims(claims)
-                    .subject(userId)
+            JwtClaimsSet claimsSet = JwtClaimsSet.builder()
                     .issuer(issuer)
+                    .subject(userId)
                     .issuedAt(now)
-                    .expiration(expiry)
-                    .signWith(jwtSecretKey)
-                    .compact();
+                    .expiresAt(expiry)
+                    .claim("role", role)
+                    .claim("email", email)
+                    .build();
+
+            log.debug("JWT Claims: {}", claimsSet.getClaims());
+
+            String token = jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claimsSet)).getTokenValue();
 
             log.info("JWT token generated successfully for userId: {}", userId);
             return token;
@@ -80,26 +81,26 @@ public class JwtTokenProvider {
     public String generateRegistrationToken(String providerMemberId, String providerTypeId) {
         log.info("Generating registration token for provider: {}, providerMemberId: {}", providerTypeId, providerMemberId);
         try {
-            Date now = new Date();
-            Date expiry = new Date(now.getTime() + 600000); // 10분 (600,000ms)
+            Instant now = Instant.now();
+            Instant expiry = now.plus(10, ChronoUnit.MINUTES); // 10분
 
             log.debug("Registration token expiry: {} (in 10 minutes)", expiry);
 
-            Map<String, Object> claims = new HashMap<>();
-            claims.put("providerMemberId", providerMemberId);
-            claims.put("providerTypeId", providerTypeId);
-            claims.put("tokenType", "REGISTRATION");
+            JwsHeader jwsHeader = JwsHeader.with(MacAlgorithm.HS256).build();
 
-            log.debug("Registration JWT Claims: {}", claims);
-
-            String token = Jwts.builder()
-                    .claims(claims)
-                    .subject("REGISTRATION") // subject는 등록용으로 고정
+            JwtClaimsSet claimsSet = JwtClaimsSet.builder()
                     .issuer(issuer)
+                    .subject("REGISTRATION") // subject는 등록용으로 고정
                     .issuedAt(now)
-                    .expiration(expiry)
-                    .signWith(jwtSecretKey)
-                    .compact();
+                    .expiresAt(expiry)
+                    .claim("providerMemberId", providerMemberId)
+                    .claim("providerTypeId", providerTypeId)
+                    .claim("tokenType", "REGISTRATION")
+                    .build();
+
+            log.debug("Registration JWT Claims: {}", claimsSet.getClaims());
+
+            String token = jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claimsSet)).getTokenValue();
 
             log.info("Registration token generated successfully for provider: {}", providerTypeId);
             return token;

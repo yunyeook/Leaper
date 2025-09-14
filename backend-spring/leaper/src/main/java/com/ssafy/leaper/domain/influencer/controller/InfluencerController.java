@@ -25,11 +25,12 @@ public class InfluencerController implements BaseController {
     @Operation(summary = "인플루언서 회원가입", description = "소셜 로그인 후 인플루언서 계정을 생성합니다.")
     @PostMapping(value = "/signup", consumes = "multipart/form-data")
     public ResponseEntity<ApiResponse<InfluencerSignupResponse>> signup(
-            @ModelAttribute InfluencerSignupRequest request) {
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @ModelAttribute InfluencerSignupRequest request) {
 
-        log.info("Influencer signup request - nickname: {}, provider: {}",
-                request.getNickname(), request.getProviderTypeId());
+        log.info("Influencer signup request - nickname: {}, email: {}",
+                request.getNickname(), request.getEmail());
 
-        return handle(influencerService.signup(request));
+        return handle(influencerService.signup(request, authorizationHeader));
     }
 }

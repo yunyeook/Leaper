@@ -22,7 +22,7 @@ public class Influencer {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "influencer_id")
-  private Long id;
+  private Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "provider_type_id", nullable = false)
@@ -62,5 +62,21 @@ public class Influencer {
   private Boolean isDeleted;
 
   private LocalDateTime deletedAt;
+
+  public static Influencer of(ProviderType providerType, String providerMemberId, String email,
+                              String nickname, Boolean gender, LocalDate birthday, String bio,
+                              File profileImage) {
+    return Influencer.builder()
+            .providerType(providerType)
+            .providerMemberId(providerMemberId)
+            .email(email)
+            .nickname(nickname)
+            .gender(gender)
+            .birthday(birthday)
+            .bio(bio)
+            .profileImage(profileImage)
+            .isDeleted(false)
+            .build();
+  }
 }
 

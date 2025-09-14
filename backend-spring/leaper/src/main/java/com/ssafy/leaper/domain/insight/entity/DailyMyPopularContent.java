@@ -21,7 +21,7 @@ public class DailyMyPopularContent {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "daily_my_popular_content_id")
-  private Long id;
+  private Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "platform_account_id", nullable = false)

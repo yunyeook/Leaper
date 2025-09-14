@@ -3,7 +3,7 @@ package com.ssafy.leaper.domain.insight.dto.response.dailyTrendingInsight;
 import com.ssafy.leaper.domain.insight.entity.DailyTrendingContent;
 
 public record TrendingContentResponse(
-    Long contentId,
+    Integer contentId,
     Integer contentRank,
     String accountNickname,
     String title,

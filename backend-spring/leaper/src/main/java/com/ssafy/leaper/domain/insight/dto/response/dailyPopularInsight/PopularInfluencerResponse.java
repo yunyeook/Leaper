@@ -3,10 +3,10 @@ package com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight;
 import com.ssafy.leaper.domain.insight.entity.DailyPopularInfluencer;
 
 public record PopularInfluencerResponse(
-    Long influencerId,
-    Integer influencerRank,
-    String accountNickname,
-    Integer totalFollowers
+        Integer influencerId,
+        Integer influencerRank,
+        String accountNickname,
+        Integer totalFollowers
 ) {
   public static PopularInfluencerResponse of(
       DailyPopularInfluencer dpi,

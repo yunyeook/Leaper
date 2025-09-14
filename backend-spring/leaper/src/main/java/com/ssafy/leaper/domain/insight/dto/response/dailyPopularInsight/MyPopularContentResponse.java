@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record MyPopularContentResponse(
-    Long contentId,
+    Integer contentId,
     String title,
     String thumbnailUrl,
     BigInteger viewCount,

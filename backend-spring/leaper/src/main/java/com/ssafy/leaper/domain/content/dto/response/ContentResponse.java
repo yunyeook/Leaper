@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record ContentResponse(
-    Long contentId,
+    Integer contentId,
     String contentType,
     String title,
     String description,

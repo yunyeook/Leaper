@@ -38,7 +38,7 @@ public class InsightController implements BaseController {
     )
     @GetMapping("/dailyAccountInsight/influencer/{influencerId}")
     public ResponseEntity<ApiResponse<AccountInsightResponse>> getAccountInsights(
-        @PathVariable Long influencerId
+        @PathVariable Integer influencerId
     ) {
         return handle(dailyAccountInsightService.getAccountInsights(influencerId));
     }
@@ -49,7 +49,7 @@ public class InsightController implements BaseController {
     )
     @GetMapping("/dailyAccountInsight/influencer/{influencerId}/view")
     public ResponseEntity<ApiResponse<InfluencerViewsResponse>> getInfluencerViews(
-        @PathVariable Long influencerId
+        @PathVariable Integer influencerId
     ) {
         return handle(dailyAccountInsightService.getInfluencerViews(influencerId));
     }
@@ -60,7 +60,7 @@ public class InsightController implements BaseController {
     )
     @GetMapping("/dailyAccountInsight/platformAccount/{platformAccountId}")
     public ResponseEntity<ApiResponse<AccountInsightResponse>> getPlatformAccountInsights(
-        @PathVariable Long platformAccountId
+        @PathVariable Integer platformAccountId
     ) {
         return handle(dailyAccountInsightService.getPlatformAccountInsights(platformAccountId));
     }
@@ -71,7 +71,7 @@ public class InsightController implements BaseController {
     )
     @GetMapping("/dailyAccountInsight/platformAccount/{platformAccountId}/view")
     public ResponseEntity<ApiResponse<InfluencerViewsResponse>> getPlatformAccountViews(
-        @PathVariable Long platformAccountId
+        @PathVariable Integer platformAccountId
     ) {
         return handle(dailyAccountInsightService.getPlatformAccountViews(platformAccountId));
     }

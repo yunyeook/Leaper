@@ -30,7 +30,7 @@ public class ChatRoomListResponse {
         @Getter
         @Builder
         public static class PartnerInfo {
-            private Long id;
+            private Integer id;
             private String name;
             private String profileImageUrl;
             

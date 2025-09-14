@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -23,7 +24,7 @@ public class SecurityConfig {
         http.csrf(c -> c.disable());
 
         http.securityMatcher("/oauth2/**", "/login/oauth2/**")
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
 
         http.oauth2Login(oauth2 -> oauth2
                         .successHandler(oAuth2AuthenticationSuccessHandler)
@@ -38,7 +39,9 @@ public class SecurityConfig {
         http.csrf(c -> c.disable());
 
         http.securityMatcher("/api/**")
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .authorizeHttpRequests(auth ->
+                        auth.requestMatchers(HttpMethod.POST, "/api/v1/influencer/signup").permitAll()
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(res ->
                         res.jwt(Customizer.withDefaults()));
 

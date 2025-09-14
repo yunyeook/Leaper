@@ -22,7 +22,7 @@ public class DailyPopularInfluencer {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "daily_popular_influencer_id")
-  private Long id;
+  private Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "platform_type_id", nullable = false)
