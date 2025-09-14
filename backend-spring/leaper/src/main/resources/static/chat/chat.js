@@ -144,7 +144,7 @@ async function createChatRoomAPI(userId, partnerId, userRole) {
         const influencerId = userRole === 'INFLUENCER' ? userId : partnerId;
         const advertiserId = userRole === 'INFLUENCER' ? partnerId : userId;
 
-        const url = `/api/v1/chatRoom?influencer=${influencerId}&advertiser=${advertiserId}`;
+        const url = `http://localhost:8080/api/v1/chatRoom?influencer=${influencerId}&advertiser=${advertiserId}`;
 
         log(`채팅방 생성 요청: ${url}`, 'system');
 
@@ -294,7 +294,7 @@ async function leaveChatRoom() {
         const userRole = document.getElementById('userRole').value;
 
         // 올바른 API 엔드포인트 (Authorization 헤더 필요)
-        const url = `/api/v1/chatRoom/${currentChatRoomId}`;
+        const url = `http://localhost:8080/api/v1/chatRoom/${currentChatRoomId}`;
         const response = await fetch(url, {
             method: 'DELETE',
             headers: {
@@ -375,7 +375,7 @@ async function sendFileMessage() {
         formData.append('userRole', document.getElementById('userRole').value);
         formData.append('messageType', messageType);
 
-        const response = await fetch(`/api/v1/chatRoom/${currentChatRoomId}/message`, {
+        const response = await fetch(`http://localhost:8080/api/v1/chatRoom/${currentChatRoomId}/message`, {
             method: 'POST',
             body: formData
         });
@@ -460,8 +460,7 @@ function handleIncomingMessage(message) {
             break;
 
         case 'LEAVE':
-            const leaveUserLabel = getUserLabel(message.senderId, message.userRole);
-            addMessage(`${leaveUserLabel}님이 채팅방을 나갔습니다.`, 'system');
+            log(`${getUserLabel(message.senderId, message.userRole)}님이 나갔습니다.`, 'system');
             break;
 
         case 'ERROR':
@@ -584,6 +583,10 @@ function addMessageFromHistory(msg, append = true) {
             <span>${messageTime}</span> ${userLabel}: [파일] ${msg.fileName || 'file'} (${formatFileSize(msg.fileSize || 0)})
             <br><a href="${msg.content}" target="_blank">📎 ${msg.fileName || 'file'} 다운로드</a>
         `;
+    } else if (msg.messageType === 'DELETED') {
+        // 나가기 메시지 - 시스템 메시지로 표시
+        messageElement.className = 'message system';
+        messageElement.innerHTML = `<span>${messageTime}</span> ${userLabel}님이 채팅방을 나갔습니다.`;
     }
 
     if (append) {
