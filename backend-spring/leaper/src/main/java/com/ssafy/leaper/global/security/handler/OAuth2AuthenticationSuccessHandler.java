@@ -1,8 +1,9 @@
 package com.ssafy.leaper.global.security.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.leaper.global.common.response.ApiResponse;
-import com.ssafy.leaper.global.common.response.ResponseStatus;
+import com.ssafy.leaper.domain.influencer.entity.Influencer;
+import com.ssafy.leaper.domain.influencer.repository.InfluencerRepository;
+import com.ssafy.leaper.global.jwt.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -26,7 +28,8 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
     @Value("${front.url}")
     private String frontUrl;
-
+    private final JwtTokenProvider jwtTokenProvider;
+    private final InfluencerRepository influencerRepository;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -43,14 +46,41 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         // OAuth2User에서 사용자 정보 추출
         String email = oAuth2User.getAttribute("email");
         String name = oAuth2User.getAttribute("name");
-        String providerId = extractProviderId(oAuth2User, provider);
+        String providerMemberId = extractProviderId(oAuth2User, provider); // 소셜 제공자별 고유 식별자
+        String providerTypeId = provider.toUpperCase(); // 소셜 제공자 타입 (GOOGLE, NAVER, KAKAO)
 
-        log.info("OAuth2 User Info - provider: {}, providerId: {}, email: {}, name: {}",
-                provider, providerId, email, name);
+        log.info("OAuth2 User Info - provider: {}, providerMemberId: {}, email: {}, name: {}",
+                providerTypeId, providerMemberId, email, name);
 
-        // 간단한 성공 리다이렉트 (테스트용)
-        String redirectUrl = frontUrl + "/success?" +
-            URLEncoder.encode(email != null ? email : "", StandardCharsets.UTF_8);
+        // DB에서 인플루언서 조회
+        Optional<Influencer> influencerOpt = influencerRepository.findByProviderTypeIdAndProviderMemberIdAndIsDeletedFalse(providerTypeId, providerMemberId);
+
+        if (influencerOpt.isEmpty()) {
+            log.info("New user detected - redirecting for registration: provider={}, providerMemberId={}", providerTypeId, providerMemberId);
+
+            // 등록용 JWT 토큰 생성
+            String registrationToken = jwtTokenProvider.generateRegistrationToken(providerMemberId, providerTypeId);
+
+            // 신규 사용자 - 등록용 토큰과 함께 리다이렉트
+            String redirectUrl = frontUrl + "/auth/callback?" +
+                    "isNew=true" +
+                    "&registrationToken=" + URLEncoder.encode(registrationToken, StandardCharsets.UTF_8);
+
+            response.sendRedirect(redirectUrl);
+            return;
+        }
+
+
+        Influencer influencer = influencerOpt.get();
+        String jwtToken = jwtTokenProvider.generateInfluencerToken(influencer.getInfluencerId().toString(), email);
+
+        log.info("Generated JWT token for existing influencer: {}", influencer.getInfluencerId());
+
+        // 기존 사용자 - JWT 토큰과 함께 리다이렉트
+        String redirectUrl = frontUrl + "/auth/callback?" +
+                "isNew=false" +
+                "&influencerId=" + influencer.getInfluencerId() +
+                "&token=" + URLEncoder.encode(jwtToken, StandardCharsets.UTF_8);
 
         response.sendRedirect(redirectUrl);
     }

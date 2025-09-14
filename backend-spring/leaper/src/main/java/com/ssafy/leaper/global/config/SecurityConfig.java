@@ -5,6 +5,8 @@ import com.ssafy.leaper.global.security.handler.OAuth2AuthenticationSuccessHandl
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -16,23 +18,40 @@ public class SecurityConfig {
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain oAuth2SecurityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(c -> c.disable());
 
-        http.authorizeHttpRequests(
-                c -> c.requestMatchers("/home").permitAll()
-                        .anyRequest().authenticated()
-        );
+        http.securityMatcher("/oauth2/**", "/login/oauth2/**")
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
         http.oauth2Login(oauth2 -> oauth2
-                .authorizationEndpoint(authorization -> authorization
-                        .baseUri("/api/v1/auth/login"))
-                .redirectionEndpoint(redirection -> redirection
-                        .baseUri("/login/oauth2/code/*"))
-                .successHandler(oAuth2AuthenticationSuccessHandler)
-                .failureHandler(oAuth2AuthenticationFailureHandler)
-        );
+                        .successHandler(oAuth2AuthenticationSuccessHandler)
+                        .failureHandler(oAuth2AuthenticationFailureHandler));
 
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+        http.csrf(c -> c.disable());
+
+        http.securityMatcher("/api/**")
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .oauth2ResourceServer(res ->
+                        res.jwt(Customizer.withDefaults()));
+
+        return http.build();
+    }
+
+    @Bean
+    @Order(3)
+    public SecurityFilterChain defaultSecurity(HttpSecurity http) throws Exception {
+        http.csrf(c -> c.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/", "/home", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**").permitAll()
+                        .anyRequest().authenticated());
 
         return http.build();
     }
