@@ -67,13 +67,33 @@ dependencies {
     // AWS SDK
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.565'
 
-    // Apache Spark 관련
-    implementation 'org.apache.spark:spark-core_2.13:3.5.0'
-    implementation 'org.apache.spark:spark-sql_2.13:3.5.0'
-    implementation 'org.apache.spark:spark-hadoop-cloud_2.13:3.5.0'
+    // Spring Cloud AWS  (AWS SDK 포함됨)
+    // implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
 
-    // Hadoop AWS (S3 연동용)
-    implementation 'org.apache.hadoop:hadoop-aws:3.3.4'
+
+    // Apache Spark 관련 (로깅 충돌 방지)
+    implementation('org.apache.spark:spark-core_2.13:3.5.0') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
+    }
+    implementation('org.apache.spark:spark-sql_2.13:3.5.0') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
+    }
+    implementation('org.apache.spark:spark-hadoop-cloud_2.13:3.5.0') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
+    }
+
+    // Hadoop AWS (S3 연동용) - 로깅 충돌 방지
+    implementation('org.apache.hadoop:hadoop-aws:3.3.4') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
+    }
 
     // 크롤링 관련
     implementation 'org.jsoup:jsoup:1.16.1'

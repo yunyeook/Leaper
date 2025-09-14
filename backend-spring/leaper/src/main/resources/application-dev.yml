@@ -23,10 +23,10 @@ spring:
             user-name-attribute: sub
 
   datasource:
-    url: jdbc:mysql://localhost:3306/leaper?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Seoul
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ssafy
-    password: ssafy
+    url: ${DB_URL}
+    driver-class-name: ${DB_DRIVER}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   # datasource - H2
   # datasource:
