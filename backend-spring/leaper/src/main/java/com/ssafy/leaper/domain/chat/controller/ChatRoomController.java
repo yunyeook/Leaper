@@ -69,36 +69,36 @@ public class ChatRoomController implements BaseController {
         return handle(chatService.getChatMessages(chatRoomId, before, after, size));
     }
 
-    /**
-     * 텍스트 메시지 전송
-     * POST /api/v1/chatRoom/{chatRoomId}/message
-     */
-    @PostMapping(value = "/{chatRoomId}/message", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "텍스트 메시지 전송", description = "채팅방에 텍스트 메시지를 전송합니다." +
-            "(Swagger에서 텍스트/파일 api를 정상적으로 분리해서 제공하지 못하고 있으니 Notion에서 확인 바랍니다.")
-
-    public ResponseEntity<ApiResponse<Void>> sendTextMessage(
-            @PathVariable Long chatRoomId,
-            @Valid @RequestBody ChatMessageSendRequest request) {
-        
-        return handle(chatService.sendTextMessage(chatRoomId, request));
-    }
-
-    /**
-     * 파일/이미지 메시지 전송
-     * POST /api/v1/chatRoom/{chatRoomId}/message
-     */
-    @PostMapping(value = "/{chatRoomId}/message", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "파일/이미지 메시지 전송", description = "채팅방에 파일 또는 이미지 메시지를 전송합니다.")
-    public ResponseEntity<ApiResponse<Void>> sendFileMessage(
-            @PathVariable Long chatRoomId,
-            @RequestParam Long senderId,
-            @RequestParam String userRole,
-            @RequestParam String messageType,
-            @RequestParam MultipartFile file) {
-        
-        return handle(chatService.sendFileMessage(chatRoomId, senderId, userRole, messageType, file));
-    }
+//    /**
+//     * 텍스트 메시지 전송
+//     * POST /api/v1/chatRoom/{chatRoomId}/message
+//     */
+//    @PostMapping(value = "/{chatRoomId}/message", consumes = MediaType.APPLICATION_JSON_VALUE)
+//    @Operation(summary = "텍스트 메시지 전송", description = "채팅방에 텍스트 메시지를 전송합니다." +
+//            "(Swagger에서 텍스트/파일 api를 정상적으로 분리해서 제공하지 못하고 있으니 Notion API 명세서에서 확인 바랍니다.")
+//
+//    public ResponseEntity<ApiResponse<Void>> sendTextMessage(
+//            @PathVariable Long chatRoomId,
+//            @Valid @RequestBody ChatMessageSendRequest request) {
+//
+//        return handle(chatService.sendTextMessage(chatRoomId, request));
+//    }
+//
+//    /**
+//     * 파일/이미지 메시지 전송
+//     * POST /api/v1/chatRoom/{chatRoomId}/message
+//     */
+//    @PostMapping(value = "/{chatRoomId}/message", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//    @Operation(summary = "파일/이미지 메시지 전송", description = "채팅방에 파일 또는 이미지 메시지를 전송합니다.")
+//    public ResponseEntity<ApiResponse<Void>> sendFileMessage(
+//            @PathVariable Long chatRoomId,
+//            @RequestParam Long senderId,
+//            @RequestParam String userRole,
+//            @RequestParam String messageType,
+//            @RequestParam MultipartFile file) {
+//
+//        return handle(chatService.sendFileMessage(chatRoomId, senderId, userRole, messageType, file));
+//    }
 
     /**
      * 채팅방 나가기
