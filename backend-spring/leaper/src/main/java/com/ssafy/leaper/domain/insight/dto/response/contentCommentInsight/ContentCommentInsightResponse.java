@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record ContentCommentInsightResponse(
-    Long contentId,
+    Integer contentId,
     String contentTitle,
     List<String> positiveComments,
     List<String> negativeComments,

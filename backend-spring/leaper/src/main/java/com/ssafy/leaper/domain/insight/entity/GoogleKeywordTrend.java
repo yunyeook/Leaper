@@ -26,7 +26,7 @@ public class GoogleKeywordTrend {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "google_keyword_trend_id")
-  private Long id;
+  private Integer id;
 
   @Convert(converter = StringListJsonConverter.class)
   @Column(name = "keywords_json", columnDefinition = "JSON")

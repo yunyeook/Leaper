@@ -31,7 +31,7 @@ public class DailyKeywordTrend {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "daily_keyword_trend_id")
-  private Long id;
+  private Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "platform_type_id", nullable = false)
