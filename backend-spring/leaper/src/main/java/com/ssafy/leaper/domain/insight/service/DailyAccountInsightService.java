@@ -24,7 +24,7 @@ public class DailyAccountInsightService {
   private final DailyAccountInsightRepository dailyAccountInsightRepository;
 
   //  인플루언서 단위 풀데이터
-  public ServiceResult<AccountInsightResponse> getAccountInsights(Long influencerId) {
+  public ServiceResult<AccountInsightResponse> getAccountInsights(Integer influencerId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId);
 
     List<DailyAccountInsightResponse> dailyResponses = entities.stream()
@@ -37,7 +37,7 @@ public class DailyAccountInsightService {
   }
 
   // 플랫폼 계정 단위 풀데이터
-  public ServiceResult<AccountInsightResponse> getPlatformAccountInsights(Long platformAccountId) {
+  public ServiceResult<AccountInsightResponse> getPlatformAccountInsights(Integer platformAccountId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId);
 
     List<DailyAccountInsightResponse> dailyResponses = entities.stream()
@@ -50,13 +50,13 @@ public class DailyAccountInsightService {
   }
 
   // 인플루언서 단위 조회수 전용
-  public ServiceResult<InfluencerViewsResponse> getInfluencerViews(Long influencerId) {
+  public ServiceResult<InfluencerViewsResponse> getInfluencerViews(Integer influencerId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId);
     return ServiceResult.ok(aggregateDailyAndMonthlyViews(entities));
   }
 
   // ✅ 플랫폼 계정 단위 조회수 전용
-  public ServiceResult<InfluencerViewsResponse> getPlatformAccountViews(Long platformAccountId) {
+  public ServiceResult<InfluencerViewsResponse> getPlatformAccountViews(Integer platformAccountId) {
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId);
     return ServiceResult.ok(aggregateDailyAndMonthlyViews(entities));
   }

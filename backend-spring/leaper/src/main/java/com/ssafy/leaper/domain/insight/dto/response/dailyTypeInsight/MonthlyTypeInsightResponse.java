@@ -4,28 +4,28 @@ import java.math.BigInteger;
 import java.time.YearMonth;
 
 public record MonthlyTypeInsightResponse(
-    Long platformAccountId,
-    String platformTypeId,
-    String contentTypeId,
-    BigInteger monthViews,
-    Integer monthContents,
-    BigInteger monthLikes,
-    BigInteger totalViews,
-    Integer totalContents,
-    BigInteger totalLikes,
-    YearMonth snapshotDate
+        Integer platformAccountId,
+        String platformTypeId,
+        String contentTypeId,
+        BigInteger monthViews,
+        Integer monthContents,
+        BigInteger monthLikes,
+        BigInteger totalViews,
+        Integer totalContents,
+        BigInteger totalLikes,
+        YearMonth snapshotDate
 ) {
   public static MonthlyTypeInsightResponse of(
-      Long platformAccountId,
-      String platformTypeId,
-      String contentTypeId,
-      BigInteger monthViews,
-      Integer monthContents,
-      BigInteger monthLikes,
-      BigInteger totalViews,
-      Integer totalContents,
-      BigInteger totalLikes,
-      YearMonth snapshotDate
+          Integer platformAccountId,
+          String platformTypeId,
+          String contentTypeId,
+          BigInteger monthViews,
+          Integer monthContents,
+          BigInteger monthLikes,
+          BigInteger totalViews,
+          Integer totalContents,
+          BigInteger totalLikes,
+          YearMonth snapshotDate
   ) {
     return new MonthlyTypeInsightResponse(
         platformAccountId,

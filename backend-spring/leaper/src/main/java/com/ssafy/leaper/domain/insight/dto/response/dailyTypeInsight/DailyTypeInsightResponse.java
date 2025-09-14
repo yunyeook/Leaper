@@ -5,19 +5,19 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 
 public record DailyTypeInsightResponse(
-    Long platformAccountId,
-    String platformTypeId,
-    String contentTypeId,
-    Integer todayViews,
-    Integer todayContents,
-    Integer todayLikes,
-    BigInteger monthViews,
-    Integer monthContents,
-    BigInteger monthLikes,
-    BigInteger totalViews,
-    Integer totalContents,
-    BigInteger totalLikes,
-    LocalDate snapshotDate
+        Integer platformAccountId,
+        String platformTypeId,
+        String contentTypeId,
+        Integer todayViews,
+        Integer todayContents,
+        Integer todayLikes,
+        BigInteger monthViews,
+        Integer monthContents,
+        BigInteger monthLikes,
+        BigInteger totalViews,
+        Integer totalContents,
+        BigInteger totalLikes,
+        LocalDate snapshotDate
 ) {
   public static DailyTypeInsightResponse from(DailyTypeInsight entity) {
     return new DailyTypeInsightResponse(

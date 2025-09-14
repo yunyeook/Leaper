@@ -7,7 +7,6 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 public interface DailyAccountInsightRepository extends JpaRepository<DailyAccountInsight, Long> {
 
@@ -17,7 +16,7 @@ public interface DailyAccountInsightRepository extends JpaRepository<DailyAccoun
       "JOIN FETCH pa.platformType pt " +
       "WHERE pa.influencer.id = :influencerId " +
       "ORDER BY dai.snapshotDate")
-  List<DailyAccountInsight> findByInfluencerId(@Param("influencerId") Long influencerId);
+  List<DailyAccountInsight> findByInfluencerId(@Param("influencerId") Integer influencerId);
 
 
     @Query("SELECT dai FROM DailyAccountInsight dai " +
@@ -25,7 +24,7 @@ public interface DailyAccountInsightRepository extends JpaRepository<DailyAccoun
         "JOIN FETCH pa.platformType pt " +
         "WHERE pa.id = :platformAccountId " +
         "ORDER BY dai.snapshotDate ASC")
-    List<DailyAccountInsight> findByPlatformAccountId(@Param("platformAccountId") Long platformAccountId);
+    List<DailyAccountInsight> findByPlatformAccountId(@Param("platformAccountId") Integer platformAccountId);
 
 
   @Query("""
@@ -34,10 +33,10 @@ public interface DailyAccountInsightRepository extends JpaRepository<DailyAccoun
         WHERE dai.platformAccount.influencer.id = :influencerId
           AND dai.snapshotDate = :snapshotDate
     """)
-  Integer sumFollowersByInfluencerAndDate(Long influencerId, LocalDate snapshotDate);
+  Integer sumFollowersByInfluencerAndDate(Integer influencerId, LocalDate snapshotDate);
 
 
-  Optional<DailyAccountInsight> findTopByPlatformAccountInfluencerIdOrderBySnapshotDateDesc(Long influencerId);
+  Optional<DailyAccountInsight> findTopByPlatformAccountInfluencerIdOrderBySnapshotDateDesc(Integer influencerId);
 
 
 

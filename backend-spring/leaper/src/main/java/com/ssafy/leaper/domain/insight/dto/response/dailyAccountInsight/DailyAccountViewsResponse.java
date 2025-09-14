@@ -5,10 +5,10 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 
 public record DailyAccountViewsResponse(
-    Long platformAccountId,
-    String platformTypeId,
-    BigInteger totalViews,
-    LocalDate snapshotDate
+        Integer platformAccountId,
+        String platformTypeId,
+        BigInteger totalViews,
+        LocalDate snapshotDate
 ) {
   public static DailyAccountViewsResponse from(DailyAccountInsight dailyAccountInsight){
     return new DailyAccountViewsResponse(
