@@ -27,13 +27,13 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessage, Stri
     /**
      * 특정 ID 이전의 메시지 조회 (이전 페이지 로딩)
      */
-    @Query("{'roomId': ?0, '_id': {$lt: ObjectId(?1)}}")
+    @Query(value = "{'roomId': ?0, '_id': {$lt: ObjectId(?1)}}", sort = "{'createdAt': -1}")
     List<ChatMessage> findByRoomIdAndIdLessThanOrderByCreatedAtDesc(Long roomId, String beforeId, Pageable pageable);
 
     /**
      * 특정 ID 이후의 메시지 조회 (재연결 시 놓친 메시지)
      */
-    @Query("{'roomId': ?0, '_id': {$gt: ObjectId(?1)}}")
+    @Query(value = "{'roomId': ?0, '_id': {$gt: ObjectId(?1)}}", sort = "{'createdAt': 1}")
     List<ChatMessage> findByRoomIdAndIdGreaterThanOrderByCreatedAtAsc(Long roomId, String afterId, Pageable pageable);
 
     /**

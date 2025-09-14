@@ -31,9 +31,9 @@ public interface ChatService {
     ServiceResult<Void> sendTextMessage(Long chatRoomId, ChatMessageSendRequest request);
 
     /**
-     * 파일/이미지 메시지 전송
+     * 파일/이미지 메시지 전송 (파일 업로드만 처리, 다운로드 URL 반환)
      */
-    ServiceResult<Void> sendFileMessage(Long chatRoomId, Long senderId, String userRole, String messageType, MultipartFile file);
+    ServiceResult<String> sendFileMessage(Long chatRoomId, Long senderId, String userRole, String messageType, MultipartFile file);
 
     /**
      * 채팅방 나가기
