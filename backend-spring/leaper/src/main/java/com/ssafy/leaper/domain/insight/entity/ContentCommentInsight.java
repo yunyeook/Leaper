@@ -29,7 +29,7 @@ public class ContentCommentInsight {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "content_comment_insight_id")
-  private Long id;
+  private Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "content_id", nullable = false)
