@@ -43,7 +43,7 @@ public class JwtTokenProvider {
                     .subject(userId)
                     .issuedAt(now)
                     .expiresAt(expiry)
-                    .claim("role", "ROLE_INFLUENCER")
+                    .claim("scope", "ROLE_INFLUENCER")
                     .claim("email", email)
                     .build();
 
@@ -72,7 +72,7 @@ public class JwtTokenProvider {
                     .subject(userId)
                     .issuedAt(now)
                     .expiresAt(expiry)
-                    .claim("role", "ROLE_ADVERTISER")
+                    .claim("scope", "ROLE_ADVERTISER")
                     .claim("loginId", loginId)
                     .build();
 

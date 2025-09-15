@@ -1,6 +1,7 @@
 package com.ssafy.leaper.global.config;
 
 import com.ssafy.leaper.domain.auth.service.AdvertiserUserDetailsService;
+import com.ssafy.leaper.global.jwt.CustomJwtAuthenticationConverter;
 import com.ssafy.leaper.global.security.handler.OAuth2AuthenticationFailureHandler;
 import com.ssafy.leaper.global.security.handler.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class SecurityConfig {
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
     private final AdvertiserUserDetailsService advertiserUserDetailsService;
+    private final CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
 
     @Bean
     @Order(1)
@@ -54,7 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/advertiser/duplicate").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(res ->
-                        res.jwt(Customizer.withDefaults()));
+                        res.jwt(jwt -> jwt.jwtAuthenticationConverter(customJwtAuthenticationConverter)));
 
         return http.build();
     }
