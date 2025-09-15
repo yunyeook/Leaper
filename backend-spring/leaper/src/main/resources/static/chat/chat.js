@@ -75,7 +75,6 @@ function updatePartnerRole() {
     const partnerRole = userRole === 'INFLUENCER' ? 'ADVERTISER' : 'INFLUENCER';
     partnerRoleDisplay.textContent = partnerRole;
 }
-
 // JWT 토큰 인증
 async function authenticate() {
     const userId = document.getElementById('userId').value;
@@ -521,13 +520,11 @@ function handleIncomingMessage(message) {
             break;
 
         case 'JOIN':
-            const joinUserLabel = getUserLabel(message.senderId, message.userRole);
-            addMessage(`${joinUserLabel}님이 채팅방에 입장했습니다.`, 'system');
+            addMessage(`${message.userRole}-${message.senderId}님이 채팅방에 입장했습니다.`, 'system');
             break;
 
         case 'LEAVE':
-            const leaveUserLabel = getUserLabel(message.senderId, message.userRole);
-            addMessage(`${leaveUserLabel}님이 채팅방을 나갔습니다.`, 'system');
+            addMessage(`${message.userRole}-${message.senderId}님이 채팅방에 나갔습니다.`, 'system');
             break;
 
         case 'ERROR':
@@ -660,11 +657,11 @@ function addMessageFromHistory(msg, append = true) {
     } else if (msg.messageType === 'JOIN') {
         // 입장 메시지 - 시스템 메시지로 표시
         messageElement.className = 'message system';
-        messageElement.innerHTML = `<span>${messageTime}</span> ${userLabel}님이 채팅방에 입장했습니다.`;
+        messageElement.innerHTML = `<span>${messageTime}</span> ${msg.userRole}-${msg.senderId}님이 채팅방에 입장했습니다.`;
     } else if (msg.messageType === 'LEAVE') {
         // 나가기 메시지 - 시스템 메시지로 표시
         messageElement.className = 'message system';
-        messageElement.innerHTML = `<span>${messageTime}</span> ${userLabel}님이 채팅방을 나갔습니다.`;
+        messageElement.innerHTML = `<span>${messageTime}</span> ${msg.userRole}-${msg.senderId}님이 채팅방을 나갔습니다.`;
     }
 
     if (append) {
@@ -717,6 +714,28 @@ function updateConnectionStatus() {
     }
 }
 
+// 사용자 역할 초기화
+function initializeUserRole() {
+    const userId = parseInt(document.getElementById('userId').value);
+    const userRoleElement = document.getElementById('userRole');
+    
+    // 사용자 ID에 따라 역할 결정 (예: 짝수는 ADVERTISER, 홀수는 INFLUENCER)
+    // 또는 다른 비즈니스 로직에 따라 설정 가능
+    if (userId % 2 === 0) {
+        userRoleElement.value = 'ADVERTISER';
+    } else {
+        userRoleElement.value = 'INFLUENCER';
+    }
+    
+    log(`사용자 역할 초기화: User ID ${userId} -> ${userRoleElement.value}`, 'system');
+}
+
+// 사용자 ID 변경 시 호출되는 함수
+function onUserIdChanged() {
+    initializeUserRole();
+    updatePartnerRole();
+}
+
 // Enter 키 이벤트
 document.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
@@ -756,6 +775,7 @@ function setupScrollListener() {
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
     log('채팅 테스트 페이지가 로드되었습니다.', 'system');
+    initializeUserRole(); // 사용자 역할 초기화
     updateConnectionStatus();
     updatePartnerRole(); // 초기 상대방 역할 설정
     toggleMessageInput(); // 초기 메시지 입력 방식 설정
