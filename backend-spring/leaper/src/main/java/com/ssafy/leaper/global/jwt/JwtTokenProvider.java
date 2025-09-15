@@ -26,16 +26,15 @@ public class JwtTokenProvider {
     @Value("${jwt.issuer}")
     private String issuer;
 
+
     /**
-     * JWT Access Token 생성
+     * Influencer용 JWT 토큰 생성
      */
-    public String generateAccessToken(String userId, String role, String email) {
-        log.info("Generating JWT token for userId: {}, role: {}, email: {}", userId, role, email);
+    public String generateInfluencerToken(String userId, String email) {
+        log.info("Generating Influencer JWT token for userId: {}, email: {}", userId, email);
         try {
             Instant now = Instant.now();
             Instant expiry = now.plus(accessTokenExpiry, ChronoUnit.HOURS);
-
-            log.debug("Token expiry: {} (in {} hours)", expiry, accessTokenExpiry);
 
             JwsHeader jwsHeader = JwsHeader.with(MacAlgorithm.HS256).build();
 
@@ -44,34 +43,46 @@ public class JwtTokenProvider {
                     .subject(userId)
                     .issuedAt(now)
                     .expiresAt(expiry)
-                    .claim("role", role)
+                    .claim("role", "ROLE_INFLUENCER")
                     .claim("email", email)
                     .build();
 
-            log.debug("JWT Claims: {}", claimsSet.getClaims());
-
             String token = jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claimsSet)).getTokenValue();
-
-            log.info("JWT token generated successfully for userId: {}", userId);
+            log.info("Influencer JWT token generated successfully for userId: {}", userId);
             return token;
         } catch (Exception e) {
-            log.error("Failed to generate JWT token for userId: {}", userId, e);
+            log.error("Failed to generate Influencer JWT token for userId: {}", userId, e);
             throw e;
         }
     }
 
     /**
-     * Influencer용 JWT 토큰 생성
-     */
-    public String generateInfluencerToken(String userId, String email) {
-        return generateAccessToken(userId, "ROLE_INFLUENCER", email);
-    }
-
-    /**
      * Advertiser용 JWT 토큰 생성
      */
-    public String generateAdvertiserToken(String userId, String email) {
-        return generateAccessToken(userId, "ROLE_ADVERTISER", email);
+    public String generateAdvertiserToken(String userId, String loginId) {
+        log.info("Generating Advertiser JWT token for userId: {}, loginId: {}", userId, loginId);
+        try {
+            Instant now = Instant.now();
+            Instant expiry = now.plus(accessTokenExpiry, ChronoUnit.HOURS);
+
+            JwsHeader jwsHeader = JwsHeader.with(MacAlgorithm.HS256).build();
+
+            JwtClaimsSet claimsSet = JwtClaimsSet.builder()
+                    .issuer(issuer)
+                    .subject(userId)
+                    .issuedAt(now)
+                    .expiresAt(expiry)
+                    .claim("role", "ROLE_ADVERTISER")
+                    .claim("loginId", loginId)
+                    .build();
+
+            String token = jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claimsSet)).getTokenValue();
+            log.info("Advertiser JWT token generated successfully for userId: {}", userId);
+            return token;
+        } catch (Exception e) {
+            log.error("Failed to generate Advertiser JWT token for userId: {}", userId, e);
+            throw e;
+        }
     }
 
     /**
