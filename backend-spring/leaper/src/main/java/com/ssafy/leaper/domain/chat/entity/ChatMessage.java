@@ -36,7 +36,7 @@ public class ChatMessage {
     // 파일 관련 필드 (FILE, IMAGE 타입일 때 사용)
     private String fileName;
 
-    private Integer fileSize;
+    private Long fileSize;
 
     private String fileUrl;
 
@@ -52,7 +52,7 @@ public class ChatMessage {
     }
 
     public static ChatMessage ofFile(Integer roomId, Integer senderId, UserRole userRole, String content, MessageType messageType,
-                                     String fileName, Integer fileSize, String fileUrl) {
+                                     String fileName, Long fileSize, String fileUrl) {
         return ChatMessage.builder()
                 .roomId(roomId)
                 .senderId(senderId)
