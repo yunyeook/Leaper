@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ChatMessageSendRequest {
     @NotNull(message = "발신자 ID는 필수입니다.")
-    private Long senderId;
+    private Integer senderId;
     
     @NotBlank(message = "메시지는 필수입니다.")
     private String content;

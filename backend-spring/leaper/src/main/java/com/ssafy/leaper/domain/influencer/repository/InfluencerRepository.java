@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface InfluencerRepository extends JpaRepository<Influencer, Long> {
+public interface InfluencerRepository extends JpaRepository<Influencer, Integer> {
 
     Optional<Influencer> findByProviderTypeIdAndProviderMemberId(String providerTypeId, String providerMemberId);
 

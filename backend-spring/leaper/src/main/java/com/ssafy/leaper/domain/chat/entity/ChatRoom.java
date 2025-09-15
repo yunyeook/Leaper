@@ -18,13 +18,13 @@ public class ChatRoom {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "chat_room_id")
-    private Long id;
+    private Integer id;
 
     @Column(nullable = false)
-    private Long influencerId;
+    private Integer influencerId;
 
     @Column(nullable = false)
-    private Long advertiserId;
+    private Integer advertiserId;
 
     private LocalDateTime influencerLastSeen;
 
@@ -43,7 +43,7 @@ public class ChatRoom {
     @CreatedDate
     private LocalDateTime createdAt;
 
-    public static ChatRoom of(Long influencerId, Long advertiserId) {
+    public static ChatRoom of(Integer influencerId, Integer advertiserId) {
         return ChatRoom.builder()
                 .influencerId(influencerId)
                 .advertiserId(advertiserId)

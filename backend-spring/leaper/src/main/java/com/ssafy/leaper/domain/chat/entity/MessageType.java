@@ -1,5 +1,5 @@
 package com.ssafy.leaper.domain.chat.entity;
 
 public enum MessageType {
-    TEXT, IMAGE, FILE
+    TEXT, IMAGE, FILE, DELETED
 }

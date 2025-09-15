@@ -19,8 +19,8 @@ public class ChatMessage {
     @Id
     private String id;
 
-    private Long roomId;
-    private Long senderId;
+    private Integer roomId;
+    private Integer senderId;
 
     @Enumerated(EnumType.STRING)
     private UserRole userRole;
@@ -36,12 +36,12 @@ public class ChatMessage {
     // 파일 관련 필드 (FILE, IMAGE 타입일 때 사용)
     private String fileName;
 
-    private Long fileSize;
+    private Integer fileSize;
 
     private String fileUrl;
 
     // 정적 팩토리 메서드
-    public static ChatMessage of(Long roomId, Long senderId, UserRole userRole, String content, MessageType messageType) {
+    public static ChatMessage of(Integer roomId, Integer senderId, UserRole userRole, String content, MessageType messageType) {
         return ChatMessage.builder()
                 .roomId(roomId)
                 .senderId(senderId)
@@ -51,8 +51,8 @@ public class ChatMessage {
                 .build();
     }
 
-    public static ChatMessage ofFile(Long roomId, Long senderId, UserRole userRole, String content, MessageType messageType,
-                                     String fileName, Long fileSize, String fileUrl) {
+    public static ChatMessage ofFile(Integer roomId, Integer senderId, UserRole userRole, String content, MessageType messageType,
+                                     String fileName, Integer fileSize, String fileUrl) {
         return ChatMessage.builder()
                 .roomId(roomId)
                 .senderId(senderId)

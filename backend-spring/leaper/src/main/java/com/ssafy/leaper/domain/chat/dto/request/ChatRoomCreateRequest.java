@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ChatRoomCreateRequest {
     @NotNull(message = "인플루언서 ID는 필수입니다.")
-    private Long influencerId;
+    private Integer influencerId;
     
     @NotNull(message = "광고주 ID는 필수입니다.")
-    private Long advertiserId;
+    private Integer advertiserId;
 }

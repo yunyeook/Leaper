@@ -17,47 +17,47 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessage, Stri
     /**
      * 특정 채팅방의 최신 메시지 조회
      */
-    Optional<ChatMessage> findTopByRoomIdOrderByCreatedAtDesc(Long roomId);
+    Optional<ChatMessage> findTopByRoomIdOrderByCreatedAtDesc(Integer roomId);
 
     /**
      * 채팅방의 메시지 목록 조회 (최신순)
      */
-    List<ChatMessage> findByRoomIdOrderByCreatedAtDesc(Long roomId, Pageable pageable);
+    List<ChatMessage> findByRoomIdOrderByCreatedAtDesc(Integer roomId, Pageable pageable);
 
     /**
      * 특정 ID 이전의 메시지 조회 (이전 페이지 로딩)
      */
-    @Query("{'roomId': ?0, '_id': {$lt: ObjectId(?1)}}")
-    List<ChatMessage> findByRoomIdAndIdLessThanOrderByCreatedAtDesc(Long roomId, String beforeId, Pageable pageable);
+    @Query(value = "{'roomId': ?0, '_id': {$lt: ObjectId(?1)}}", sort = "{'createdAt': -1}")
+    List<ChatMessage> findByRoomIdAndIdLessThanOrderByCreatedAtDesc(Integer roomId, String beforeId, Pageable pageable);
 
     /**
      * 특정 ID 이후의 메시지 조회 (재연결 시 놓친 메시지)
      */
-    @Query("{'roomId': ?0, '_id': {$gt: ObjectId(?1)}}")
-    List<ChatMessage> findByRoomIdAndIdGreaterThanOrderByCreatedAtAsc(Long roomId, String afterId, Pageable pageable);
+    @Query(value = "{'roomId': ?0, '_id': {$gt: ObjectId(?1)}}", sort = "{'createdAt': 1}")
+    List<ChatMessage> findByRoomIdAndIdGreaterThanOrderByCreatedAtAsc(Integer roomId, String afterId, Pageable pageable);
 
     /**
      * 특정 시간 이후 메시지 존재 여부 확인 (읽지 않은 메시지 여부)
      */
-    boolean existsByRoomIdAndCreatedAtAfter(Long roomId, Instant createdAt);
+    boolean existsByRoomIdAndCreatedAtAfter(Integer roomId, Instant createdAt);
 
     /**
      * 특정 채팅방의 총 메시지 개수
      */
-    long countByRoomId(Long roomId);
+    int countByRoomId(Integer roomId);
 
     /**
      * 특정 시간 이후의 메시지 개수 (읽지 않은 메시지 개수)
      */
-    long countByRoomIdAndCreatedAtAfter(Long roomId, Instant createdAt);
+    int countByRoomIdAndCreatedAtAfter(Integer roomId, Instant createdAt);
 
     /**
      * 특정 시간 이후 상대방이 보낸 메시지 존재 여부 확인 (읽지 않은 메시지 여부)
      */
-    boolean existsByRoomIdAndCreatedAtAfterAndSenderIdNot(Long roomId, Instant createdAt, Long senderId);
+    boolean existsByRoomIdAndCreatedAtAfterAndSenderIdNot(Integer roomId, Instant createdAt, Integer senderId);
 
     /**
      * 특정 시간 이후 특정 사용자 타입이 아닌 메시지 존재 여부 확인 (읽지 않은 메시지 여부)
      */
-    boolean existsByRoomIdAndCreatedAtAfterAndUserRoleNot(Long roomId, Instant createdAt, UserRole userRole);
+    boolean existsByRoomIdAndCreatedAtAfterAndUserRoleNot(Integer roomId, Instant createdAt, UserRole userRole);
 }

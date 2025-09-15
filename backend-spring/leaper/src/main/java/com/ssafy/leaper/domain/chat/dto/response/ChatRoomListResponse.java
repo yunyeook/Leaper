@@ -22,7 +22,7 @@ public class ChatRoomListResponse {
     @Getter
     @Builder
     public static class ChatRoomInfo {
-        private Long chatRoomId;
+        private Integer chatRoomId;
         private PartnerInfo partner;
         private Boolean hasUnreadMessages;
         private LocalDateTime lastMessageTime;

@@ -43,7 +43,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ServiceResult<ChatRoomCreateResponse> createChatRoom(Long influencerId, Long advertiserId) {
+    public ServiceResult<ChatRoomCreateResponse> createChatRoom(Integer influencerId, Integer advertiserId) {
         log.info("ChatRoomService : createChatRoom({}, {}) 호출", influencerId, advertiserId);
 
         // 인플루언서와 광고주 존재 확인
@@ -99,7 +99,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional(readOnly = true)
-    public ServiceResult<ChatRoomListResponse> getChatRoomList(Long currentUserId, String userRole) {
+    public ServiceResult<ChatRoomListResponse> getChatRoomList(Integer currentUserId, String userRole) {
         log.info("ChatRoomService : getChatRoomList({}, {}) 호출", currentUserId, userRole);
 
         UserRole currentUserRole;
@@ -156,7 +156,7 @@ public class ChatServiceImpl implements ChatService {
                     continue;
                 }
 
-                boolean hasUnreadMessages = checkUnreadMessages(chatRoom, currentUserId, currentUserRole);
+                boolean hasUnreadMessages = checkUnreadMessages(chatRoom, currentUserRole);
                 LocalDateTime lastMessageTime = LocalDateTime.ofInstant(lastMessage.get().getCreatedAt(), java.time.ZoneId.of("Asia/Seoul"));
 
                 ChatRoomListResponse.ChatRoomInfo chatRoomInfo = ChatRoomListResponse.ChatRoomInfo.builder()
@@ -175,7 +175,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional(readOnly = true)
-    public ServiceResult<ChatMessageListResponse> getChatMessages(Long chatRoomId, String before, String after, int size) {
+    public ServiceResult<ChatMessageListResponse> getChatMessages(Integer chatRoomId, String before, String after, int size) {
         log.info("ChatRoomService : getChatMessages({}) 호출", chatRoomId);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
@@ -213,7 +213,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ServiceResult<Void> sendTextMessage(Long chatRoomId, ChatMessageSendRequest request) {
+    public ServiceResult<Void> sendTextMessage(Integer chatRoomId, ChatMessageSendRequest request) {
         log.info("ChatRoomService : sendTextMessage({}) 호출", chatRoomId);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
@@ -239,7 +239,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ServiceResult<Void> sendFileMessage(Long chatRoomId, Long senderId, String userRole, String messageType, MultipartFile file) {
+    public ServiceResult<String> sendFileMessage(Integer chatRoomId, Integer senderId, String userRole, String messageType, MultipartFile file) {
         log.info("ChatRoomService : sendFileMessage({}) 호출", chatRoomId);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
@@ -247,37 +247,29 @@ public class ChatServiceImpl implements ChatService {
             return ServiceResult.fail(ErrorCode.CHAT_ROOM_NOT_FOUND);
         }
 
-        UserRole currentUserRole = UserRole.valueOf(userRole.toUpperCase());
-        MessageType messageTypeValue = MessageType.valueOf(messageType.toUpperCase());
+        try {
+            String fileName = file.getOriginalFilename();
+            String contentType = file.getContentType();
 
-        String fileName = file.getOriginalFilename();
-        String contentType = file.getContentType();
-        Long fileSize = file.getSize();
+            // S3 presigned URL 생성 및 파일 업로드 처리
+            String presignedUploadUrl = s3PresignedUrlService.generatePresignedUploadUrl(fileName, contentType);
 
-        String presignedUploadUrl = s3PresignedUrlService.generatePresignedUploadUrl(fileName, contentType);
+            // 다운로드 URL 생성 (업로드 URL에서 쿼리 파라미터 제거)
+            String downloadUrl = presignedUploadUrl.split("\\?")[0];
 
-        ChatMessage message = ChatMessage.ofFile(
-                chatRoomId,
-                senderId,
-                currentUserRole,
-                presignedUploadUrl, // content에 URL 저장
-                messageTypeValue,
-                fileName,
-                fileSize,
-                presignedUploadUrl
-        );
+            log.info("파일 업로드 URL 생성 완료: {}", downloadUrl);
 
-        chatMessageRepository.save(message);
-
-        // 마지막 읽은 시간 업데이트
-        updateLastSeen(chatRoom, currentUserRole);
-
-        return ServiceResult.ok();
+            // 파일 메시지 저장은 WebSocket에서 처리
+            return ServiceResult.ok(downloadUrl);
+        } catch (Exception e) {
+            log.error("파일 업로드 실패", e);
+            return ServiceResult.fail(ErrorCode.CHAT_FILE_UPLOAD_FAILED);
+        }
     }
 
     @Override
     @Transactional
-    public ServiceResult<Void> leaveChatRoom(Long chatRoomId, Long currentUserId, String userRole) {
+    public ServiceResult<Void> leaveChatRoom(Integer chatRoomId, Integer currentUserId, String userRole) {
         log.info("ChatRoomService : leaveChatRoom({}, {}, {}) 호출", chatRoomId, currentUserId, userRole);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
@@ -291,6 +283,20 @@ public class ChatServiceImpl implements ChatService {
         } catch (IllegalArgumentException e) {
             return ServiceResult.fail(ErrorCode.CHAT_INVALID_USER_TYPE);
         }
+
+        // DB에 채팅방 나간 내역 저장
+        ChatMessage message = ChatMessage.of(
+                chatRoomId,
+                currentUserId,
+                currentUserRole,
+                null,
+                MessageType.DELETED
+        );
+
+        chatMessageRepository.save(message);
+
+        // 마지막 읽은 시간 업데이트
+        updateLastSeen(chatRoom, currentUserRole);
 
         deleteByUser(chatRoom, currentUserRole);
 
@@ -315,7 +321,7 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
-    private boolean checkUnreadMessages(ChatRoom chatRoom, Long userId, UserRole userRole) {
+    private boolean checkUnreadMessages(ChatRoom chatRoom, UserRole userRole) {
         LocalDateTime lastSeen = (userRole == UserRole.INFLUENCER)
                 ? chatRoom.getInfluencerLastSeen()
                 : chatRoom.getAdvertiserLastSeen();

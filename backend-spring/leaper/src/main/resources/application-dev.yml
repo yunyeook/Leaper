@@ -79,7 +79,7 @@ cloud:
 
 # Frontend URL for CORS configuration
 front:
-  url: ${FRONT_URL:http://localhost:8080}
+  url: ${FRONT_URL:http://localhost:5173}
 
 # JWT Configuration
 jwt:

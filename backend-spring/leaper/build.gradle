@@ -32,7 +32,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'// MongoDB
     implementation 'org.springframework.boot:spring-boot-starter-validation'  // Bean Validation(JSR-380)
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'   // Thymeleaf Template Engine
-
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'   // WebSocket 지원
 
     // DB Drivers
     runtimeOnly 'com.mysql:mysql-connector-j'   // MySQL
