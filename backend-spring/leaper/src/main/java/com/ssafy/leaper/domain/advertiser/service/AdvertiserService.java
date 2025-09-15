@@ -31,12 +31,14 @@ public class AdvertiserService {
         try {
             // 1. 중복 검증 - loginId
             if (advertiserRepository.existsByLoginId(request.getLoginId())) {
+                log.warn("Advertiser signup failed - duplicate loginId: {}", request.getLoginId());
                 return ServiceResult.fail(ErrorCode.DUPLICATE_LOGIN_ID);
             }
 
             // 2. 중복 검증 - 사업자등록번호 (입력된 경우에만)
             if (request.getBusinessRegNo() != null && !request.getBusinessRegNo().trim().isEmpty()) {
                 if (advertiserRepository.existsByBusinessRegNo(request.getBusinessRegNo())) {
+                    log.warn("Advertiser signup failed - duplicate businessRegNo: {}", request.getBusinessRegNo());
                     return ServiceResult.fail(ErrorCode.DUPLICATE_BUSINESS_REG_NO);
                 }
             }
@@ -97,9 +99,11 @@ public class AdvertiserService {
 
         try {
             if (advertiserRepository.existsByLoginId(loginId)) {
+                log.warn("LoginId duplicate check failed - duplicate loginId: {}", loginId);
                 return ServiceResult.fail(ErrorCode.DUPLICATE_LOGIN_ID);
             }
 
+            log.info("LoginId duplicate check passed - loginId: {}", loginId);
             return ServiceResult.ok();
 
         } catch (Exception e) {
