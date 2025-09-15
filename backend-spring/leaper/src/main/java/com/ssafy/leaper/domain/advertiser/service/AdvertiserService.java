@@ -2,9 +2,11 @@ package com.ssafy.leaper.domain.advertiser.service;
 
 import com.ssafy.leaper.domain.advertiser.dto.request.AdvertiserSignupRequest;
 import com.ssafy.leaper.domain.advertiser.dto.request.BusinessValidationApiRequest;
-import com.ssafy.leaper.domain.advertiser.dto.response.AdvertiserSignupResponse;
+import com.ssafy.leaper.domain.advertiser.dto.response.AdvertiserMyProfileResponse;
 import com.ssafy.leaper.domain.advertiser.entity.Advertiser;
 import com.ssafy.leaper.domain.advertiser.repository.AdvertiserRepository;
+import com.ssafy.leaper.domain.file.service.S3PresignedUrlService;
+import com.ssafy.leaper.domain.file.service.S3FileService;
 import com.ssafy.leaper.global.common.response.ServiceResult;
 import com.ssafy.leaper.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +25,11 @@ public class AdvertiserService {
     private final AdvertiserRepository advertiserRepository;
     private final PasswordEncoder passwordEncoder;
     private final BusinessValidationService businessValidationService;
+    private final S3PresignedUrlService s3PresignedUrlService;
+    private final S3FileService s3FileService;
 
     @Transactional
-    public ServiceResult<AdvertiserSignupResponse> signup(AdvertiserSignupRequest request) {
+    public ServiceResult<Void> signup(AdvertiserSignupRequest request) {
 
         log.info("Starting advertiser signup process - loginId: {}, brandName: {}",
                 request.getLoginId(), request.getBrandName());
@@ -54,7 +58,7 @@ public class AdvertiserService {
             }
 
             // 3. 프로필 이미지 업로드 처리
-            com.ssafy.leaper.domain.file.entity.File profileImage = handleProfileImageUpload(request.getCompanyProfileImage());
+            com.ssafy.leaper.domain.file.entity.File companyProfileImage = handleProfileImageUpload(request.getCompanyProfileImage());
 
             // 4. 비밀번호 암호화
             String encodedPassword = passwordEncoder.encode(request.getPassword());
@@ -65,7 +69,7 @@ public class AdvertiserService {
                     .password(encodedPassword)
                     .brandName(request.getBrandName())
                     .companyName(request.getBrandName()) // 회사명을 브랜드명으로 설정
-                    .profileImage(profileImage)
+                    .companyProfileImage(companyProfileImage)
                     .representativeName(request.getRepresentativeName())
                     .businessRegNo(request.getBusinessRegNo())
                     .bio(request.getBio())
@@ -80,9 +84,7 @@ public class AdvertiserService {
             log.info("Advertiser signup completed - advertiserId: {}, loginId: {}",
                     savedAdvertiser.getId(), savedAdvertiser.getLoginId());
 
-            return ServiceResult.ok(AdvertiserSignupResponse.builder()
-                    .advertiserId(savedAdvertiser.getId().toString())
-                    .build());
+            return ServiceResult.ok();
 
         } catch (Exception e) {
             log.error("Failed to signup advertiser - loginId: {}, brandName: {}",
@@ -91,17 +93,16 @@ public class AdvertiserService {
         }
     }
 
-    private com.ssafy.leaper.domain.file.entity.File handleProfileImageUpload(MultipartFile profileImage) {
-        if (profileImage == null || profileImage.isEmpty()) {
+    private com.ssafy.leaper.domain.file.entity.File handleProfileImageUpload(MultipartFile companyProfileImage) {
+        if (companyProfileImage == null || companyProfileImage.isEmpty()) {
             return null;
         }
 
-        // TODO: S3 업로드 로직 구현
         log.info("Profile image upload requested - filename: {}, size: {}",
-                profileImage.getOriginalFilename(), profileImage.getSize());
+                companyProfileImage.getOriginalFilename(), companyProfileImage.getSize());
 
-        // 현재는 null 반환, 추후 File 엔티티와 S3 서비스 연동
-        return null;
+        // S3에 파일 업로드 및 DB 저장
+        return s3FileService.uploadFileToS3(companyProfileImage, "profile");
     }
 
     public ServiceResult<Void> checkLoginIdDuplicate(String loginId) {
@@ -146,6 +147,34 @@ public class AdvertiserService {
         } catch (Exception e) {
             log.error("Failed to validate business registration via API - businessRegNo: {}, representativeName: {}",
                     request.getBusinessRegNo(), request.getRepresentativeName(), e);
+            return ServiceResult.fail(ErrorCode.COMMON_INTERNAL_ERROR);
+        }
+    }
+
+    public ServiceResult<AdvertiserMyProfileResponse> getMyProfile(Integer advertiserId) {
+        log.info("Getting advertiser profile - advertiserId: {}", advertiserId);
+
+        try {
+            Advertiser advertiser = advertiserRepository.findById(advertiserId).orElse(null);
+            if (advertiser == null) {
+                log.warn("Advertiser not found - advertiserId: {}", advertiserId);
+                return ServiceResult.fail(ErrorCode.ADVERTISER_NOT_FOUND);
+            }
+
+            String profileImageUrl = null;
+            if (advertiser.getCompanyProfileImage() != null) {
+                profileImageUrl = s3PresignedUrlService.generatePresignedDownloadUrl(
+                    advertiser.getCompanyProfileImage().getId()
+                );
+            }
+
+            AdvertiserMyProfileResponse response = AdvertiserMyProfileResponse.from(advertiser, profileImageUrl);
+
+            log.info("Successfully retrieved advertiser profile - advertiserId: {}", advertiserId);
+            return ServiceResult.ok(response);
+
+        } catch (Exception e) {
+            log.error("Failed to get advertiser profile - advertiserId: {}", advertiserId, e);
             return ServiceResult.fail(ErrorCode.COMMON_INTERNAL_ERROR);
         }
     }

@@ -62,7 +62,8 @@ public enum ErrorCode {
   INVALID_BUSINESS_REG_NO(HttpStatus.BAD_REQUEST, "ADVERTISER-005"),
 
   /* FILE – 파일 */
-  FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE-001");
+  FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE-001"),
+  FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-002");
 
   private final HttpStatus httpStatus;
   private final String code;

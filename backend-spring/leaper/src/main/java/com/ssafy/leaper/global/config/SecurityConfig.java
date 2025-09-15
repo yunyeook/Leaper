@@ -70,7 +70,6 @@ public class SecurityConfig {
     @Order(3)
     public SecurityFilterChain defaultSecurity(HttpSecurity http) throws Exception {
         http.csrf(c -> c.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/home", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**", "/ws/**").permitAll()
                         .anyRequest().authenticated());
