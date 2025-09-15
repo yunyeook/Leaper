@@ -7,9 +7,11 @@ import com.ssafy.leaper.domain.file.service.S3PresignedUrlService;
 import com.ssafy.leaper.domain.chat.dto.response.ChatMessageListResponse;
 import com.ssafy.leaper.domain.chat.dto.response.ChatRoomCreateResponse;
 import com.ssafy.leaper.domain.chat.dto.response.ChatRoomListResponse;
+import com.ssafy.leaper.domain.chat.dto.websocket.ChatWebSocketMessage;
 import com.ssafy.leaper.domain.chat.entity.ChatMessage;
 import com.ssafy.leaper.domain.chat.entity.ChatRoom;
 import com.ssafy.leaper.domain.chat.entity.MessageType;
+import com.ssafy.leaper.domain.chat.websocket.ChatWebSocketHandler;
 import com.ssafy.leaper.global.common.entity.UserRole;
 import com.ssafy.leaper.domain.chat.repository.ChatMessageRepository;
 import com.ssafy.leaper.domain.chat.repository.ChatRoomRepository;
@@ -40,6 +42,7 @@ public class ChatServiceImpl implements ChatService {
     private final InfluencerRepository influencerRepository;
     private final AdvertiserRepository advertiserRepository;
     private final S3PresignedUrlService s3PresignedUrlService;
+    private final ChatWebSocketHandler chatWebSocketHandler;
 
     @Override
     @Transactional
@@ -77,11 +80,33 @@ public class ChatServiceImpl implements ChatService {
             // 인플루언서가 삭제한 경우 복구
             if (chatRoom.getInfluencerDeleted()) {
                 chatRoomRepository.restoreInfluencer(chatRoom.getId());
+
+                // 인플루언서 복구 JOIN 메시지 저장
+                ChatMessage influencerJoinMessage = ChatMessage.of(
+                        chatRoom.getId(),
+                        influencerId,
+                        UserRole.INFLUENCER,
+                        null,
+                        MessageType.JOIN
+                );
+                chatMessageRepository.save(influencerJoinMessage);
+                log.info("인플루언서 {} 채팅방 {} 복구 JOIN 메시지 저장", influencerId, chatRoom.getId());
             }
 
             // 광고주가 삭제한 경우 복구
             if (chatRoom.getAdvertiserDeleted()) {
                 chatRoomRepository.restoreAdvertiser(chatRoom.getId());
+
+                // 광고주 복구 JOIN 메시지 저장
+                ChatMessage advertiserJoinMessage = ChatMessage.of(
+                        chatRoom.getId(),
+                        advertiserId,
+                        UserRole.ADVERTISER,
+                        null,
+                        MessageType.JOIN
+                );
+                chatMessageRepository.save(advertiserJoinMessage);
+                log.info("광고주 {} 채팅방 {} 복구 JOIN 메시지 저장", advertiserId, chatRoom.getId());
             }
 
             // 복구된 채팅방 다시 조회해서 반환
@@ -93,6 +118,28 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom chatRoom = ChatRoom.of(influencerId, advertiserId);
         ChatRoom savedChatRoom = chatRoomRepository.save(chatRoom);
         log.info("새 채팅방 생성 : {}",  savedChatRoom.getId());
+
+        // 인플루언서 JOIN 메시지 저장
+        ChatMessage influencerJoinMessage = ChatMessage.of(
+                savedChatRoom.getId(),
+                influencerId,
+                UserRole.INFLUENCER,
+                null,
+                MessageType.JOIN
+        );
+        chatMessageRepository.save(influencerJoinMessage);
+
+        // 광고주 JOIN 메시지 저장
+        ChatMessage advertiserJoinMessage = ChatMessage.of(
+                savedChatRoom.getId(),
+                advertiserId,
+                UserRole.ADVERTISER,
+                null,
+                MessageType.JOIN
+        );
+        chatMessageRepository.save(advertiserJoinMessage);
+
+        log.info("새 채팅방 JOIN 메시지 저장 완료 - 인플루언서: {}, 광고주: {}", influencerId, advertiserId);
 
         return ServiceResult.ok(ChatRoomCreateResponse.from(savedChatRoom));
     }
@@ -229,10 +276,23 @@ public class ChatServiceImpl implements ChatService {
                 request.getMessageType()
         );
 
-        chatMessageRepository.save(message);
+        ChatMessage savedMessage = chatMessageRepository.save(message);
 
         // 마지막 읽은 시간 업데이트
         updateLastSeen(chatRoom, request.getUserRole());
+
+        // WebSocket 브로드캐스트
+        ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+                .type("CHAT")
+                .chatRoomId(chatRoomId)
+                .senderId(request.getSenderId())
+                .content(request.getContent())
+                .userRole(request.getUserRole())
+                .messageType(request.getMessageType())
+                .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
+                .build();
+
+        chatWebSocketHandler.broadcastToChatRoom(chatRoomId, wsMessage);
 
         return ServiceResult.ok();
     }
@@ -250,6 +310,7 @@ public class ChatServiceImpl implements ChatService {
         try {
             String fileName = file.getOriginalFilename();
             String contentType = file.getContentType();
+            Long fileSize = file.getSize();
 
             // S3 presigned URL 생성 및 파일 업로드 처리
             String presignedUploadUrl = s3PresignedUrlService.generatePresignedUploadUrl(fileName, contentType);
@@ -259,7 +320,53 @@ public class ChatServiceImpl implements ChatService {
 
             log.info("파일 업로드 URL 생성 완료: {}", downloadUrl);
 
-            // 파일 메시지 저장은 WebSocket에서 처리
+            // 파일 메시지 DB 저장
+            UserRole userRoleEnum;
+            try {
+                userRoleEnum = UserRole.valueOf(userRole.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ServiceResult.fail(ErrorCode.CHAT_INVALID_USER_TYPE);
+            }
+
+            MessageType messageTypeEnum;
+            try {
+                messageTypeEnum = MessageType.valueOf(messageType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ServiceResult.fail(ErrorCode.COMMON_BAD_REQUEST);
+            }
+
+            ChatMessage fileMessage = ChatMessage.ofFile(
+                    chatRoomId,
+                    senderId,
+                    userRoleEnum,
+                    downloadUrl,
+                    messageTypeEnum,
+                    fileName,
+                    fileSize,
+                    downloadUrl
+            );
+
+            ChatMessage savedMessage = chatMessageRepository.save(fileMessage);
+
+            // 마지막 읽은 시간 업데이트
+            updateLastSeen(chatRoom, userRoleEnum);
+
+            // WebSocket 브로드캐스트
+            ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+                    .type("FILE")
+                    .chatRoomId(chatRoomId)
+                    .senderId(senderId)
+                    .content(downloadUrl)
+                    .userRole(userRoleEnum)
+                    .messageType(messageTypeEnum)
+                    .fileName(fileName)
+                    .fileSize(fileSize)
+                    .fileUrl(downloadUrl)
+                    .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
+                    .build();
+
+            chatWebSocketHandler.broadcastToChatRoom(chatRoomId, wsMessage);
+
             return ServiceResult.ok(downloadUrl);
         } catch (Exception e) {
             log.error("파일 업로드 실패", e);
@@ -290,13 +397,24 @@ public class ChatServiceImpl implements ChatService {
                 currentUserId,
                 currentUserRole,
                 null,
-                MessageType.DELETED
+                MessageType.LEAVE
         );
 
-        chatMessageRepository.save(message);
+        ChatMessage savedMessage = chatMessageRepository.save(message);
 
         // 마지막 읽은 시간 업데이트
         updateLastSeen(chatRoom, currentUserRole);
+
+        // WebSocket 브로드캐스트 - LEAVE 메시지 전송
+        ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+                .type("LEAVE")
+                .chatRoomId(chatRoomId)
+                .senderId(currentUserId)
+                .userRole(currentUserRole)
+                .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
+                .build();
+
+        chatWebSocketHandler.broadcastToChatRoom(chatRoomId, wsMessage);
 
         deleteByUser(chatRoom, currentUserRole);
 

@@ -377,21 +377,11 @@ async function leaveChatRoom() {
         log(`채팅방 나가기 응답: ${JSON.stringify(data)}`, 'system');
 
         if (data.status === 'SUCCESS') {
-            // WebSocket LEAVE 메시지 전송 (다른 사용자들에게 나가기 알림)
-            if (isConnected) {
-                const leaveMessage = {
-                    type: 'LEAVE',
-                    chatRoomId: currentChatRoomId,
-                    senderId: userId,
-                    userRole: userRole
-                };
-                sendWebSocketMessage(leaveMessage);
-            }
+            log(`채팅방 나가기 성공`, 'system');
 
-            // 잠시 후 채팅방 초기화 (LEAVE 메시지 전송 후)
-            setTimeout(() => {
-                resetChatRoom();
-            }, 100);
+            // REST API에서 이미 DB 저장 + WebSocket 브로드캐스트 완료됨
+            // 채팅방 초기화
+            resetChatRoom();
         } else {
             alert(`채팅방 나가기에 실패했습니다: ${data.data?.errorCode || 'UNKNOWN_ERROR'}`);
         }
@@ -402,24 +392,50 @@ async function leaveChatRoom() {
 }
 
 // 텍스트 메시지 전송
-function sendMessage() {
+async function sendMessage() {
     const messageText = elements.messageInput.value.trim();
     if (!messageText) {
         alert('메시지를 입력해주세요.');
         return;
     }
 
-    const chatMessage = {
-        type: 'CHAT',
-        chatRoomId: currentChatRoomId,
-        senderId: parseInt(document.getElementById('userId').value),
-        content: messageText,
-        userRole: document.getElementById('userRole').value,
-        messageType: document.getElementById('messageType').value
-    };
+    try {
+        const requestData = {
+            senderId: parseInt(document.getElementById('userId').value),
+            content: messageText,
+            userRole: document.getElementById('userRole').value,
+            messageType: document.getElementById('messageType').value
+        };
 
-    sendWebSocketMessage(chatMessage);
-    elements.messageInput.value = '';
+        const response = await fetch(`http://localhost:8080/api/v1/chatRoom/${currentChatRoomId}/message`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            alert('메시지 전송에 실패했습니다.');
+            return;
+        }
+
+        const result = await response.json();
+        if (result.status !== 'SUCCESS') {
+            alert('메시지 전송에 실패했습니다.');
+            return;
+        }
+
+        log(`텍스트 메시지 전송 성공`, 'system');
+
+        // REST API에서 이미 DB 저장 + WebSocket 브로드캐스트 완료됨
+        elements.messageInput.value = '';
+
+    } catch (error) {
+        log(`메시지 전송 실패: ${error}`, 'error');
+        alert('메시지 전송 중 오류가 발생했습니다.');
+    }
 }
 
 // 파일 메시지 전송
@@ -450,38 +466,13 @@ async function sendFileMessage() {
             body: formData
         });
 
-        if (!response.ok) {
-            alert('파일 업로드 URL 생성에 실패했습니다.');
-            return;
-        }
-
         const result = await response.json();
         if (result.status !== 'SUCCESS') {
             alert('파일 업로드 URL 생성에 실패했습니다.');
             return;
         }
 
-        // 서버에서 받은 다운로드 URL (실제로는 아직 업로드되지 않은 상태)
-        const downloadUrl = result.data;
-
-        // TODO: 실제 S3 업로드 구현 필요
-        // 현재는 presigned URL 방식이 아니라 서버에서 다운로드 URL만 반환하는 상태
-        // 실제 구현에서는 presigned URL로 S3 업로드 후 WebSocket 전송해야 함
-
-        // 2. WebSocket으로 파일 메시지 전송
-        const fileMessage = {
-            type: 'FILE',
-            chatRoomId: currentChatRoomId,
-            senderId: parseInt(document.getElementById('userId').value),
-            content: downloadUrl,
-            userRole: document.getElementById('userRole').value,
-            messageType: messageType,
-            fileName: file.name,
-            fileSize: file.size,
-            fileUrl: downloadUrl
-        };
-
-        sendWebSocketMessage(fileMessage);
+        log(`파일 업로드 성공: ${file.name}`, 'system');
 
         // 입력 필드 초기화
         fileInput.value = '';
@@ -529,8 +520,14 @@ function handleIncomingMessage(message) {
             }
             break;
 
+        case 'JOIN':
+            const joinUserLabel = getUserLabel(message.senderId, message.userRole);
+            addMessage(`${joinUserLabel}님이 채팅방에 입장했습니다.`, 'system');
+            break;
+
         case 'LEAVE':
-            log(`${getUserLabel(message.senderId, message.userRole)}님이 나갔습니다.`, 'system');
+            const leaveUserLabel = getUserLabel(message.senderId, message.userRole);
+            addMessage(`${leaveUserLabel}님이 채팅방을 나갔습니다.`, 'system');
             break;
 
         case 'ERROR':
@@ -660,7 +657,11 @@ function addMessageFromHistory(msg, append = true) {
             <span>${messageTime}</span> ${userLabel}: [파일] ${msg.fileName || 'file'} (${formatFileSize(msg.fileSize || 0)})
             <br><a href="${msg.content}" target="_blank">📎 ${msg.fileName || 'file'} 다운로드</a>
         `;
-    } else if (msg.messageType === 'DELETED') {
+    } else if (msg.messageType === 'JOIN') {
+        // 입장 메시지 - 시스템 메시지로 표시
+        messageElement.className = 'message system';
+        messageElement.innerHTML = `<span>${messageTime}</span> ${userLabel}님이 채팅방에 입장했습니다.`;
+    } else if (msg.messageType === 'LEAVE') {
         // 나가기 메시지 - 시스템 메시지로 표시
         messageElement.className = 'message system';
         messageElement.innerHTML = `<span>${messageTime}</span> ${userLabel}님이 채팅방을 나갔습니다.`;

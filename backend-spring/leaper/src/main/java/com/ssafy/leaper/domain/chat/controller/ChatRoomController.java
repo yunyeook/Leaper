@@ -13,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -33,6 +35,10 @@ public class ChatRoomController implements BaseController {
     public ResponseEntity<ApiResponse<ChatRoomCreateResponse>> createChatRoom(
             @RequestParam("influencer") Integer influencerId,
             @RequestParam("advertiser") Integer advertiserId) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Integer currentUserId = Integer.parseInt(auth.getName());
+//        String userRole = auth.getAuthorities();
 
         return handle(chatService.createChatRoom(influencerId, advertiserId));
     }
@@ -69,21 +75,21 @@ public class ChatRoomController implements BaseController {
         return handle(chatService.getChatMessages(chatRoomId, before, after, size));
     }
 
-//    /**
-//     * 텍스트 메시지 전송
-//     * POST /api/v1/chatRoom/{chatRoomId}/message
-//     */
-//    @PostMapping(value = "/{chatRoomId}/message", consumes = MediaType.APPLICATION_JSON_VALUE)
-//    @Operation(summary = "텍스트 메시지 전송", description = "채팅방에 텍스트 메시지를 전송합니다." +
-//            "(Swagger에서 텍스트/파일 api를 정상적으로 분리해서 제공하지 못하고 있으니 Notion API 명세서에서 확인 바랍니다.")
-//
-//    public ResponseEntity<ApiResponse<Void>> sendTextMessage(
-//            @PathVariable Integer chatRoomId,
-//            @Valid @RequestBody ChatMessageSendRequest request) {
-//
-//        return handle(chatService.sendTextMessage(chatRoomId, request));
-//    }
-//
+    /**
+     * 텍스트 메시지 전송
+     * POST /api/v1/chatRoom/{chatRoomId}/message
+     */
+    @PostMapping(value = "/{chatRoomId}/message", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "텍스트 메시지 전송", description = "채팅방에 텍스트 메시지를 전송합니다." +
+            "(Swagger에서 텍스트/파일 api를 정상적으로 분리해서 제공하지 못하고 있으니 Notion API 명세서에서 확인 바랍니다.")
+
+    public ResponseEntity<ApiResponse<Void>> sendTextMessage(
+            @PathVariable Integer chatRoomId,
+            @Valid @RequestBody ChatMessageSendRequest request) {
+
+        return handle(chatService.sendTextMessage(chatRoomId, request));
+    }
+
     /**
      * 파일/이미지 메시지 전송
      * POST /api/v1/chatRoom/{chatRoomId}/message

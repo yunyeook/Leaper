@@ -32,7 +32,7 @@ public class ChatMessageListResponse {
         private MessageType messageType;
         private LocalDateTime createdAt;
         private String fileName;
-        private Integer fileSize;
+        private Long fileSize;
         
         public static MessageInfo from(ChatMessage chatMessage) {
             return MessageInfo.builder()
