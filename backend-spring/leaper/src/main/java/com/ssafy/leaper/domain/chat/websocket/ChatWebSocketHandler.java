@@ -1,12 +1,7 @@
 package com.ssafy.leaper.domain.chat.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.leaper.domain.chat.dto.request.ChatMessageSendRequest;
 import com.ssafy.leaper.domain.chat.dto.websocket.ChatWebSocketMessage;
-import com.ssafy.leaper.domain.chat.entity.ChatMessage;
-import com.ssafy.leaper.domain.chat.repository.ChatMessageRepository;
-import com.ssafy.leaper.domain.chat.service.ChatService;
-import com.ssafy.leaper.domain.file.service.S3PresignedUrlService;
 import com.ssafy.leaper.global.common.entity.UserRole;
 import com.ssafy.leaper.global.common.response.ServiceResult;
 import com.ssafy.leaper.global.error.ErrorCode;
@@ -30,10 +25,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @RequiredArgsConstructor
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
-    private final ChatService chatService;
-    private final ChatMessageRepository chatMessageRepository;
     private final ObjectMapper objectMapper;
-    private final S3PresignedUrlService s3PresignedUrlService;
 
     // 채팅방별로 연결된 세션들을 관리
     private final Map<Integer, CopyOnWriteArraySet<WebSocketSession>> chatRoomSessions = new ConcurrentHashMap<>();
@@ -46,7 +38,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         log.info("WebSocket 연결 성공: {}", session.getId());
     }
 
-    // 채팅방 (JOIN/CHAT/LEAVE) 핸들러 - 분기 처리
+    // 채팅방 (CONNECT/DISCONNECT) 핸들러 : 세션 생성/제거 관리
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         ChatWebSocketMessage wsMessage = objectMapper.readValue(message.getPayload(), ChatWebSocketMessage.class);
@@ -58,10 +50,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         log.info("WebSocket 메시지 수신: {}", wsMessage.getType());
 
         ServiceResult<Void> result = switch (wsMessage.getType()) {
-            case "JOIN" -> handleJoinMessage(session, wsMessage);
-            case "CHAT" -> handleChatMessage(session, wsMessage);
-            case "FILE" -> handleFileMessage(session, wsMessage);
-            case "LEAVE" -> handleLeaveMessage(session, wsMessage);
+            case "CONNECT" -> handleConnectMessage(session, wsMessage);
+            case "DISCONNECT" -> handleDisconnectMessage(session);
+            case "CHAT", "FILE" -> {
+                log.warn("CHAT/FILE 메시지는 REST API를 사용해주세요: {}", wsMessage.getType());
+                yield ServiceResult.fail(ErrorCode.COMMON_BAD_REQUEST);
+            }
             default -> {
                 log.warn("알 수 없는 메시지 타입: {}", wsMessage.getType());
                 yield ServiceResult.fail(ErrorCode.COMMON_INVALID_FORMAT);
@@ -73,7 +67,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // 세선 종료
+    // 세션 종료
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         log.info("WebSocket 연결 종료: {}", session.getId());
@@ -95,8 +89,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // 채팅방 접속 핸들러(JOIN)
-    private ServiceResult<Void> handleJoinMessage(WebSocketSession session, ChatWebSocketMessage message) {
+    // 채팅방 접속 핸들러(CONNECT)
+    private ServiceResult<Void> handleConnectMessage(WebSocketSession session, ChatWebSocketMessage message) {
         Integer chatRoomId = message.getChatRoomId();
         Integer userId = message.getSenderId();
         UserRole userRole = message.getUserRole();
@@ -113,98 +107,35 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         log.info("사용자 {}이 채팅방 {}에 참여했습니다.", userId, chatRoomId);
 
-        // JOIN 성공 응답
+        // JOIN 성공 응답 (본인에게)
         ChatWebSocketMessage response = ChatWebSocketMessage.builder()
-                .type("JOIN_SUCCESS")
+                .type("CONNECT_SUCCESS")
                 .chatRoomId(chatRoomId)
+                .senderId(userId)
+                .userRole(userRole)
                 .timestamp(LocalDateTime.now())
                 .build();
 
         sendMessage(session, response);
-        return ServiceResult.ok();
-    }
 
-    // 채팅방 메시지 핸들러(CHAT)
-    private ServiceResult<Void> handleChatMessage(WebSocketSession session, ChatWebSocketMessage message) {
-        UserSessionInfo sessionInfo = sessionInfoMap.get(session.getId());
-        if (sessionInfo == null) {
-            return ServiceResult.fail(ErrorCode.CHAT_ROOM_ACCESS_DENIED);
-        }
-
-        if (message.getContent() == null || message.getContent().trim().isEmpty()) {
-            return ServiceResult.fail(ErrorCode.COMMON_BAD_REQUEST);
-        }
-
-        // 메시지 저장
-        ChatMessageSendRequest request = new ChatMessageSendRequest(
-                message.getSenderId(),
-                message.getContent(),
-                message.getUserRole(),
-                message.getMessageType()
-        );
-
-        ServiceResult<Void> result = chatService.sendTextMessage(message.getChatRoomId(), request);
-
-        if (!result.success()) {
-            return ServiceResult.fail(result.code());
-        }
-
-        // 같은 채팅방의 모든 세션에 메시지 브로드캐스트
-        broadcastToChatRoom(message.getChatRoomId(), message);
-        return ServiceResult.ok();
-    }
-
-    // 파일 메시지 핸들러(FILE)
-    private ServiceResult<Void> handleFileMessage(WebSocketSession session, ChatWebSocketMessage message) {
-        UserSessionInfo sessionInfo = sessionInfoMap.get(session.getId());
-        if (sessionInfo == null) {
-            return ServiceResult.fail(ErrorCode.CHAT_ROOM_ACCESS_DENIED);
-        }
-
-        // 파일 정보 검증
-        if (message.getFileName() == null || message.getFileSize() == null || message.getFileUrl() == null) {
-            return ServiceResult.fail(ErrorCode.COMMON_BAD_REQUEST);
-        }
-
-        // 파일 메시지 저장 (직접 ChatMessage 저장)
-        try {
-            ChatMessage chatMessage = ChatMessage.ofFile(
-                    message.getChatRoomId(),
-                    message.getSenderId(),
-                    message.getUserRole(),
-                    message.getFileUrl(),
-                    message.getMessageType(),
-                    message.getFileName(),
-                    message.getFileSize(),
-                    message.getFileUrl()
-            );
-
-            chatMessageRepository.save(chatMessage);
-        } catch (Exception e) {
-            log.error("파일 메시지 저장 실패", e);
-            return ServiceResult.fail(ErrorCode.CHAT_FILE_UPLOAD_FAILED);
-        }
-
-        // 파일 정보를 포함한 메시지 브로드캐스트
-        ChatWebSocketMessage fileMessage = ChatWebSocketMessage.builder()
-                .type("FILE")
-                .chatRoomId(message.getChatRoomId())
-                .senderId(message.getSenderId())
-                .content(message.getFileUrl())
-                .userRole(message.getUserRole())
-                .messageType(message.getMessageType())
-                .fileName(message.getFileName())
-                .fileSize(message.getFileSize())
-                .fileUrl(message.getFileUrl())
+        // 다른 사용자들에게 CONNECT 메시지 브로드캐스트
+        ChatWebSocketMessage connectBroadcast = ChatWebSocketMessage.builder()
+                .type("CONNECT")
+                .chatRoomId(chatRoomId)
+                .senderId(userId)
+                .userRole(userRole)
+                .content(null)
+                .messageType(null)
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        broadcastToChatRoom(message.getChatRoomId(), fileMessage);
+        broadcastToChatRoom(chatRoomId, connectBroadcast);
+
         return ServiceResult.ok();
     }
 
-    // 채팅방 나가기 핸들러(LEAVE)
-    private ServiceResult<Void> handleLeaveMessage(WebSocketSession session, ChatWebSocketMessage message) {
+    // 채팅방 나가기 핸들러(DISCONNECT)
+    private ServiceResult<Void> handleDisconnectMessage(WebSocketSession session) {
         UserSessionInfo sessionInfo = sessionInfoMap.get(session.getId());
         if (sessionInfo == null) {
             return ServiceResult.ok();
@@ -212,9 +143,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         Integer chatRoomId = sessionInfo.getChatRoomId();
 
-        // 다른 사용자들에게 나가기 메시지 브로드캐스트 (세션 제거 전에 실행)
-        ChatWebSocketMessage leaveMessage = ChatWebSocketMessage.builder()
-                .type("LEAVE")
+        // 다른 사용자들에게 DISCONNECT 메시지 브로드캐스트 (세션 제거 전에 실행)
+        ChatWebSocketMessage disconnectMessage = ChatWebSocketMessage.builder()
+                .type("DISCONNECT")
                 .chatRoomId(chatRoomId)
                 .senderId(sessionInfo.getUserId())
                 .userRole(sessionInfo.getUserRole())
@@ -223,7 +154,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        broadcastToChatRoom(chatRoomId, leaveMessage);
+        broadcastToChatRoom(chatRoomId, disconnectMessage);
 
         // 채팅방에서 세션 제거
         CopyOnWriteArraySet<WebSocketSession> sessions = chatRoomSessions.get(chatRoomId);
@@ -240,7 +171,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     // 채팅 메시지 브로드캐스팅 - 채팅방 내 참여자들에게 메시지 전송
-    private void broadcastToChatRoom(Integer chatRoomId, ChatWebSocketMessage message) {
+    public void broadcastToChatRoom(Integer chatRoomId, ChatWebSocketMessage message) {
         CopyOnWriteArraySet<WebSocketSession> sessions = chatRoomSessions.get(chatRoomId);
         if (sessions == null) {
             return;

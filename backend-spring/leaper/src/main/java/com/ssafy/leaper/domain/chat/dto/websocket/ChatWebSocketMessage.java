@@ -27,6 +27,6 @@ public class ChatWebSocketMessage {
 
     // 파일 메시지용 필드들
     private String fileName;
-    private Integer fileSize;
+    private Long fileSize;
     private String fileUrl;
 }
