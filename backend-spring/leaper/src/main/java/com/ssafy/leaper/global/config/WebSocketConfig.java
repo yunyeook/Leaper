@@ -13,13 +13,11 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private final ChatWebSocketHandler chatWebSocketHandler;
-    // private final JwtAuthenticationInterceptor jwtAuthenticationInterceptor;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry
                 .addHandler(chatWebSocketHandler, "/ws/chat")
-                // .addInterceptors(jwtAuthenticationInterceptor) // TODO: JWT 인터셉터 추가 예정
                 .setAllowedOrigins(
                         "http://localhost:3000",
                         "http://localhost:5173",

@@ -47,7 +47,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ServiceResult<ChatRoomCreateResponse> createChatRoom(Integer influencerId, Integer advertiserId) {
-        log.info("ChatRoomService : createChatRoom({}, {}) 호출", influencerId, advertiserId);
+        log.info("ChatService : createChatRoom({}, {}) 호출", influencerId, advertiserId);
 
         // 인플루언서와 광고주 존재 확인
         Influencer influencer = influencerRepository.findById(influencerId).orElse(null);
@@ -60,94 +60,107 @@ public class ChatServiceImpl implements ChatService {
             return ServiceResult.fail(ErrorCode.ADVERTISER_NOT_FOUND);
         }
 
-        // 활성화된 채팅방이 있는지 먼저 확인
-        Optional<ChatRoom> activeRoom = chatRoomRepository
-                .findByInfluencerIdAndAdvertiserIdAndNotDeleted(influencerId, advertiserId);
-
-        if (activeRoom.isPresent()) {
-            log.info("활성화된 채팅방 존재 : {}",  activeRoom.get().getId());
-            return ServiceResult.ok(ChatRoomCreateResponse.from(activeRoom.get()));
-        }
-
-        // 삭제된 채팅방이 있는지 확인 (삭제된 것 포함)
+        // 채팅방이 있는지 먼저 확인
         Optional<ChatRoom> existingRoom = chatRoomRepository
                 .findByInfluencerIdAndAdvertiserId(influencerId, advertiserId);
 
+        ChatRoom chatRoom;
+        boolean influencerJoinRequired = false;
+        boolean advertiserJoinRequired = false;
+
         if (existingRoom.isPresent()) {
-            ChatRoom chatRoom = existingRoom.get();
-            log.info("삭제된 채팅방 복구 : {}", chatRoom.getId());
+            // 기존 채팅방 존재
+            log.info("기존 채팅방 존재 : {}",  existingRoom.get().getId());
+
+            if(!existingRoom.get().getAdvertiserDeleted() && !existingRoom.get().getInfluencerDeleted()) {
+                log.info("채팅방 활성화 확인 : {}",  existingRoom.get().getId());
+                return ServiceResult.ok(ChatRoomCreateResponse.from(existingRoom.get()));
+            }
+
+            chatRoom = existingRoom.get();
 
             // 인플루언서가 삭제한 경우 복구
-            if (chatRoom.getInfluencerDeleted()) {
+            if(existingRoom.get().getInfluencerDeleted()) {
+                influencerJoinRequired = true;
                 chatRoomRepository.restoreInfluencer(chatRoom.getId());
-
-                // 인플루언서 복구 JOIN 메시지 저장
-                ChatMessage influencerJoinMessage = ChatMessage.of(
-                        chatRoom.getId(),
-                        influencerId,
-                        UserRole.INFLUENCER,
-                        null,
-                        MessageType.JOIN
-                );
-                chatMessageRepository.save(influencerJoinMessage);
-                log.info("인플루언서 {} 채팅방 {} 복구 JOIN 메시지 저장", influencerId, chatRoom.getId());
+                log.info("인플루언서가 채팅방 복구 : {}", chatRoom.getId());
             }
 
             // 광고주가 삭제한 경우 복구
             if (chatRoom.getAdvertiserDeleted()) {
+                advertiserJoinRequired = true;
                 chatRoomRepository.restoreAdvertiser(chatRoom.getId());
-
-                // 광고주 복구 JOIN 메시지 저장
-                ChatMessage advertiserJoinMessage = ChatMessage.of(
-                        chatRoom.getId(),
-                        advertiserId,
-                        UserRole.ADVERTISER,
-                        null,
-                        MessageType.JOIN
-                );
-                chatMessageRepository.save(advertiserJoinMessage);
-                log.info("광고주 {} 채팅방 {} 복구 JOIN 메시지 저장", advertiserId, chatRoom.getId());
+                log.info("광고주가 채팅방 복구 : {}", chatRoom.getId());
             }
+        }else {
+            // 완전히 새로운 채팅방 생성
+            influencerJoinRequired = true;
+            advertiserJoinRequired = true;
 
-            // 복구된 채팅방 다시 조회해서 반환
-            ChatRoom restoredRoom = chatRoomRepository.findById(chatRoom.getId()).get();
-            return ServiceResult.ok(ChatRoomCreateResponse.from(restoredRoom));
+            ChatRoom newRoom = ChatRoom.of(influencerId, advertiserId);
+            chatRoom = chatRoomRepository.save(newRoom);
+            log.info("새 채팅방 생성 : {}", chatRoom.getId());
         }
 
-        // 완전히 새로운 채팅방 생성
-        ChatRoom chatRoom = ChatRoom.of(influencerId, advertiserId);
-        ChatRoom savedChatRoom = chatRoomRepository.save(chatRoom);
-        log.info("새 채팅방 생성 : {}",  savedChatRoom.getId());
+        // 인플루언서 JOIN 처리 했을 경우
+        if(influencerJoinRequired) {
+            // 인플루언서 JOIN 메시지 저장
+            ChatMessage influencerJoinMessage = ChatMessage.of(
+                    chatRoom.getId(),
+                    influencerId,
+                    UserRole.INFLUENCER,
+                    null,
+                    MessageType.JOIN
+            );
+            ChatMessage savedMessage = chatMessageRepository.save(influencerJoinMessage);
+            log.info("인플루언서 {} 채팅방 {} JOIN 메시지 저장", influencerId, chatRoom.getId());
 
-        // 인플루언서 JOIN 메시지 저장
-        ChatMessage influencerJoinMessage = ChatMessage.of(
-                savedChatRoom.getId(),
-                influencerId,
-                UserRole.INFLUENCER,
-                null,
-                MessageType.JOIN
-        );
-        chatMessageRepository.save(influencerJoinMessage);
+            // WebSocket 브로드캐스트 - CONNECT 메시지 전송
+            ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+                    .type("CONNECT")
+                    .chatRoomId(chatRoom.getId())
+                    .senderId(influencerId)
+                    .content(null)
+                    .userRole(UserRole.INFLUENCER)
+                    .messageType(MessageType.JOIN)
+                    .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
+                    .build();
+            chatWebSocketHandler.broadcastToChatRoom(chatRoom.getId(), wsMessage);
+        }
 
-        // 광고주 JOIN 메시지 저장
-        ChatMessage advertiserJoinMessage = ChatMessage.of(
-                savedChatRoom.getId(),
-                advertiserId,
-                UserRole.ADVERTISER,
-                null,
-                MessageType.JOIN
-        );
-        chatMessageRepository.save(advertiserJoinMessage);
+        // 광고주 JOIN 처리 했을 경우
+        if(advertiserJoinRequired) {
+            // 광고주 JOIN 메시지 저장
+            ChatMessage advertiserJoinMessage = ChatMessage.of(
+                    chatRoom.getId(),
+                    advertiserId,
+                    UserRole.ADVERTISER,
+                    null,
+                    MessageType.JOIN
+            );
+            ChatMessage savedMessage = chatMessageRepository.save(advertiserJoinMessage);
+            log.info("광고주 {} 채팅방 {} JOIN 메시지 저장", influencerId, chatRoom.getId());
 
-        log.info("새 채팅방 JOIN 메시지 저장 완료 - 인플루언서: {}, 광고주: {}", influencerId, advertiserId);
+            // WebSocket 브로드캐스트 - CONNECT 메시지 전송
+            ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+                    .type("CONNECT")
+                    .chatRoomId(chatRoom.getId())
+                    .senderId(influencerId)
+                    .content(null)
+                    .userRole(UserRole.ADVERTISER)
+                    .messageType(MessageType.JOIN)
+                    .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
+                    .build();
+            chatWebSocketHandler.broadcastToChatRoom(chatRoom.getId(), wsMessage);
+        }
 
-        return ServiceResult.ok(ChatRoomCreateResponse.from(savedChatRoom));
+        return ServiceResult.ok(ChatRoomCreateResponse.from(chatRoom));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ServiceResult<ChatRoomListResponse> getChatRoomList(Integer currentUserId, String userRole) {
-        log.info("ChatRoomService : getChatRoomList({}, {}) 호출", currentUserId, userRole);
+        log.info("ChatService : getChatRoomList({}, {}) 호출", currentUserId, userRole);
 
         UserRole currentUserRole;
         try {
@@ -223,7 +236,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(readOnly = true)
     public ServiceResult<ChatMessageListResponse> getChatMessages(Integer chatRoomId, String before, String after, int size) {
-        log.info("ChatRoomService : getChatMessages({}) 호출", chatRoomId);
+        log.info("ChatService : getChatMessages({}) 호출", chatRoomId);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
         if (chatRoom == null) {
@@ -261,7 +274,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ServiceResult<Void> sendTextMessage(Integer chatRoomId, ChatMessageSendRequest request) {
-        log.info("ChatRoomService : sendTextMessage({}) 호출", chatRoomId);
+        log.info("ChatService : sendTextMessage({}) 호출", chatRoomId);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
         if (chatRoom == null) {
@@ -300,7 +313,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ServiceResult<String> sendFileMessage(Integer chatRoomId, Integer senderId, String userRole, String messageType, MultipartFile file) {
-        log.info("ChatRoomService : sendFileMessage({}) 호출", chatRoomId);
+        log.info("ChatService : sendFileMessage({}) 호출", chatRoomId);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
         if (chatRoom == null) {
@@ -377,7 +390,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ServiceResult<Void> leaveChatRoom(Integer chatRoomId, Integer currentUserId, String userRole) {
-        log.info("ChatRoomService : leaveChatRoom({}, {}, {}) 호출", chatRoomId, currentUserId, userRole);
+        log.info("ChatService : leaveChatRoom({}, {}, {}) 호출", chatRoomId, currentUserId, userRole);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
         if (chatRoom == null) {
@@ -405,8 +418,19 @@ public class ChatServiceImpl implements ChatService {
         // 마지막 읽은 시간 업데이트
         updateLastSeen(chatRoom, currentUserRole);
 
+        // WebSocket 브로드캐스트 - DISCONNECT 메시지 전송
+        ChatWebSocketMessage disconnectMessage = ChatWebSocketMessage.builder()
+                .type("DISCONNECT")
+                .chatRoomId(chatRoomId)
+                .senderId(currentUserId)
+                .userRole(currentUserRole)
+                .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
+                .build();
+
+        chatWebSocketHandler.broadcastToChatRoom(chatRoomId, disconnectMessage);
+
         // WebSocket 브로드캐스트 - LEAVE 메시지 전송
-        ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+        ChatWebSocketMessage leaveMessage = ChatWebSocketMessage.builder()
                 .type("LEAVE")
                 .chatRoomId(chatRoomId)
                 .senderId(currentUserId)
@@ -414,7 +438,7 @@ public class ChatServiceImpl implements ChatService {
                 .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
                 .build();
 
-        chatWebSocketHandler.broadcastToChatRoom(chatRoomId, wsMessage);
+        chatWebSocketHandler.broadcastToChatRoom(chatRoomId, leaveMessage);
 
         deleteByUser(chatRoom, currentUserRole);
 

@@ -145,7 +145,6 @@ async function connectToPartner() {
     try {
         // 1. 채팅방 생성 API 호출
         const chatRoomResponse = await createChatRoomAPI(userId, partnerId, userRole);
-
         if (!chatRoomResponse.success) {
             showConnectStatus(`채팅방 생성에 실패했습니다: ${chatRoomResponse.error}`, false);
             elements.connectBtn.disabled = false;
@@ -156,6 +155,7 @@ async function connectToPartner() {
         currentPartnerId = partnerId;
 
         log(`채팅방 생성 성공: ${currentChatRoomId}`, 'system');
+        showChatRoom(currentChatRoomId);
 
         // 2. WebSocket 연결
         if (!isConnected) {
@@ -181,7 +181,7 @@ async function connectToPartner() {
         log('WebSocket 연결 완료', 'system');
 
         // 3. 채팅방 참여
-        await joinChatRoom();
+        await connectChatRoom();
 
         // 4. 기존 메시지 로드
         await loadChatMessages();
@@ -240,18 +240,18 @@ async function createChatRoomAPI(userId, partnerId, userRole) {
 }
 
 // 채팅방 참여 (WebSocket)
-async function joinChatRoom() {
+async function connectChatRoom() {
     const userId = parseInt(document.getElementById('userId').value);
     const userRole = document.getElementById('userRole').value;
 
-    const joinMessage = {
-        type: 'JOIN',
+    const connectMessage = {
+        type: 'CONNECT',
         chatRoomId: currentChatRoomId,
         senderId: userId,
         userRole: userRole
     };
 
-    sendWebSocketMessage(joinMessage);
+    sendWebSocketMessage(connectMessage);
 }
 
 // 채팅 메시지 로드
@@ -494,12 +494,12 @@ function sendWebSocketMessage(message) {
     log(`전송: ${messageStr}`, 'sent');
 }
 
-// 수신 메시지 처리
+// WebSocket 수신 메시지 처리
 function handleIncomingMessage(message) {
     switch (message.type) {
-        case 'JOIN_SUCCESS':
+        case 'CONNECT_SUCCESS':
             isJoined = true;
-            showConnectStatus(`채팅방 ${message.chatRoomId}에 성공적으로 참여했습니다.`, true);
+            showConnectStatus(`채팅방 ${message.chatRoomId} 연결 완료`, true);
             showChatRoom(message.chatRoomId);
             break;
 
@@ -519,12 +519,18 @@ function handleIncomingMessage(message) {
             }
             break;
 
-        case 'JOIN':
-            addMessage(`${message.userRole}-${message.senderId}님이 채팅방에 입장했습니다.`, 'system');
+        case 'CONNECT':
+            isJoined = true;
+            log(`${message.userRole}-${message.senderId}님이 채팅방 ${message.chatRoomId}에 연결되었습니다.`, 'system');
+            break;
+
+        case 'DISCONNECT':
+            log(`${message.userRole}-${message.senderId}님이 채팅방 ${message.chatRoomId}에서 연결 종료했습니다.`, 'system');
             break;
 
         case 'LEAVE':
-            addMessage(`${message.userRole}-${message.senderId}님이 채팅방에 나갔습니다.`, 'system');
+            log(`${message.userRole}-${message.senderId}님이 채팅방을 나갔습니다.`);
+            addMessage(`${message.userRole}-${message.senderId}님이 채팅방을 나갔습니다.`,'system');
             break;
 
         case 'ERROR':
@@ -714,28 +720,6 @@ function updateConnectionStatus() {
     }
 }
 
-// 사용자 역할 초기화
-function initializeUserRole() {
-    const userId = parseInt(document.getElementById('userId').value);
-    const userRoleElement = document.getElementById('userRole');
-    
-    // 사용자 ID에 따라 역할 결정 (예: 짝수는 ADVERTISER, 홀수는 INFLUENCER)
-    // 또는 다른 비즈니스 로직에 따라 설정 가능
-    if (userId % 2 === 0) {
-        userRoleElement.value = 'ADVERTISER';
-    } else {
-        userRoleElement.value = 'INFLUENCER';
-    }
-    
-    log(`사용자 역할 초기화: User ID ${userId} -> ${userRoleElement.value}`, 'system');
-}
-
-// 사용자 ID 변경 시 호출되는 함수
-function onUserIdChanged() {
-    initializeUserRole();
-    updatePartnerRole();
-}
-
 // Enter 키 이벤트
 document.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
@@ -775,7 +759,6 @@ function setupScrollListener() {
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
     log('채팅 테스트 페이지가 로드되었습니다.', 'system');
-    initializeUserRole(); // 사용자 역할 초기화
     updateConnectionStatus();
     updatePartnerRole(); // 초기 상대방 역할 설정
     toggleMessageInput(); // 초기 메시지 입력 방식 설정

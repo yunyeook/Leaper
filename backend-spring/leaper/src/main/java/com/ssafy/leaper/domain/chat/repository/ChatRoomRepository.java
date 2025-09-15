@@ -14,14 +14,14 @@ import java.util.Optional;
 @Repository
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Integer> {
 
-    /**
-     * 인플루언서와 광고주가 모두 삭제하지 않은 채팅방 조회
-     */
-    @Query("SELECT c FROM ChatRoom c WHERE c.influencerId = :influencerId AND c.advertiserId = :advertiserId " +
-           "AND (c.influencerDeleted = false AND c.advertiserDeleted = false)")
-    Optional<ChatRoom> findByInfluencerIdAndAdvertiserIdAndNotDeleted(
-            @Param("influencerId") Integer influencerId,
-            @Param("advertiserId") Integer advertiserId);
+//    /**
+//     * 인플루언서와 광고주가 모두 삭제하지 않은 채팅방 조회
+//     */
+//    @Query("SELECT c FROM ChatRoom c WHERE c.influencerId = :influencerId AND c.advertiserId = :advertiserId " +
+//           "AND (c.influencerDeleted = false AND c.advertiserDeleted = false)")
+//    Optional<ChatRoom> findByInfluencerIdAndAdvertiserIdAndNotDeleted(
+//            @Param("influencerId") Integer influencerId,
+//            @Param("advertiserId") Integer advertiserId);
 
     /**
      * 인플루언서가 삭제하지 않은 채팅방 목록 조회
@@ -37,14 +37,14 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Integer> {
            "ORDER BY c.createdAt DESC")
     List<ChatRoom> findByAdvertiserIdAndNotDeleted(@Param("advertiserId") Integer advertiserId);
 
-    /**
-     * 특정 사용자가 참여하고 있는(삭제하지 않은) 채팅방 목록 조회
-     */
-    @Query("SELECT c FROM ChatRoom c WHERE " +
-           "(c.influencerId = :userId AND c.influencerDeleted = false) OR " +
-           "(c.advertiserId = :userId AND c.advertiserDeleted = false) " +
-           "ORDER BY c.createdAt DESC")
-    List<ChatRoom> findByUserIdAndNotDeleted(@Param("userId") Integer userId);
+//    /**
+//     * 특정 사용자가 참여하고 있는(삭제하지 않은) 채팅방 목록 조회
+//     */
+//    @Query("SELECT c FROM ChatRoom c WHERE " +
+//           "(c.influencerId = :userId AND c.influencerDeleted = false) OR " +
+//           "(c.advertiserId = :userId AND c.advertiserDeleted = false) " +
+//           "ORDER BY c.createdAt DESC")
+//    List<ChatRoom> findByUserIdAndNotDeleted(@Param("userId") Integer userId);
 
     @Modifying
     @Query("UPDATE ChatRoom c SET c.influencerLastSeen = :lastSeen WHERE c.id = :chatRoomId")

@@ -38,7 +38,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         log.info("WebSocket 연결 성공: {}", session.getId());
     }
 
-    // 채팅방 (JOIN/LEAVE) 핸들러 - 분기 처리 (CHAT/FILE은 REST API로 이관)
+    // 채팅방 (CONNECT/DISCONNECT) 핸들러 : 세션 생성/제거 관리
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         ChatWebSocketMessage wsMessage = objectMapper.readValue(message.getPayload(), ChatWebSocketMessage.class);
@@ -50,8 +50,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         log.info("WebSocket 메시지 수신: {}", wsMessage.getType());
 
         ServiceResult<Void> result = switch (wsMessage.getType()) {
-            case "JOIN" -> handleJoinMessage(session, wsMessage);
-            case "LEAVE" -> handleLeaveMessage(session);
+            case "CONNECT" -> handleConnectMessage(session, wsMessage);
+            case "DISCONNECT" -> handleDisconnectMessage(session);
             case "CHAT", "FILE" -> {
                 log.warn("CHAT/FILE 메시지는 REST API를 사용해주세요: {}", wsMessage.getType());
                 yield ServiceResult.fail(ErrorCode.COMMON_BAD_REQUEST);
@@ -89,8 +89,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // 채팅방 접속 핸들러(JOIN)
-    private ServiceResult<Void> handleJoinMessage(WebSocketSession session, ChatWebSocketMessage message) {
+    // 채팅방 접속 핸들러(CONNECT)
+    private ServiceResult<Void> handleConnectMessage(WebSocketSession session, ChatWebSocketMessage message) {
         Integer chatRoomId = message.getChatRoomId();
         Integer userId = message.getSenderId();
         UserRole userRole = message.getUserRole();
@@ -109,7 +109,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         // JOIN 성공 응답 (본인에게)
         ChatWebSocketMessage response = ChatWebSocketMessage.builder()
-                .type("JOIN_SUCCESS")
+                .type("CONNECT_SUCCESS")
                 .chatRoomId(chatRoomId)
                 .senderId(userId)
                 .userRole(userRole)
@@ -118,9 +118,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         sendMessage(session, response);
 
-        // 다른 사용자들에게 JOIN 메시지 브로드캐스트
-        ChatWebSocketMessage joinBroadcast = ChatWebSocketMessage.builder()
-                .type("JOIN")
+        // 다른 사용자들에게 CONNECT 메시지 브로드캐스트
+        ChatWebSocketMessage connectBroadcast = ChatWebSocketMessage.builder()
+                .type("CONNECT")
                 .chatRoomId(chatRoomId)
                 .senderId(userId)
                 .userRole(userRole)
@@ -129,13 +129,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        broadcastToChatRoom(chatRoomId, joinBroadcast);
+        broadcastToChatRoom(chatRoomId, connectBroadcast);
 
         return ServiceResult.ok();
     }
 
-    // 채팅방 나가기 핸들러(LEAVE)
-    private ServiceResult<Void> handleLeaveMessage(WebSocketSession session) {
+    // 채팅방 나가기 핸들러(DISCONNECT)
+    private ServiceResult<Void> handleDisconnectMessage(WebSocketSession session) {
         UserSessionInfo sessionInfo = sessionInfoMap.get(session.getId());
         if (sessionInfo == null) {
             return ServiceResult.ok();
@@ -143,9 +143,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         Integer chatRoomId = sessionInfo.getChatRoomId();
 
-        // 다른 사용자들에게 나가기 메시지 브로드캐스트 (세션 제거 전에 실행)
-        ChatWebSocketMessage leaveMessage = ChatWebSocketMessage.builder()
-                .type("LEAVE")
+        // 다른 사용자들에게 DISCONNECT 메시지 브로드캐스트 (세션 제거 전에 실행)
+        ChatWebSocketMessage disconnectMessage = ChatWebSocketMessage.builder()
+                .type("DISCONNECT")
                 .chatRoomId(chatRoomId)
                 .senderId(sessionInfo.getUserId())
                 .userRole(sessionInfo.getUserRole())
@@ -154,7 +154,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        broadcastToChatRoom(chatRoomId, leaveMessage);
+        broadcastToChatRoom(chatRoomId, disconnectMessage);
 
         // 채팅방에서 세션 제거
         CopyOnWriteArraySet<WebSocketSession> sessions = chatRoomSessions.get(chatRoomId);

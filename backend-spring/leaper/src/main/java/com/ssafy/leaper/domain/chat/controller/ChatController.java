@@ -14,15 +14,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/chatRoom")
 @RequiredArgsConstructor
-@Tag(name = "ChatRoom", description = "채팅방 관리 API")
-public class ChatRoomController implements BaseController {
+@Tag(name = "Chat", description = "채팅 관리 API")
+public class ChatController implements BaseController {
 
     private final ChatService chatService;
 
@@ -31,14 +30,10 @@ public class ChatRoomController implements BaseController {
      * POST /api/v1/chatRoom?influencer={influencerId}&advertiser={advertiserId}
      */
     @PostMapping
-    @Operation(summary = "채팅방 생성", description = "인플루언서와 광고주 간의 새로운 채팅방을 생성합니다.")
+    @Operation(summary = "채팅방 생성", description = "인플루언서와 광고주 간의 채팅방을 찾거나 생성합니다.")
     public ResponseEntity<ApiResponse<ChatRoomCreateResponse>> createChatRoom(
             @RequestParam("influencer") Integer influencerId,
             @RequestParam("advertiser") Integer advertiserId) {
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Integer currentUserId = Integer.parseInt(auth.getName());
-//        String userRole = auth.getAuthorities();
 
         return handle(chatService.createChatRoom(influencerId, advertiserId));
     }
@@ -50,12 +45,13 @@ public class ChatRoomController implements BaseController {
     @GetMapping
     @Operation(summary = "채팅방 목록 조회", description = "현재 사용자의 채팅방 목록을 조회합니다.")
     public ResponseEntity<ApiResponse<ChatRoomListResponse>> getChatRoomList(
-            // TODO: Authentication에서 현재 사용자 정보 추출
-            @RequestHeader("Authorization") String authorization) {
+            Authentication authentication) {
 
-        // 임시로 하드코딩 (추후 인증 구현 시 수정)
-        Integer currentUserId = 1; // TODO: JWT에서 추출
-        String userRole = "ADVERTISER"; // TODO: JWT에서 추출
+        Integer currentUserId = Integer.parseInt(authentication.getName());
+        String userRole = authentication.getAuthorities().iterator().next().getAuthority();
+        if (userRole != null && userRole.startsWith("ROLE_")) {
+            userRole = userRole.substring(5);
+        }
 
         return handle(chatService.getChatRoomList(currentUserId, userRole));
     }
@@ -71,7 +67,7 @@ public class ChatRoomController implements BaseController {
             @RequestParam(required = false) String before,
             @RequestParam(required = false) String after,
             @RequestParam(defaultValue = "150") int size) {
-        
+
         return handle(chatService.getChatMessages(chatRoomId, before, after, size));
     }
 
@@ -114,12 +110,13 @@ public class ChatRoomController implements BaseController {
     @Operation(summary = "채팅방 나가기", description = "사용자가 채팅방에서 나갑니다.")
     public ResponseEntity<ApiResponse<Void>> leaveChatRoom(
             @PathVariable Integer chatRoomId,
-            // TODO: Authentication에서 현재 사용자 정보 추출
-            @RequestHeader("Authorization") String authorization) {
+            Authentication authentication) {
 
-        // 임시로 하드코딩 (추후 인증 구현 시 수정)
-        Integer currentUserId = 1; // TODO: JWT에서 추출
-        String userRole = "ADVERTISER"; // TODO: JWT에서 추출
+        Integer currentUserId = Integer.parseInt(authentication.getName());
+        String userRole = authentication.getAuthorities().iterator().next().getAuthority();
+        if (userRole != null && userRole.startsWith("ROLE_")) {
+            userRole = userRole.substring(5);
+        }
 
         return handle(chatService.leaveChatRoom(chatRoomId, currentUserId, userRole));
     }
