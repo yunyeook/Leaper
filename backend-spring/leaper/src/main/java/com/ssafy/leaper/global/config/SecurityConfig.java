@@ -9,6 +9,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -40,7 +42,10 @@ public class SecurityConfig {
 
         http.securityMatcher("/api/**")
                 .authorizeHttpRequests(auth ->
-                        auth.requestMatchers(HttpMethod.POST, "/api/v1/influencer/signup").permitAll()
+                        auth.requestMatchers(HttpMethod.POST, "/api/v1/influencer/signup"
+                                , "/api/v1/advertiser/signup"
+                                , "/api/v1/advertiser/business/validate").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/advertiser/duplicate").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(res ->
                         res.jwt(Customizer.withDefaults()));
@@ -57,6 +62,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated());
 
         return http.build();
+    }
+
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
 }

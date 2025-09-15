@@ -44,7 +44,10 @@ public class Advertiser {
     
     @Column(nullable = false, length = 10)
     private String businessRegNo;
-    
+
+    @Column(length = 401)
+    private String bio;
+
     private LocalDate openingDate;
     
     @CreatedDate
