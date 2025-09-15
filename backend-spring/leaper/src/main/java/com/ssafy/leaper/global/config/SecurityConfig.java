@@ -66,7 +66,7 @@ public class SecurityConfig {
     public SecurityFilterChain defaultSecurity(HttpSecurity http) throws Exception {
         http.csrf(c -> c.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/home", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**").permitAll()
+                        .requestMatchers("/", "/home", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**", "/test/jwt").permitAll()
                         .anyRequest().authenticated());
 
         return http.build();

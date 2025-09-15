@@ -129,8 +129,8 @@ public class ChatServiceImpl implements ChatService {
                 Advertiser advertiser = advertiserRepository.findById(chatRoom.getAdvertiserId()).orElse(null);
                 if (advertiser != null) {
                     String profileImageUrl = null;
-                    if (advertiser.getProfileImage() != null) {
-                        profileImageUrl = s3PresignedUrlService.generatePresignedDownloadUrl(advertiser.getProfileImage().getId());
+                    if (advertiser.getCompanyProfileImage() != null) {
+                        profileImageUrl = s3PresignedUrlService.generatePresignedDownloadUrl(advertiser.getCompanyProfileImage().getId());
                     }
                     partnerInfo = ChatRoomListResponse.ChatRoomInfo.PartnerInfo.from(advertiser, profileImageUrl);
                 }
