@@ -10,6 +10,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @RequiredArgsConstructor
@@ -17,12 +18,13 @@ public class SecurityConfig {
 
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     @Order(1)
     public SecurityFilterChain oAuth2SecurityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(c -> c.disable());
-
+        http.csrf(c -> c.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource));
         http.securityMatcher("/oauth2/**", "/login/oauth2/**")
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
 
@@ -36,12 +38,13 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
-        http.csrf(c -> c.disable());
+        http.csrf(c -> c.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource));;
 
         http.securityMatcher("/api/**")
                 .authorizeHttpRequests(auth ->
-                        auth.requestMatchers(HttpMethod.POST, "/api/v1/influencer/signup").permitAll()
-                        .anyRequest().authenticated())
+                        auth.requestMatchers(HttpMethod.POST, "/api/v1/influencer/signup", "/api/test/jwt/**").permitAll()
+                                .anyRequest().authenticated())
                 .oauth2ResourceServer(res ->
                         res.jwt(Customizer.withDefaults()));
 
@@ -52,8 +55,9 @@ public class SecurityConfig {
     @Order(3)
     public SecurityFilterChain defaultSecurity(HttpSecurity http) throws Exception {
         http.csrf(c -> c.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/home", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**").permitAll()
+                        .requestMatchers("/", "/home", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**", "/ws/**").permitAll()
                         .anyRequest().authenticated());
 
         return http.build();
