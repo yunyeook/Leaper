@@ -107,14 +107,30 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         log.info("사용자 {}이 채팅방 {}에 참여했습니다.", userId, chatRoomId);
 
-        // JOIN 성공 응답
+        // JOIN 성공 응답 (본인에게)
         ChatWebSocketMessage response = ChatWebSocketMessage.builder()
                 .type("JOIN_SUCCESS")
                 .chatRoomId(chatRoomId)
+                .senderId(userId)
+                .userRole(userRole)
                 .timestamp(LocalDateTime.now())
                 .build();
 
         sendMessage(session, response);
+
+        // 다른 사용자들에게 JOIN 메시지 브로드캐스트
+        ChatWebSocketMessage joinBroadcast = ChatWebSocketMessage.builder()
+                .type("JOIN")
+                .chatRoomId(chatRoomId)
+                .senderId(userId)
+                .userRole(userRole)
+                .content(null)
+                .messageType(null)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        broadcastToChatRoom(chatRoomId, joinBroadcast);
+
         return ServiceResult.ok();
     }
 
