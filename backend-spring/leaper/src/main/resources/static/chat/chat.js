@@ -6,6 +6,7 @@ let currentPartnerId = null;
 let oldestMessageId = null; // 페이징용
 let isLoadingMessages = false; // 중복 로딩 방지
 let hasMoreMessages = true; // 더 불러올 메시지 여부
+let jwtToken = null; // JWT 토큰 저장
 
 // DOM 요소들
 const elements = {
@@ -23,7 +24,10 @@ const elements = {
     chatContainer: document.getElementById('chatContainer'),
     chatRoomTitle: document.getElementById('chatRoomTitle'),
     textMessageDiv: document.getElementById('textMessageDiv'),
-    fileMessageDiv: document.getElementById('fileMessageDiv')
+    fileMessageDiv: document.getElementById('fileMessageDiv'),
+    authenticateBtn: document.getElementById('authenticateBtn'),
+    authStatus: document.getElementById('authStatus'),
+    authStatusText: document.getElementById('authStatusText')
 };
 
 // WebSocket 연결 (자동 연결)
@@ -72,8 +76,61 @@ function updatePartnerRole() {
     partnerRoleDisplay.textContent = partnerRole;
 }
 
+// JWT 토큰 인증
+async function authenticate() {
+    const userId = document.getElementById('userId').value;
+    const userRole = document.getElementById('userRole').value;
+    const userEmail = document.getElementById('userEmail').value;
+
+    if (!userId || !userEmail) {
+        showAuthStatus('사용자 ID와 이메일을 입력해주세요.', false);
+        return;
+    }
+
+    elements.authenticateBtn.disabled = true;
+    showAuthStatus('JWT 토큰을 생성하는 중...', true);
+
+    try {
+        const response = await fetch('http://localhost:8080/api/test/jwt/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                userId: userId,
+                role: userRole,
+                email: userEmail
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'SUCCESS') {
+            jwtToken = data.token;
+            showAuthStatus(`인증 성공! 토큰이 생성되었습니다.`, true);
+            log(`JWT 토큰 생성 성공: ${userId} (${userRole})`, 'system');
+
+            // 연결 버튼 활성화
+            elements.connectBtn.disabled = false;
+        } else {
+            showAuthStatus(`인증 실패: ${data.message}`, false);
+            log(`JWT 토큰 생성 실패: ${data.message}`, 'error');
+        }
+    } catch (error) {
+        showAuthStatus('인증 중 오류가 발생했습니다.', false);
+        log(`JWT 토큰 생성 오류: ${error}`, 'error');
+    } finally {
+        elements.authenticateBtn.disabled = false;
+    }
+}
+
 // 상대방과 연결
 async function connectToPartner() {
+    if (!jwtToken) {
+        showConnectStatus('먼저 인증을 완료해주세요.', false);
+        return;
+    }
+
     const partnerId = parseInt(document.getElementById('partnerId').value);
     const userId = parseInt(document.getElementById('userId').value);
     const userRole = document.getElementById('userRole').value;
@@ -149,7 +206,11 @@ async function createChatRoomAPI(userId, partnerId, userRole) {
         log(`채팅방 생성 요청: ${url}`, 'system');
 
         const response = await fetch(url, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`,
+                'Content-Type': 'application/json'
+            }
         });
 
         if (!response.ok) {
@@ -204,13 +265,18 @@ async function loadChatMessages(before = null) {
     try {
         isLoadingMessages = true;
 
-        let url = `/api/v1/chatRoom/${currentChatRoomId}/message?size=150`; // size 미포함 시 default=150
+        let url = `http://localhost:8080/api/v1/chatRoom/${currentChatRoomId}/message?size=150`; // size 미포함 시 default=150
         if (before) {
             url += `&before=${before}`;
         }
 
         log(`메시지 로드 요청: ${url}, oldestMessageId: ${oldestMessageId}`, 'system');
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
         const data = await response.json();
 
         if (data.status === 'SUCCESS') {
@@ -298,7 +364,8 @@ async function leaveChatRoom() {
         const response = await fetch(url, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer fake-token-${userId}-${userRole}` // 테스트용 토큰
+                'Authorization': `Bearer ${jwtToken}`,
+                'Content-Type': 'application/json'
             }
         });
 
@@ -377,6 +444,9 @@ async function sendFileMessage() {
 
         const response = await fetch(`http://localhost:8080/api/v1/chatRoom/${currentChatRoomId}/message`, {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`
+            },
             body: formData
         });
 
@@ -542,6 +612,13 @@ function showConnectStatus(message, isSuccess) {
     elements.connectStatus.className = `connect-status ${isSuccess ? 'connect-success' : 'connect-error'}`;
 }
 
+// 인증 상태 표시
+function showAuthStatus(message, isSuccess) {
+    elements.authStatus.style.display = 'block';
+    elements.authStatusText.textContent = message;
+    elements.authStatus.className = `connect-status ${isSuccess ? 'connect-success' : 'connect-error'}`;
+}
+
 // 채팅방 표시
 function showChatRoom(chatRoomId) {
     elements.chatContainer.style.display = 'block';
@@ -682,4 +759,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updatePartnerRole(); // 초기 상대방 역할 설정
     toggleMessageInput(); // 초기 메시지 입력 방식 설정
     setupScrollListener(); // 스크롤 이벤트 리스너 설정
+
+    // 연결 버튼 초기 비활성화 (인증 후 활성화)
+    elements.connectBtn.disabled = true;
 });
