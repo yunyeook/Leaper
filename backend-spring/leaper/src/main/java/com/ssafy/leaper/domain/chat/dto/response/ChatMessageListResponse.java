@@ -26,13 +26,13 @@ public class ChatMessageListResponse {
     @Builder
     public static class MessageInfo {
         private String messageId;
-        private Long senderId;
+        private Integer senderId;
         private UserRole userRole;
         private String content;
         private MessageType messageType;
         private LocalDateTime createdAt;
         private String fileName;
-        private Long fileSize;
+        private Integer fileSize;
         
         public static MessageInfo from(ChatMessage chatMessage) {
             return MessageInfo.builder()

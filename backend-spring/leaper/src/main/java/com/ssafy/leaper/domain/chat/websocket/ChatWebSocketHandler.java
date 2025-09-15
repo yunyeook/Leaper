@@ -36,7 +36,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final S3PresignedUrlService s3PresignedUrlService;
 
     // 채팅방별로 연결된 세션들을 관리
-    private final Map<Long, CopyOnWriteArraySet<WebSocketSession>> chatRoomSessions = new ConcurrentHashMap<>();
+    private final Map<Integer, CopyOnWriteArraySet<WebSocketSession>> chatRoomSessions = new ConcurrentHashMap<>();
     // 세션별로 사용자 정보를 관리
     private final Map<String, UserSessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
 
@@ -81,7 +81,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         UserSessionInfo sessionInfo = sessionInfoMap.get(session.getId());
         if (sessionInfo != null) {
             // 채팅방에서 세션 제거
-            Long chatRoomId = sessionInfo.getChatRoomId();
+            Integer chatRoomId = sessionInfo.getChatRoomId();
             if (chatRoomId != null) {
                 CopyOnWriteArraySet<WebSocketSession> sessions = chatRoomSessions.get(chatRoomId);
                 if (sessions != null) {
@@ -97,8 +97,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     // 채팅방 접속 핸들러(JOIN)
     private ServiceResult<Void> handleJoinMessage(WebSocketSession session, ChatWebSocketMessage message) {
-        Long chatRoomId = message.getChatRoomId();
-        Long userId = message.getSenderId();
+        Integer chatRoomId = message.getChatRoomId();
+        Integer userId = message.getSenderId();
         UserRole userRole = message.getUserRole();
 
         if (chatRoomId == null || userId == null || userRole == null) {
@@ -210,7 +210,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return ServiceResult.ok();
         }
 
-        Long chatRoomId = sessionInfo.getChatRoomId();
+        Integer chatRoomId = sessionInfo.getChatRoomId();
 
         // 다른 사용자들에게 나가기 메시지 브로드캐스트 (세션 제거 전에 실행)
         ChatWebSocketMessage leaveMessage = ChatWebSocketMessage.builder()
@@ -240,7 +240,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     // 채팅 메시지 브로드캐스팅 - 채팅방 내 참여자들에게 메시지 전송
-    private void broadcastToChatRoom(Long chatRoomId, ChatWebSocketMessage message) {
+    private void broadcastToChatRoom(Integer chatRoomId, ChatWebSocketMessage message) {
         CopyOnWriteArraySet<WebSocketSession> sessions = chatRoomSessions.get(chatRoomId);
         if (sessions == null) {
             return;
@@ -284,8 +284,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     @Getter
     @AllArgsConstructor
     private static class UserSessionInfo {
-        private final Long chatRoomId;
-        private final Long userId;
+        private final Integer chatRoomId;
+        private final Integer userId;
         private final UserRole userRole;
     }
 }

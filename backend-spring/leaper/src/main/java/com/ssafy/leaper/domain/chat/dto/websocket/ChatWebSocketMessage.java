@@ -17,8 +17,8 @@ import java.time.LocalDateTime;
 @Builder
 public class ChatWebSocketMessage {
     private String type;
-    private Long chatRoomId;
-    private Long senderId;
+    private Integer chatRoomId;
+    private Integer senderId;
     private String content;
     private UserRole userRole;
     private MessageType messageType;
@@ -27,6 +27,6 @@ public class ChatWebSocketMessage {
 
     // 파일 메시지용 필드들
     private String fileName;
-    private Long fileSize;
+    private Integer fileSize;
     private String fileUrl;
 }

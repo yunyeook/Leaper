@@ -7,7 +7,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class ChatRoomCreateResponse {
-    private Long chatRoomId;
+    private Integer chatRoomId;
     
     public static ChatRoomCreateResponse from(ChatRoom chatRoom) {
         return ChatRoomCreateResponse.builder()
