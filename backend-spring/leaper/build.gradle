@@ -43,9 +43,6 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
 
-    // 개발 편의 기능
-    developmentOnly 'org.springframework.boot:spring-boot-devtools' // Hot reload 지원
-
     // Swagger (Springdoc OpenAPI)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
 
@@ -71,34 +68,6 @@ dependencies {
     // implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
 
 
-    // Apache Spark 관련 (로깅 충돌 방지)
-    implementation('org.apache.spark:spark-core_2.13:3.5.0') {
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'log4j', module: 'log4j'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
-    }
-    implementation('org.apache.spark:spark-sql_2.13:3.5.0') {
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'log4j', module: 'log4j'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
-    }
-    implementation('org.apache.spark:spark-hadoop-cloud_2.13:3.5.0') {
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'log4j', module: 'log4j'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
-    }
-
-    // Hadoop AWS (S3 연동용) - 로깅 충돌 방지
-    implementation('org.apache.hadoop:hadoop-aws:3.3.4') {
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'log4j', module: 'log4j'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
-    }
-
-    // 크롤링 관련
-    implementation 'org.jsoup:jsoup:1.16.1'
-    implementation 'org.seleniumhq.selenium:selenium-java:4.15.0'
-
     // 스케줄링
     implementation 'org.springframework.boot:spring-boot-starter-quartz'
 
@@ -107,6 +76,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     implementation 'io.github.cdimascio:java-dotenv:5.1.1'
+
 }
 
 tasks.named('test') {

@@ -1,4 +1,4 @@
-package com.ssafy.leaper.domain.pipeline.service;
+package com.ssafy.spark.domain.spark.service;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;

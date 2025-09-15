@@ -64,6 +64,18 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // security 꺼놓기
+    @Bean
+    @Order(0)
+    public SecurityFilterChain testSecurity(HttpSecurity http) throws Exception {
+        http.csrf(c -> c.disable());
+
+        http.securityMatcher("/api/**")
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+
+        return http.build();
+    }
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {
