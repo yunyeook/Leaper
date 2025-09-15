@@ -1,6 +1,7 @@
 package com.ssafy.leaper.domain.advertiser.service;
 
 import com.ssafy.leaper.domain.advertiser.dto.request.AdvertiserSignupRequest;
+import com.ssafy.leaper.domain.advertiser.dto.request.BusinessValidationApiRequest;
 import com.ssafy.leaper.domain.advertiser.dto.response.AdvertiserSignupResponse;
 import com.ssafy.leaper.domain.advertiser.entity.Advertiser;
 import com.ssafy.leaper.domain.advertiser.repository.AdvertiserRepository;
@@ -21,6 +22,7 @@ public class AdvertiserService {
 
     private final AdvertiserRepository advertiserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final BusinessValidationService businessValidationService;
 
     @Transactional
     public ServiceResult<AdvertiserSignupResponse> signup(AdvertiserSignupRequest request) {
@@ -35,12 +37,20 @@ public class AdvertiserService {
                 return ServiceResult.fail(ErrorCode.DUPLICATE_LOGIN_ID);
             }
 
-            // 2. 중복 검증 - 사업자등록번호 (입력된 경우에만)
-            if (request.getBusinessRegNo() != null && !request.getBusinessRegNo().trim().isEmpty()) {
-                if (advertiserRepository.existsByBusinessRegNo(request.getBusinessRegNo())) {
-                    log.warn("Advertiser signup failed - duplicate businessRegNo: {}", request.getBusinessRegNo());
-                    return ServiceResult.fail(ErrorCode.DUPLICATE_BUSINESS_REG_NO);
-                }
+            // 2. 중복 검증 - 사업자등록번호
+            if (advertiserRepository.existsByBusinessRegNo(request.getBusinessRegNo())) {
+                log.warn("Advertiser signup failed - duplicate businessRegNo: {}", request.getBusinessRegNo());
+                return ServiceResult.fail(ErrorCode.DUPLICATE_BUSINESS_REG_NO);
+            }
+
+            // 3. 실제 사업자등록번호 검증 (국세청 API)
+            if (!businessValidationService.validateBusinessRegistration(
+                    request.getBusinessRegNo(),
+                    request.getRepresentativeName(),
+                    request.getOpeningDate())) {
+                log.warn("Advertiser signup failed - invalid business registration: businessRegNo: {}, representativeName: {}",
+                        request.getBusinessRegNo(), request.getRepresentativeName());
+                return ServiceResult.fail(ErrorCode.INVALID_BUSINESS_REG_NO);
             }
 
             // 3. 프로필 이미지 업로드 처리
@@ -108,6 +118,34 @@ public class AdvertiserService {
 
         } catch (Exception e) {
             log.error("Failed to check loginId duplicate - loginId: {}", loginId, e);
+            return ServiceResult.fail(ErrorCode.COMMON_INTERNAL_ERROR);
+        }
+    }
+
+    public ServiceResult<Void> validateBusinessRegistrationApi(BusinessValidationApiRequest request) {
+        log.info("API business registration validation - businessRegNo: {}, representativeName: {}",
+                request.getBusinessRegNo(), request.getRepresentativeName());
+
+        try {
+            boolean isValid = businessValidationService.validateBusinessRegistration(
+                    request.getBusinessRegNo(),
+                    request.getRepresentativeName(),
+                    request.getOpeningDate()
+            );
+
+            if (isValid) {
+                log.info("API business registration validation succeeded - businessRegNo: {}",
+                        request.getBusinessRegNo());
+                return ServiceResult.ok();
+            } else {
+                log.warn("API business registration validation failed - businessRegNo: {}",
+                        request.getBusinessRegNo());
+                return ServiceResult.fail(ErrorCode.INVALID_BUSINESS_REG_NO);
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to validate business registration via API - businessRegNo: {}, representativeName: {}",
+                    request.getBusinessRegNo(), request.getRepresentativeName(), e);
             return ServiceResult.fail(ErrorCode.COMMON_INTERNAL_ERROR);
         }
     }

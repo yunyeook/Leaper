@@ -43,7 +43,8 @@ public class SecurityConfig {
         http.securityMatcher("/api/**")
                 .authorizeHttpRequests(auth ->
                         auth.requestMatchers(HttpMethod.POST, "/api/v1/influencer/signup"
-                                , "/api/v1/advertiser/signup").permitAll()
+                                , "/api/v1/advertiser/signup"
+                                , "/api/v1/advertiser/business/validate").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/advertiser/duplicate").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(res ->
