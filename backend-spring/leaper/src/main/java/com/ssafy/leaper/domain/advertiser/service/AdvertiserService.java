@@ -102,7 +102,7 @@ public class AdvertiserService {
                 companyProfileImage.getOriginalFilename(), companyProfileImage.getSize());
 
         // S3에 파일 업로드 및 DB 저장
-        return s3FileService.uploadFileToS3(companyProfileImage, "profile");
+        return s3FileService.uploadFileToS3(companyProfileImage, "business/profile");
     }
 
     public ServiceResult<Void> checkLoginIdDuplicate(String loginId) {

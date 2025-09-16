@@ -58,7 +58,7 @@ public class SecurityConfig {
                                         "/api/v1/advertiser/business/validate",
                                         "/api/v1/auth/advertiser/login",
                                         "/api/test/jwt/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/advertiser/duplicate").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/advertiser/duplicate", "/api/v1/influencer/duplicate").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(res ->
                         res.jwt(jwt -> jwt.jwtAuthenticationConverter(customJwtAuthenticationConverter)));
@@ -77,17 +77,18 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // security 꺼놓기
-    @Bean
-    @Order(0)
-    public SecurityFilterChain testSecurity(HttpSecurity http) throws Exception {
-        http.csrf(c -> c.disable());
-
-        http.securityMatcher("/api/**")
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
-
-        return http.build();
-    }
+//     security 꺼놓기
+//     꺼놓으면 Authentication 등록이 안되어서 토큰에서 id를 못꺼내옴.
+//    @Bean
+//    @Order(0)
+//    public SecurityFilterChain testSecurity(HttpSecurity http) throws Exception {
+//        http.csrf(c -> c.disable());
+//
+//        http.securityMatcher("/api/**")
+//            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+//
+//        return http.build();
+//    }
 
 
     @Bean

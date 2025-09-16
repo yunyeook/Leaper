@@ -37,6 +37,6 @@ public class InfluencerSignupRequest {
     private MultipartFile profileImage;
 
     public Boolean getGenderAsBoolean() {
-        return "MALE".equals(gender);
+        return "FEMALE".equals(gender);
     }
 }

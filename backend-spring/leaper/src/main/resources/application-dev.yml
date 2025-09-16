@@ -103,4 +103,4 @@ logging:
     org.springframework.data.mongodb.core.MongoTemplate: DEBUG
 
 nts:
-  service-key: your-real-key-here
+  service-key: ${NTS_SERVICE_KEY}

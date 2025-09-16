@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@Builder(toBuilder = true)
 @EntityListeners(AuditingEntityListener.class)
 public class Influencer {
 
@@ -77,6 +77,21 @@ public class Influencer {
             .profileImage(profileImage)
             .isDeleted(false)
             .build();
+  }
+
+  public void delete() {
+    this.isDeleted = true;
+    this.deletedAt = LocalDateTime.now();
+  }
+
+  public void updateProfile(String nickname, String email, String bio,
+                           LocalDate birthday, Boolean gender, File profileImage) {
+    this.nickname = nickname;
+    this.email = email;
+    this.bio = bio;
+    this.birthday = birthday;
+    this.gender = gender;
+    this.profileImage = profileImage;
   }
 }
 
