@@ -93,3 +93,6 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+
+nts:
+  service-key: your-real-key-here

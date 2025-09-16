@@ -1,0 +1,58 @@
+spring:
+  config:
+    import:
+      - optional:file:.env.dev
+
+  datasource:
+    url: ${DB_URL}
+    driver-class-name: ${DB_DRIVER}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: leaper
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+cloud:
+  aws:
+    s3:
+      bucket: ${S3_BUCKET_NAME}
+      expirationForPut: 1
+      expirationForGet: 24
+    credentials:
+      accessKey: ${S3_ACCESS_KEY}
+      secretKey: ${S3_SECRET_KEY}
+    region:
+      static: ap-northeast-2
+      stack:
+        auto: false
+        dialect: ${JPA_DIALECT:org.hibernate.dialect.H2Dialect}
+
+
+
+#  mvc:
+#    favicon:
+#      enabled: false
+
+# Frontend URL for CORS configuration
+front:
+  url: ${FRONT_URL:http://localhost:3000}
+
+# JWT Configuration
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
