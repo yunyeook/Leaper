@@ -528,8 +528,13 @@ function handleIncomingMessage(message) {
             log(`${message.userRole}-${message.senderId}님이 채팅방 ${message.chatRoomId}에서 연결 종료했습니다.`, 'system');
             break;
 
+        case 'JOIN':
+            log(`${message.userRole}-${message.senderId}님이 채팅방에 입장했습니다.`, 'system');
+            addMessage(`${message.userRole}-${message.senderId}님이 채팅방에 입장했습니다.`,'system');
+            break;
+
         case 'LEAVE':
-            log(`${message.userRole}-${message.senderId}님이 채팅방을 나갔습니다.`);
+            log(`${message.userRole}-${message.senderId}님이 채팅방을 나갔습니다.`, 'system');
             addMessage(`${message.userRole}-${message.senderId}님이 채팅방을 나갔습니다.`,'system');
             break;
 

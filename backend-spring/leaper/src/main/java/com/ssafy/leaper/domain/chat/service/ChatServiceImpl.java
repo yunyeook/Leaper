@@ -116,7 +116,7 @@ public class ChatServiceImpl implements ChatService {
             log.info("인플루언서 {} 채팅방 {} JOIN 메시지 저장", influencerId, chatRoom.getId());
 
             // WebSocket 브로드캐스트 - CONNECT 메시지 전송
-            ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+            ChatWebSocketMessage connectMessage = ChatWebSocketMessage.builder()
                     .type("CONNECT")
                     .chatRoomId(chatRoom.getId())
                     .senderId(influencerId)
@@ -125,7 +125,19 @@ public class ChatServiceImpl implements ChatService {
                     .messageType(MessageType.JOIN)
                     .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
                     .build();
-            chatWebSocketHandler.broadcastToChatRoom(chatRoom.getId(), wsMessage);
+            chatWebSocketHandler.broadcastToChatRoom(chatRoom.getId(), connectMessage);
+
+            // WebSocket 브로드캐스트 - JOIN 메시지 전송
+            ChatWebSocketMessage joinMessage = ChatWebSocketMessage.builder()
+                    .type("JOIN")
+                    .chatRoomId(chatRoom.getId())
+                    .senderId(influencerId)
+                    .content(null)
+                    .userRole(UserRole.INFLUENCER)
+                    .messageType(MessageType.JOIN)
+                    .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
+                    .build();
+            chatWebSocketHandler.broadcastToChatRoom(chatRoom.getId(), joinMessage);
         }
 
         // 광고주 JOIN 처리 했을 경우
@@ -142,7 +154,7 @@ public class ChatServiceImpl implements ChatService {
             log.info("광고주 {} 채팅방 {} JOIN 메시지 저장", influencerId, chatRoom.getId());
 
             // WebSocket 브로드캐스트 - CONNECT 메시지 전송
-            ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+            ChatWebSocketMessage connectMessage = ChatWebSocketMessage.builder()
                     .type("CONNECT")
                     .chatRoomId(chatRoom.getId())
                     .senderId(influencerId)
@@ -151,7 +163,19 @@ public class ChatServiceImpl implements ChatService {
                     .messageType(MessageType.JOIN)
                     .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
                     .build();
-            chatWebSocketHandler.broadcastToChatRoom(chatRoom.getId(), wsMessage);
+            chatWebSocketHandler.broadcastToChatRoom(chatRoom.getId(), connectMessage);
+
+            // WebSocket 브로드캐스트 - JOIN 메시지 전송
+            ChatWebSocketMessage joinMessage = ChatWebSocketMessage.builder()
+                    .type("JOIN")
+                    .chatRoomId(chatRoom.getId())
+                    .senderId(influencerId)
+                    .content(null)
+                    .userRole(UserRole.INFLUENCER)
+                    .messageType(MessageType.JOIN)
+                    .timestamp(LocalDateTime.ofInstant(savedMessage.getCreatedAt(), java.time.ZoneId.of("Asia/Seoul")))
+                    .build();
+            chatWebSocketHandler.broadcastToChatRoom(chatRoom.getId(), joinMessage);
         }
 
         return ServiceResult.ok(ChatRoomCreateResponse.from(chatRoom));
