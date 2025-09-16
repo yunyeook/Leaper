@@ -1,8 +1,11 @@
 package com.ssafy.leaper.domain.advertiser.controller;
 
 import com.ssafy.leaper.domain.advertiser.dto.request.AdvertiserSignupRequest;
+import com.ssafy.leaper.domain.advertiser.dto.request.AdvertiserUpdateRequest;
 import com.ssafy.leaper.domain.advertiser.dto.request.BusinessValidationApiRequest;
 import com.ssafy.leaper.domain.advertiser.dto.response.AdvertiserMyProfileResponse;
+import com.ssafy.leaper.domain.advertiser.dto.response.AdvertiserPublicProfileResponse;
+import com.ssafy.leaper.domain.advertiser.dto.response.AdvertiserUpdateResponse;
 import com.ssafy.leaper.domain.advertiser.service.AdvertiserService;
 import com.ssafy.leaper.global.common.controller.BaseController;
 import com.ssafy.leaper.global.common.response.ApiResponse;
@@ -62,11 +65,46 @@ public class AdvertiserController implements BaseController {
     public ResponseEntity<ApiResponse<AdvertiserMyProfileResponse>> getMyProfile() {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Integer advertiserId = Integer.parseInt(authentication.getName());
+        Integer advertiserId = Integer.valueOf(authentication.getName());
 
         log.info("Advertiser profile request - advertiserId: {}", advertiserId);
 
         return handle(advertiserService.getMyProfile(advertiserId));
+    }
+
+    @Operation(summary = "광고주 공개 프로필 조회", description = "특정 광고주의 공개 프로필 정보를 조회합니다.")
+    @GetMapping("/{advertiserId}")
+    public ResponseEntity<ApiResponse<AdvertiserPublicProfileResponse>> getAdvertiserPublicProfile(
+            @PathVariable Integer advertiserId) {
+
+        log.info("Advertiser public profile request - advertiserId: {}", advertiserId);
+
+        return handle(advertiserService.getAdvertiserPublicProfile(advertiserId));
+    }
+
+    @Operation(summary = "광고주 탈퇴", description = "로그인된 광고주의 계정을 탈퇴(소프트 삭제)합니다.")
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Void>> deleteAdvertiser(Authentication authentication) {
+
+        Integer advertiserId = Integer.valueOf(authentication.getName());
+
+        log.info("Advertiser deletion request - advertiserId: {}", advertiserId);
+
+        return handle(advertiserService.deleteAdvertiser(advertiserId));
+    }
+
+    @Operation(summary = "광고주 정보 수정", description = "로그인된 광고주의 정보를 수정합니다.")
+    @PatchMapping(consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<AdvertiserUpdateResponse>> updateAdvertiser(
+            @Valid @ModelAttribute AdvertiserUpdateRequest request,
+            Authentication authentication) {
+
+        Integer advertiserId = Integer.valueOf(authentication.getName());
+
+        log.info("Advertiser update request - advertiserId: {}, brandName: {}",
+                advertiserId, request.getBrandName());
+
+        return handle(advertiserService.updateAdvertiser(advertiserId, request));
     }
 
 }
