@@ -4,6 +4,7 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * 크롤링 후 row-data에 저장하는 기능
+ * 크롤링 후 row-data에 저장하는 기능 :
  * */
 @Service
 public class S3DataService {
@@ -40,7 +41,7 @@ public class S3DataService {
       saveThumbnailImage(platform, contentType, contentId, thumbnailData, mimeType);
 
       // 2. JSON에 썸네일 정보 추가
-      String folderPath = String.format("raw-data/%s/content/%s", platform, contentType.toLowerCase());
+      String folderPath = String.format("raw_data/%s/content/%s", platform, contentType.toLowerCase());
       String thumbnailAccessKey = String.format("%s/thumb_%s", folderPath, contentId);
       String updatedJsonData = addThumbnailInfoToJson(jsonData, thumbnailAccessKey, mimeType);
 
@@ -58,7 +59,7 @@ public class S3DataService {
   public String savePlatformAccount(String platform, String accountId, String jsonData, byte[] profileImageData, String mimeType) {
     try {
       // 1. 프로필 이미지 저장
-      String folderPath = String.format("raw-data/%s/platform-account", platform.toLowerCase());
+      String folderPath = String.format("raw_data/%s/platform-account", platform.toLowerCase());
       String profileFileName = String.format("profile_%s", accountId);
       String profileAccessKey = String.format("%s/%s", folderPath, profileFileName);
       uploadFile(profileAccessKey, profileImageData, mimeType);
@@ -85,7 +86,7 @@ public class S3DataService {
   public String saveContentJson(String platform, String contentType, Integer contentId, String jsonData) {
     try {
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-      String folderPath = String.format("raw-data/%s/content/%s", platform, contentType.toLowerCase());
+      String folderPath = String.format("raw_data/%s/content/%s", platform, contentType.toLowerCase());
       String fileName = String.format("%s_%s_%s.json", contentType.toLowerCase(), contentId, timestamp);
       String accessKey = String.format("%s/%s", folderPath, fileName);
 
@@ -102,7 +103,7 @@ public class S3DataService {
    */
   public String saveThumbnailImage(String platform, String contentType, Integer contentId, byte[] imageData, String mimeType) {
     try {
-      String folderPath = String.format("raw-data/%s/content/%s", platform, contentType.toLowerCase());
+      String folderPath = String.format("raw_data/%s/content/%s", platform, contentType.toLowerCase());
       String fileName = String.format("thumb_%s", contentId);
       String accessKey = String.format("%s/%s", folderPath, fileName);
 
@@ -122,12 +123,14 @@ public class S3DataService {
     try {
       JsonNode jsonNode = objectMapper.readTree(jsonData);
 
-      String thumbnailInfo = String.format("{ \"accessKey\":"+accessKey+", \"contentType\":"+mimeType+"}");
+      ObjectNode thumbnailInfo = objectMapper.createObjectNode();
+      thumbnailInfo.put("accessKey", accessKey);
+      thumbnailInfo.put("contentType", mimeType);
 
-      JsonNode thumbnailInfoNode = objectMapper.readTree(thumbnailInfo);
-      ((com.fasterxml.jackson.databind.node.ObjectNode) jsonNode).set("thumbnailInfo", thumbnailInfoNode);
+      ((ObjectNode) jsonNode).set("thumbnailInfo", thumbnailInfo);
 
-      return objectMapper.writeValueAsString(jsonNode);
+      return objectMapper.writerWithDefaultPrettyPrinter()
+          .writeValueAsString(jsonNode);
 
     } catch (Exception e) {
       throw new RuntimeException("JSON 썸네일 정보 추가 실패", e);
@@ -141,14 +144,15 @@ public class S3DataService {
     try {
       JsonNode jsonNode = objectMapper.readTree(jsonData);
 
-      //TODO ; 필요시 id 정보 추가하기
-      String profileImageInfo = String.format("{ \"accessKey\":"+accessKey+", \"contentType\":"+mimeType+"}");
+      ObjectNode profileImageInfo = objectMapper.createObjectNode();
+      profileImageInfo.put("accessKey", accessKey);
+      profileImageInfo.put("contentType", mimeType);
 
+      ((ObjectNode) jsonNode).set("profileImageInfo", profileImageInfo);
 
-      JsonNode profileImageInfoNode = objectMapper.readTree(profileImageInfo);
-      ((com.fasterxml.jackson.databind.node.ObjectNode) jsonNode).set("profileImageInfo", profileImageInfoNode);
-
-      return objectMapper.writeValueAsString(jsonNode);
+      // 이 한 줄로 pretty print 가능!
+      return objectMapper.writerWithDefaultPrettyPrinter()
+          .writeValueAsString(jsonNode);
 
     } catch (Exception e) {
       throw new RuntimeException("JSON 프로필 이미지 정보 추가 실패", e);
