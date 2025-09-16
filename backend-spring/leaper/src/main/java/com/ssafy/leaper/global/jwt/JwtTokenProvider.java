@@ -45,6 +45,7 @@ public class JwtTokenProvider {
                     .expiresAt(expiry)
                     .claim("scope", "ROLE_INFLUENCER")
                     .claim("email", email)
+                    .claim("tokenType", "ACCESS")
                     .build();
 
             String token = jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claimsSet)).getTokenValue();
@@ -74,6 +75,7 @@ public class JwtTokenProvider {
                     .expiresAt(expiry)
                     .claim("scope", "ROLE_ADVERTISER")
                     .claim("loginId", loginId)
+                    .claim("tokenType", "ACCESS")
                     .build();
 
             String token = jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claimsSet)).getTokenValue();

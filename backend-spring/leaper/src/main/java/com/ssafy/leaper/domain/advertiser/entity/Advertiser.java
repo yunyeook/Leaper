@@ -37,7 +37,7 @@ public class Advertiser {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_profile_image_id")
-    private File profileImage;
+    private File companyProfileImage;
     
     @Column(nullable = false, length = 100)
     private String representativeName;

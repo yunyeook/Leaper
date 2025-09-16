@@ -14,4 +14,6 @@ public interface InfluencerRepository extends JpaRepository<Influencer, Integer>
     Optional<Influencer> findByProviderTypeIdAndProviderMemberIdAndIsDeletedFalse(String providerTypeId, String providerMemberId);
 
     boolean existsByNickname(String nickname);
+
+    Optional<Influencer> findByIdAndIsDeletedFalse(Integer id);
 }

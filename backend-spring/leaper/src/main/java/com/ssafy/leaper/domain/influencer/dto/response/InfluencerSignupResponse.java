@@ -10,10 +10,12 @@ import lombok.*;
 public class InfluencerSignupResponse {
 
     private Integer influencerId;
+    private String accessToken;
 
-    public static InfluencerSignupResponse from(Influencer influencer) {
+    public static InfluencerSignupResponse from(Influencer influencer, String accessToken) {
         return InfluencerSignupResponse.builder()
                 .influencerId(influencer.getId())
+                .accessToken(accessToken)
                 .build();
     }
 }
