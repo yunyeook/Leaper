@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.Dataset;
@@ -31,17 +32,17 @@ public class SparkBaseService {
   protected JdbcTemplate jdbcTemplate;
 
   @Autowired
-  protected ObjectMapper objectMapper;  // S3 JSON 저장용 추가
+  protected ObjectMapper objectMapper;
 
   @Autowired
-  protected AmazonS3Client amazonS3Client;  // S3 저장용 추가
+  protected AmazonS3Client amazonS3Client;
 
   @Value("${cloud.aws.s3.bucket}")
   protected String bucketName;
 
 
   /**
-   * 특정 날짜의 콘텐츠 데이터 읽기 : 주로 오늘 날짜 데이터를 읽음.
+   * 특정 날짜의 콘텐츠 데이터 읽기 : 주로 오늘 크롤링 한 데이터를 읽음.
    */
   protected Dataset<Row> readS3ContentDataByDate(String platformType, LocalDate targetDate) {
     try {
@@ -79,18 +80,6 @@ public class SparkBaseService {
     }
   }
 
-  /**
-   * accountNickname로  PlatformAccount ID 조회
-   */
-  protected Integer getPlatformAccountId(String platform, String accountNickname) {
-    try {
-      String sql = "SELECT platform_account_id FROM platform_account WHERE platform_type_id= ? AND account_nickname = ?";
-      return jdbcTemplate.queryForObject(sql, Integer.class, platform.toUpperCase(), accountNickname);
-    } catch (Exception e) {
-      log.warn("PlatformAccount 조회 실패: platform={}, accountNickname={}", platform, accountNickname);
-      return null;
-    }
-  }
 
   /**
    * S3 파일 업로드 공통 메소드
@@ -155,6 +144,83 @@ public class SparkBaseService {
 
     } catch (Exception e) {
       log.error("S3 파일 읽기 실패: {}", s3Path, e);
+    }
+  }
+
+  /**
+   *  DB 조회 메소드
+   */
+  /**
+   * 외부 콘텐츠 ID -> DB content_id 조회
+   */
+  protected Integer getContentId(String platformType, String externalContentId) {
+    try {
+      String sql = "SELECT content_id " +
+          "FROM content " +
+          "WHERE platform_type_id = ? " +
+          "AND external_content_id = ? " +
+          "LIMIT 1";
+
+      List<Integer> results = jdbcTemplate.query(sql,
+          (rs, rowNum) -> rs.getInt("content_id"),
+          platformType,
+          externalContentId
+      );
+
+      if (results.isEmpty()) {
+        log.warn("Content not found for platform={}, externalContentId={}",
+            platformType, externalContentId);
+        return null;
+      }
+
+      return results.get(0);
+
+    } catch (Exception e) {
+      log.error("getContentId 매핑 실패: platform={}, externalContentId={}",
+          platformType, externalContentId, e);
+      return null;
+    }
+  }
+
+  /**
+   * 카테고리명 -> DB category_type_id 조회
+   */
+  protected Integer getCategoryTypeId(String categoryName) {
+    try {
+      String sql = "SELECT category_type_id " +
+          "FROM category_type " +
+          "WHERE category_name = ? " +
+          "LIMIT 1";
+
+      List<Integer> results = jdbcTemplate.query(sql,
+          (rs, rowNum) -> rs.getInt("category_type_id"),
+          categoryName
+      );
+
+      if (results.isEmpty()) {
+        log.warn("CategoryType not found for categoryName={}",
+            categoryName);
+        return null;
+      }
+
+      return results.get(0);
+
+    } catch (Exception e) {
+      log.error("CategoryName 매핑 실패: categoryName={}",
+          categoryName, e);
+      return null;
+    }
+  }
+  /**
+   * 외부 계정 닉네임 ->  PlatformAccount ID 조회
+   */
+  protected Integer getPlatformAccountId(String platform, String accountNickname) {
+    try {
+      String sql = "SELECT platform_account_id FROM platform_account WHERE platform_type_id= ? AND account_nickname = ?";
+      return jdbcTemplate.queryForObject(sql, Integer.class, platform.toUpperCase(), accountNickname);
+    } catch (Exception e) {
+      log.warn("PlatformAccount 조회 실패: platform={}, accountNickname={}", platform, accountNickname);
+      return null;
     }
   }
 }

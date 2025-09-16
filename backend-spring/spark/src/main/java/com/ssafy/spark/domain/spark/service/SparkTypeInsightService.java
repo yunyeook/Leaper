@@ -26,7 +26,7 @@ public class SparkTypeInsightService extends SparkBaseService {
    */
   public void generateDailyTypeInsight(String platformType, LocalDate targetDate) {
     try {
-      // 1. 오늘 콘텐츠 데이터 집계
+      // 1. 콘텐츠 데이터 읽기
       Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate);
 
       Dataset<Row> typeStatistics = contentData
