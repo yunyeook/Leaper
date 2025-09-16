@@ -80,14 +80,14 @@ public class SparkBaseService {
   }
 
   /**
-   * PlatformAccount ID 조회
+   * accountNickname로  PlatformAccount ID 조회
    */
-  protected Integer getPlatformAccountId(String platform, String externalAccountId) {
+  protected Integer getPlatformAccountId(String platform, String accountNickname) {
     try {
-      String sql = "SELECT platform_account_id FROM platform_account WHERE platform_type_id= ? AND external_account_id = ?";
-      return jdbcTemplate.queryForObject(sql, Integer.class, platform.toUpperCase(), externalAccountId);
+      String sql = "SELECT platform_account_id FROM platform_account WHERE platform_type_id= ? AND account_nickname = ?";
+      return jdbcTemplate.queryForObject(sql, Integer.class, platform.toUpperCase(), accountNickname);
     } catch (Exception e) {
-      log.warn("PlatformAccount 조회 실패: platform={}, externalAccountId={}", platform, externalAccountId);
+      log.warn("PlatformAccount 조회 실패: platform={}, accountNickname={}", platform, accountNickname);
       return null;
     }
   }

@@ -1,8 +1,10 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.spark.controller;
 
+import com.ssafy.spark.domain.spark.service.SparkAccountInsightService;
+import com.ssafy.spark.domain.spark.service.SparkPopularContentService;
+import com.ssafy.spark.domain.spark.service.SparkTypeInsightService;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ public class SparkAnalysisController {
 
   private final SparkAccountInsightService sparkAccountInsightService;
   private final SparkTypeInsightService sparkTypeInsightService;
+  private final SparkPopularContentService sparkPopularContentService;
 
 
   @GetMapping("/test")
@@ -49,6 +52,25 @@ public class SparkAnalysisController {
     sparkTypeInsightService.generateDailyTypeInsight(platform, targetDate);
 
     return ResponseEntity.ok("통계 생성 완료: " + platform + ", " + targetDate);
+  }
+
+
+
+  @GetMapping("/test3")
+  public ResponseEntity<String> dailyPopulaInsight(
+      @RequestParam(defaultValue = "instagram") String platformType,
+      @RequestParam(defaultValue = "1") String categoryType,
+      @RequestParam(required = false)
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
+  ) {
+    // targetDate가 null이면 오늘 날짜 사용
+    if (targetDate == null) {
+      targetDate = LocalDate.now();
+    }
+
+    sparkPopularContentService.generateDailyPopularContent(platformType, categoryType,targetDate);
+
+    return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
   }
 
   @GetMapping("/check-s3")

@@ -33,12 +33,12 @@ public class SparkAccountInsightService extends SparkBaseService {
       // 2. 계정 프로필 데이터 읽기 (팔로워 수 정보용)
       Dataset<Row> accountData = readS3AccountData(platformType);
 
-      // 3. 콘텐츠별 통계 집계 (계정별로 그룹핑)
+      // 3. 콘텐츠별 통계 집계 (계정별로 accountNickname 그룹핑)
       Dataset<Row> contentStatistics = contentData
-          .filter(col("externalAccountId").isNotNull())
-          .groupBy("externalAccountId")
+          .filter(col("accountNickname").isNotNull())
+          .groupBy("accountNickname")
           .agg(
-              // 게시물들의 조회수 합계
+              // 게시물들의 조회수 합계(Long 타입으로 자동 저장)
               sum(when(col("viewsCount").isNotNull(), col("viewsCount")).otherwise(0)).alias("totalViews"),
               // 게시물들의 좋아요 합계
               sum(when(col("likesCount").isNotNull(), col("likesCount")).otherwise(0)).alias("totalLikes"),
@@ -50,52 +50,48 @@ public class SparkAccountInsightService extends SparkBaseService {
 
       // 4. 계정 프로필 정보에서 팔로워 수 추출
       Dataset<Row> accountFollowers = accountData
-          .filter(col("externalAccountId").isNotNull())
-          .select("externalAccountId", "followersCount")
+          .filter(col("accountNickname").isNotNull())
+          .select("accountNickname", "followersCount")
           .withColumnRenamed("followersCount", "totalFollowers");
 
       // 5. 콘텐츠 통계 + 계정 정보 조인
-      Dataset<Row> finalStatistics = contentStatistics
-          .join(accountFollowers, "externalAccountId")  // externalAccountId로 조인
-          .select("externalAccountId", "totalViews", "totalLikes",
+      Dataset<Row> joinedData = contentStatistics
+          .join(accountFollowers, "accountNickname")
+          .select("accountNickname", "totalViews", "totalLikes",
               "totalComments", "totalContents", "totalFollowers");
 
-      // 6. 결과를 MySQL에 저장
-      List<Row> results = finalStatistics.collectAsList();
-log.info("계정 몇개?");
+      // 6. 결과 저장
+      List<Row> results = joinedData.collectAsList();
+      log.info("계정 몇개?");
       log.info(String.valueOf(results.size()));
 
       for (Row row : results) {
+        String accountNickname = row.getAs("accountNickname");
+        Integer platformAccountId = getPlatformAccountId(platformType, accountNickname);
+
         // 1) MySQL에 저장
-        saveDailyAccountInsight(platformType, row, targetDate);
+        saveDailyAccountInsight(platformType, row, targetDate,platformAccountId, accountNickname);
 
         // 2) S3에도 저장
-        saveStatisticsToS3(platformType, row, targetDate);
+        saveStatisticsToS3(platformType, row, targetDate,platformAccountId, accountNickname);
       }
     } catch (Exception e) {
         throw new RuntimeException("DailyAccountInsight 생성 실패", e);
     }
   }
 
-  private void saveStatisticsToS3(String platform, Row row, LocalDate targetDate) {
+  private void saveStatisticsToS3(String platformType, Row row, LocalDate targetDate,Integer platformAccountId,String accountNickname) {
     try {
-      String externalAccountId = row.getAs("externalAccountId");
 
       // 통계 결과를 JSON으로 변환
       ObjectNode statisticsJson = objectMapper.createObjectNode();
-      statisticsJson.put("externalAccountId", externalAccountId);
-      statisticsJson.put("platform", platform);
+      statisticsJson.put("platformAccountId", platformAccountId);
+      statisticsJson.put("platformType", platformType);
       statisticsJson.put("totalViews", row.getAs("totalViews").toString());
       statisticsJson.put("totalLikes", row.getAs("totalLikes").toString());
       statisticsJson.put("totalComments", row.getAs("totalComments").toString());
-
-      // Long → Integer 안전 변환
-      Long totalContents = row.getAs("totalContents");
-      Long totalFollowers = row.getAs("totalFollowers");
-
-      statisticsJson.put("totalContents", totalContents != null ? totalContents.intValue() : 0);
-      statisticsJson.put("totalFollowers", totalFollowers != null ? totalFollowers.intValue() : 0);
-
+      statisticsJson.put("totalContents",(Long) row.getAs("totalContents"));
+      statisticsJson.put("totalFollowers",(Long) row.getAs("totalFollowers"));
       statisticsJson.put("snapshotDate", targetDate.toString());
       statisticsJson.put("processedAt", LocalDateTime.now().toString());
 
@@ -103,34 +99,30 @@ log.info("계정 몇개?");
           .writeValueAsString(statisticsJson);
 
       // S3 저장 경로
-      // 날짜 폴더 (예: 2025/09/16)
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
       String fileName = String.format("daily_stats_%s_%s_%s.json",
-          platform, externalAccountId, timestamp);
+          platformType, accountNickname, timestamp);
       String s3Path = String.format("processed_data/%s/daily_account_insight/%s/%s",
-          platform, dateFolder, fileName);
+          platformType, dateFolder, fileName);
 
       // S3에 저장
       uploadFile(s3Path, jsonData.getBytes(), "application/json");
 
-      log.info("S3 통계 저장 완료: {}", s3Path);  // debug → info 변경
+      log.info("S3 통계 저장 완료: {}", s3Path);
 
     } catch (Exception e) {
-      log.error("S3 통계 저장 실패: platform={}, externalAccountId={}",
-          platform, row.getAs("externalAccountId"), e);
+      log.error("S3 통계 저장 실패: platformType={}, accountNickname={}",
+          platformType, row.getAs("accountNickname"), e);
     }
   }
 
-  private void saveDailyAccountInsight(String platform, Row row, LocalDate targetDate) {
+  private void saveDailyAccountInsight(String platformType, Row row, LocalDate targetDate, Integer platformAccountId, String accountNickname) {
     try {
-      // 1. externalAccountId → platform_account_id 변환
-      String externalAccountId = row.getAs("externalAccountId");
-      Integer platformAccountId = getPlatformAccountId(platform, externalAccountId);
 
       if (platformAccountId == null) {
-        log.warn("PlatformAccount not found: platform={}, externalAccountId={}",
-            platform, externalAccountId);
+        log.warn("PlatformAccount not found: platformType={}, accountNickname={}",
+            platformType, accountNickname);
         return;
       }
 
@@ -163,7 +155,7 @@ log.info("계정 몇개?");
 
       // 5. 파라미터 바인딩
       jdbcTemplate.update(sql,
-          platformAccountId,      // platform_account_id (INT UNSIGNED)
+          platformAccountId,     // platform_account_id (INT UNSIGNED)
           totalViews,            // total_views (BIGINT UNSIGNED) → BigInteger
           totalFollowers,        // total_followers (INT UNSIGNED) → Integer
           totalContents,         // total_contents (INT UNSIGNED) → Integer
