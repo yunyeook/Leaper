@@ -530,12 +530,14 @@ function handleIncomingMessage(message) {
 
         case 'JOIN':
             log(`${message.userRole}-${message.senderId}님이 채팅방에 입장했습니다.`, 'system');
-            addMessage(`${message.userRole}-${message.senderId}님이 채팅방에 입장했습니다.`,'system');
+            // 입장 메시지 표시 안함
+            // addMessage(`${message.userRole}-${message.senderId}님이 채팅방에 입장했습니다.`,'system');
             break;
 
         case 'LEAVE':
             log(`${message.userRole}-${message.senderId}님이 채팅방을 나갔습니다.`, 'system');
-            addMessage(`${message.userRole}-${message.senderId}님이 채팅방을 나갔습니다.`,'system');
+            // 퇴장 메시지 표시 안함
+            // addMessage(`${message.userRole}-${message.senderId}님이 채팅방을 나갔습니다.`,'system');
             break;
 
         case 'ERROR':
@@ -665,14 +667,20 @@ function addMessageFromHistory(msg, append = true) {
             <span>${messageTime}</span> ${userLabel}: [파일] ${msg.fileName || 'file'} (${formatFileSize(msg.fileSize || 0)})
             <br><a href="${msg.content}" target="_blank">📎 ${msg.fileName || 'file'} 다운로드</a>
         `;
-    } else if (msg.messageType === 'JOIN') {
-        // 입장 메시지 - 시스템 메시지로 표시
-        messageElement.className = 'message system';
-        messageElement.innerHTML = `<span>${messageTime}</span> ${msg.userRole}-${msg.senderId}님이 채팅방에 입장했습니다.`;
-    } else if (msg.messageType === 'LEAVE') {
-        // 나가기 메시지 - 시스템 메시지로 표시
-        messageElement.className = 'message system';
-        messageElement.innerHTML = `<span>${messageTime}</span> ${msg.userRole}-${msg.senderId}님이 채팅방을 나갔습니다.`;
+
+    // 입장/퇴장 메시지 표시
+    // } else if (msg.messageType === 'JOIN') {
+    //     // 입장 메시지 - 시스템 메시지로 표시
+    //     messageElement.className = 'message system';
+    //     messageElement.innerHTML = `<span>${messageTime}</span> ${msg.userRole}-${msg.senderId}님이 채팅방에 입장했습니다.`;
+    // } else if (msg.messageType === 'LEAVE') {
+    //     // 나가기 메시지 - 시스템 메시지로 표시
+    //     messageElement.className = 'message system';
+    //     messageElement.innerHTML = `<span>${messageTime}</span> ${msg.userRole}-${msg.senderId}님이 채팅방을 나갔습니다.`;
+
+    // 입장/퇴장 메시지 표시 안함
+    }else{
+        return;
     }
 
     if (append) {
