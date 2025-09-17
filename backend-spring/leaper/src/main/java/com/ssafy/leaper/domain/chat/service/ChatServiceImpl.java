@@ -3,6 +3,8 @@ package com.ssafy.leaper.domain.chat.service;
 import com.ssafy.leaper.domain.advertiser.entity.Advertiser;
 import com.ssafy.leaper.domain.advertiser.repository.AdvertiserRepository;
 import com.ssafy.leaper.domain.chat.dto.request.ChatMessageSendRequest;
+import com.ssafy.leaper.domain.file.entity.File;
+import com.ssafy.leaper.domain.file.service.S3FileService;
 import com.ssafy.leaper.domain.file.service.S3PresignedUrlService;
 import com.ssafy.leaper.domain.chat.dto.response.ChatMessageListResponse;
 import com.ssafy.leaper.domain.chat.dto.response.ChatRoomCreateResponse;
@@ -41,6 +43,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final InfluencerRepository influencerRepository;
     private final AdvertiserRepository advertiserRepository;
+    private final S3FileService s3FileService;
     private final S3PresignedUrlService s3PresignedUrlService;
     private final ChatWebSocketHandler chatWebSocketHandler;
 
@@ -346,14 +349,13 @@ public class ChatServiceImpl implements ChatService {
 
         try {
             String fileName = file.getOriginalFilename();
-            String contentType = file.getContentType();
             Long fileSize = file.getSize();
 
-            // S3 presigned URL 생성 및 파일 업로드 처리
-            String presignedUploadUrl = s3PresignedUrlService.generatePresignedUploadUrl(fileName, contentType);
+            // 파일 업로드 처리
+            File uploadedFile = s3FileService.uploadFileToS3(file, file.getContentType());
 
-            // 다운로드 URL 생성 (업로드 URL에서 쿼리 파라미터 제거)
-            String downloadUrl = presignedUploadUrl.split("\\?")[0];
+            // 다운로드 URL 생성
+            String downloadUrl = s3PresignedUrlService.generatePresignedDownloadUrl(uploadedFile.getId());
 
             log.info("파일 업로드 URL 생성 완료: {}", downloadUrl);
 
