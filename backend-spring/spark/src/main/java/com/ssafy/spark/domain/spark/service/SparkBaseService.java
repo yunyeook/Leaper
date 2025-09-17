@@ -63,19 +63,20 @@ public class SparkBaseService {
   }
 
   /**
-   * 전체 계정 데이터 읽기
+   * 특정 날짜의 전체 계정 데이터 읽기
    */
-  protected Dataset<Row> readS3AccountData(String platformType) {
+  protected Dataset<Row> readS3AccountData(String platformType,LocalDate targetDate) {
     try {
-      // 모든 날짜 폴더의 계정 데이터 읽기
-      String s3Path = String.format("s3a://%s/raw_data/%s/platform-account/*.json",bucketName, platformType);
+      // 특정 날짜 폴더의 계정 데이터 읽기
+      String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+      String s3Path = String.format("s3a://%s/raw_data/%s/platform-account/%s/*.json",bucketName, platformType,dateFolder);
 
       return sparkSession.read()
           .option("multiline", "true")
           .json(s3Path);
 
     } catch (Exception e) {
-      log.error("S3 전체 계정 데이터 읽기 실패: platform={}", platformType, e);
+      log.error("S3 특정날짜 전체 계정 데이터 읽기 실패: platform={}, date={}", platformType,targetDate, e);
       return sparkSession.emptyDataFrame();
     }
   }

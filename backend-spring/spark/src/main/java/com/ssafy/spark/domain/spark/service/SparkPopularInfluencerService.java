@@ -28,7 +28,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
   public void generateDailyPopularInfluencer(String platformType, LocalDate targetDate) {
     try {
       // 1. 계정 데이터 읽기
-      Dataset<Row> accountData = readS3AccountData(platformType)
+      Dataset<Row> accountData = readS3AccountData(platformType,targetDate)
           .select("accountNickname", "categoryName", "followersCount");
 
       // 2. 카테고리별로 Top10 추출

@@ -30,7 +30,7 @@ public class SparkPopularContentService extends SparkBaseService {
       Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate);
 
       // 2. 계정 데이터 읽기
-      Dataset<Row> accountData = readS3AccountData(platformType)
+      Dataset<Row> accountData = readS3AccountData(platformType,targetDate)
           .select("accountNickname", "categoryName");
 
       // 3. 조인 (accountNickname 기준)

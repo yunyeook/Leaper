@@ -31,7 +31,7 @@ public class SparkAccountInsightService extends SparkBaseService {
       Dataset<Row> contentData = readS3ContentDataByDate(platformType,targetDate);
 
       // 2. 계정 프로필 데이터 읽기 (팔로워 수 정보용)
-      Dataset<Row> accountData = readS3AccountData(platformType);
+      Dataset<Row> accountData = readS3AccountData(platformType,targetDate);
 
       // 3. 콘텐츠별 통계 집계 (계정별로 accountNickname 그룹핑)
       Dataset<Row> contentStatistics = contentData
