@@ -118,6 +118,7 @@ public class SparkPopularContentService extends SparkBaseService {
           "VALUES (?, ?, ?, ?, ?, ?) " +
           "ON DUPLICATE KEY UPDATE " +
           "content_rank = VALUES(content_rank), " +
+          "snapshot_date = VALUES(snapshot_date), " +
           "created_at = VALUES(created_at)";
 
       // 2. 파라미터 바인딩

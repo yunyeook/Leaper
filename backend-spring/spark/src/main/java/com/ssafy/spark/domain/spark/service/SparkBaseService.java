@@ -223,4 +223,17 @@ public class SparkBaseService {
       return null;
     }
   }
+
+  /**
+   * 외부 계정 닉네임 ->  PlatformAccount ID 조회
+   */
+  protected Integer getInfluencerIdByPlatformAccount(Integer platformAccountId) {
+    String sql = "SELECT influencer_id FROM platform_account WHERE platform_account_id = ?";
+    try {
+      return jdbcTemplate.queryForObject(sql, Integer.class, platformAccountId);
+    } catch (Exception e) {
+      log.error("influencer_id 조회 실패: platformAccountId={}", platformAccountId, e);
+      return null;
+    }
+  }
 }
