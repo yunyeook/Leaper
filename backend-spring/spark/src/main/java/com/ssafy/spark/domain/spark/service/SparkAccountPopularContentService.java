@@ -83,8 +83,8 @@ public class SparkAccountPopularContentService extends SparkBaseService{
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-      String fileName = String.format("daily_account_popular_%s_%s_%s.json",
-          platformType, externalContentId, timestamp);
+      String fileName = String.format("daily_account_popular_content_%s_%s.json",
+           contentId, timestamp);
       String s3Path = String.format("processed_data/%s/daily_account_popular_content/%s/%s", platformType, dateFolder, fileName);
 
       // S3에 저장
