@@ -184,7 +184,7 @@ public class SparkTypeInsightService extends SparkBaseService {
       String jsonData = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(statisticsJson);
 
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-      String fileName = String.format("daily_type_insight_%s_%s_%s.json", platformType, accountNickname, timestamp);
+      String fileName = String.format("daily_type_insight_%s_%s.json", accountNickname, timestamp);
       String s3Path = String.format("processed_data/%s/daily_type_insight/%s/%s/%s/%s",
           platformType,
           targetDate.getYear(),

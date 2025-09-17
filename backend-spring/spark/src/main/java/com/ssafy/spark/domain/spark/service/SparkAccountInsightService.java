@@ -101,8 +101,7 @@ public class SparkAccountInsightService extends SparkBaseService {
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-      String fileName = String.format("daily_stats_%s_%s_%s.json",
-          platformType, accountNickname, timestamp);
+      String fileName = String.format("daily_account_insight_%s_%s.json", accountNickname, timestamp);
       String s3Path = String.format("processed_data/%s/daily_account_insight/%s/%s",
           platformType, dateFolder, fileName);
 

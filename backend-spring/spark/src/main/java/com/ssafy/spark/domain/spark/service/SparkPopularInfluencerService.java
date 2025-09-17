@@ -56,7 +56,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
 
 
         // 1) MySQL에 저장
-        saveDailyPopularInfluencer(platformType, categoryTypeId, row, targetDate, platformAccountId, influencerRank, influencerId);
+        saveDailyPopularInfluencer(platformType, categoryTypeId, row, targetDate, influencerRank, influencerId);
 
         // 2) S3에도 저장
         savePopularInfluencerToS3(platformType, categoryName, row, targetDate, platformAccountId, influencerRank, accountNickname,followersCount,influencerId);
@@ -89,8 +89,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-      String fileName = String.format("daily_popular_%s_%s_%s_%s.json",
-          platformType, accountNickname, categoryName, timestamp);
+      String fileName = String.format("daily_popular_influencer_%s_%s_%s.json", accountNickname, categoryName, timestamp);
       String s3Path = String.format("processed_data/%s/daily_popular_influencer/%s/%s", platformType, dateFolder, fileName);
 
       // S3에 저장
@@ -105,7 +104,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
   }
 
   private void saveDailyPopularInfluencer(String platformType, Integer categoryTypeId, Row row, LocalDate targetDate,
-      Integer platformAccountId, Integer influencerRank, Integer influencerId) {
+      Integer influencerRank, Integer influencerId) {
     try {
 
       // 1. MySQL INSERT/UPDATE 쿼리
@@ -115,6 +114,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
           "VALUES (?, ?, ?, ?, ?, ?) " +
           "ON DUPLICATE KEY UPDATE " +
           "influencer_rank = VALUES(influencer_rank), " +
+          "snapshot_date = VALUES(snapshot_date), " +
           "created_at = VALUES(created_at)";
 
       // 2. 파라미터 바인딩

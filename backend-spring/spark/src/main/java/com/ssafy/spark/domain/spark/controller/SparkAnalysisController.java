@@ -4,6 +4,7 @@ import com.ssafy.spark.domain.spark.service.SparkAccountInsightService;
 import com.ssafy.spark.domain.spark.service.SparkAccountPopularContentService;
 import com.ssafy.spark.domain.spark.service.SparkPopularContentService;
 import com.ssafy.spark.domain.spark.service.SparkPopularInfluencerService;
+import com.ssafy.spark.domain.spark.service.SparkTrendingInfluencerService;
 import com.ssafy.spark.domain.spark.service.SparkTypeInsightService;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class SparkAnalysisController {
   private final SparkPopularContentService sparkPopularContentService;
   private final SparkPopularInfluencerService sparkPopularInfluencerService;
   private final SparkAccountPopularContentService sparkAccountPopularContentService;
+  private final SparkTrendingInfluencerService sparkTrendingInfluencerService;
 
 
   @GetMapping("/test")
@@ -88,6 +90,22 @@ public class SparkAnalysisController {
     }
 
     sparkPopularInfluencerService.generateDailyPopularInfluencer(platformType,targetDate);
+
+    return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
+  }
+
+  @GetMapping("/test6")
+  public ResponseEntity<String> dailyTrendingInfluencer(
+      @RequestParam(defaultValue = "instagram") String platformType,
+      @RequestParam(required = false)
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
+  ) {
+    // targetDate가 null이면 오늘 날짜 사용
+    if (targetDate == null) {
+      targetDate = LocalDate.now();
+    }
+
+    sparkTrendingInfluencerService.generateDailyTrendingInfluencer(platformType,targetDate);
 
     return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
   }
