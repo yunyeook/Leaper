@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.expressions.Window;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -22,36 +23,32 @@ public class SparkPopularInfluencerService extends SparkBaseService {
   /**
    * DailyPopularInfluencer 생성
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param categoryName 카테고리 타입(예 : "뷰티", "게임")
    * @param targetDate 통계를 생성할 기준 날짜
    */
-  public void generateDailyPopularInfluencer(String platformType, String categoryName, LocalDate targetDate) {
+  public void generateDailyPopularInfluencer(String platformType, LocalDate targetDate) {
     try {
       // 1. 계정 데이터 읽기
       Dataset<Row> accountData = readS3AccountData(platformType)
           .select("accountNickname", "categoryName", "followersCount");
 
-      // 2. 카테고리 필터링
-      Dataset<Row> filtered = accountData
-          .filter(col("categoryName").isNotNull()
-              .and(col("categoryName").equalTo(categoryName.toString())));
-
-      // 3. 팔로워수 기준 Top 10 추출
-      Dataset<Row> top10 = filtered
-          .orderBy(col("followersCount").desc())
-          .limit(10)
+      // 2. 카테고리별로 Top10 추출
+      Dataset<Row> top10 = accountData
           .withColumn("influencerRank", row_number().over(
-              org.apache.spark.sql.expressions.Window.orderBy(col("followersCount").desc())
-          ));
+              Window.partitionBy("categoryName")
+                  .orderBy(col("followersCount").desc())
+          ))
+          .filter(col("influencerRank").leq(10));
 
-      // 4. 결과를 MySQL에 저장
+       // 3. 결과 수집
       List<Row> results = top10.collectAsList();
 
-      log.info("[{}] 카테고리={} Top10 인플루언서 개수: {}", platformType, categoryName, results.size());
+
+      log.info("[{}] Top10 인플루언서 개수: {}", platformType, results.size());
 
       for (Row row : results) {
         String accountNickname = row.getAs("accountNickname");
         Integer platformAccountId = getPlatformAccountId(platformType, accountNickname);
+        String categoryName = row.getAs("categoryName");
         Integer categoryTypeId = getCategoryTypeId(categoryName);
         Integer influencerRank = row.getAs("influencerRank");
         Long followersCount = row.getAs("followersCount");

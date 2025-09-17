@@ -22,26 +22,15 @@ public class SparkAccountPopularContentService extends SparkBaseService{
   /**
    * 각 계정별 인기 콘텐츠 Top 3 생성
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param categoryName 카테고리 타입(예 : "뷰티", "게임")
    * @param targetDate 통계를 생성할 기준 날짜
    */
-  public void generateAccountPopularContent(String platformType, String categoryName, LocalDate targetDate) {
+  public void generateAccountPopularContent(String platformType, LocalDate targetDate) {
     try {
       // 1. 콘텐츠 데이터 읽기
       Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate);
 
-      // 2. 계정 데이터 읽기
-      Dataset<Row> accountData = readS3AccountData(platformType)
-          .select("accountNickname", "categoryName");
-
-      // 3. 조인하여 카테고리 필터링
-      Dataset<Row> joinedData = contentData
-          .join(accountData, "accountNickname") // 공통 컬럼 기준으로 equi-join
-          .filter(col("categoryName").isNotNull()
-              .and(col("categoryName").equalTo(categoryName)));
-
-      // 4. 각 계정별로 조회수 기준 Top 3 추출
-      Dataset<Row> accountTop3 = joinedData
+      // 2. 각 계정별로 조회수 기준 Top 3 추출
+      Dataset<Row> accountTop3 = contentData
           .withColumn("contentRank", row_number().over(
               org.apache.spark.sql.expressions.Window
                   .partitionBy("accountNickname")  // 계정별로 분할
@@ -49,24 +38,23 @@ public class SparkAccountPopularContentService extends SparkBaseService{
           ))
           .filter(col("contentRank").leq(3));  // Top 3만 선택
 
-      // 5. 결과를 MySQL에 저장
+      // . 결과를 MySQL에 저장
       List<Row> results = accountTop3.collectAsList();
 
-      log.info("[{}] 카테고리={} 각 계정별 Top3 콘텐츠 개수: {}", platformType, categoryName, results.size());
+      log.info("[{}] 각 계정별 Top3 콘텐츠 개수: {}", platformType, results.size());
 
       for (Row row : results) {
         String externalContentId = row.getAs("externalContentId");
         String accountNickname = row.getAs("accountNickname");
         Integer platformAccountId = getPlatformAccountId(platformType, accountNickname);
         Integer contentId = getContentId(platformType, externalContentId);
-        Integer categoryTypeId = getCategoryTypeId(categoryName);
         Integer contentRank = row.getAs("contentRank");
 
         // 1) MySQL에 저장
-        saveAccountPopularContent(platformType, categoryTypeId, row, targetDate, contentId, contentRank, platformAccountId);
+        saveAccountPopularContent(targetDate, contentId, contentRank, platformAccountId);
 
         // 2) S3에도 저장
-        saveAccountPopularContentToS3(platformType, categoryName, row, targetDate, contentId, contentRank, externalContentId, platformAccountId,accountNickname);
+        saveAccountPopularContentToS3(platformType, row, targetDate, contentId, contentRank, externalContentId, platformAccountId,accountNickname);
       }
 
     } catch (Exception e) {
@@ -74,7 +62,7 @@ public class SparkAccountPopularContentService extends SparkBaseService{
     }
   }
 
-  private void saveAccountPopularContentToS3(String platformType, String categoryName, Row row, LocalDate targetDate,
+  private void saveAccountPopularContentToS3(String platformType, Row row, LocalDate targetDate,
       Integer contentId, Integer contentRank, String externalContentId, Integer platformAccountId, String accountNickname) {
     try {
 
@@ -83,7 +71,6 @@ public class SparkAccountPopularContentService extends SparkBaseService{
       statisticsJson.put("platformType", platformType);
       statisticsJson.put("platformAccountId", platformAccountId);
       statisticsJson.put("contentId", contentId);
-      statisticsJson.put("categoryName", categoryName);
       statisticsJson.put("contentRank", contentRank);
       statisticsJson.put("externalContentId", externalContentId);
       statisticsJson.put("accountNickname",accountNickname);
@@ -96,9 +83,9 @@ public class SparkAccountPopularContentService extends SparkBaseService{
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-      String fileName = String.format("account_popular_%s_%s_%s_%s.json",
-          platformType, externalContentId, categoryName, timestamp);
-      String s3Path = String.format("processed_data/%s/account_popular_content/%s/%s", platformType, dateFolder, fileName);
+      String fileName = String.format("daily_account_popular_%s_%s_%s.json",
+          platformType, externalContentId, timestamp);
+      String s3Path = String.format("processed_data/%s/daily_account_popular_content/%s/%s", platformType, dateFolder, fileName);
 
       // S3에 저장
       uploadFile(s3Path, jsonData.getBytes(), "application/json");
@@ -111,7 +98,7 @@ public class SparkAccountPopularContentService extends SparkBaseService{
     }
   }
 
-  private void saveAccountPopularContent(String platform, Integer categoryTypeId, Row row, LocalDate targetDate,
+  private void saveAccountPopularContent( LocalDate targetDate,
       Integer contentId, Integer contentRank, Integer platformAccountId) {
     try {
       // 1. MySQL INSERT/UPDATE 쿼리

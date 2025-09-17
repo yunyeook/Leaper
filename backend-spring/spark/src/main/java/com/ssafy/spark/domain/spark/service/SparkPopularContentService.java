@@ -22,10 +22,9 @@ public class SparkPopularContentService extends SparkBaseService {
   /**
    * DailyPopularContent 생성
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param categoryName 카테고리 타입(예 : "뷰티", "게임")
    * @param targetDate 통계를 생성할 기준 날짜
    */
-  public void generateDailyPopularContent(String platformType, String categoryName, LocalDate targetDate) {
+  public void generateDailyPopularContent(String platformType, LocalDate targetDate) {
     try {
       // 1. 콘텐츠 데이터 읽기
       Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate);
@@ -34,38 +33,39 @@ public class SparkPopularContentService extends SparkBaseService {
       Dataset<Row> accountData = readS3AccountData(platformType)
           .select("accountNickname", "categoryName");
 
-      // 3. 조인하여 카테고리 필터링
+      // 3. 조인 (accountNickname 기준)
       Dataset<Row> joined = contentData
-          .join(accountData, contentData.col("accountNickname").equalTo(accountData.col("accountNickname")))
-          .filter(col("categoryName").isNotNull()
-              .and(col("categoryName").equalTo(categoryName.toString())));
+          .join(accountData, "accountNickname") // 공통 키로 조인
+          .filter(col("categoryName").isNotNull());
 
-      // 4. 조회수 기준 Top 10 추출
+      // 4. 카테고리별 조회수 기준 Top10 추출
       Dataset<Row> top10 = joined
           .withColumn("contentRank", row_number().over(
-              org.apache.spark.sql.expressions.Window.orderBy(col("viewsCount").desc())
+              org.apache.spark.sql.expressions.Window
+                  .partitionBy("categoryName")  // 카테고리별 그룹
+                  .orderBy(col("viewsCount").desc())
           ))
           .filter(col("contentRank").leq(10));
 
-      // 5. 결과를 MySQL에 저장
+      // 5. 결과 수집
       List<Row> results = top10.collectAsList();
-
-      log.info("[{}] 카테고리={} Top10 콘텐츠 개수: {}", platformType, categoryName, results.size());
+      log.info("[{}] 전체 카테고리 Top10 콘텐츠 개수: {}", platformType, results.size());
 
       for (Row row : results) {
         String externalContentId = row.getAs("externalContentId");
         String accountNickname = row.getAs("accountNickname");
+        String categoryName = row.getAs("categoryName");
+
         Integer platformAccountId = getPlatformAccountId(platformType, accountNickname);
         Integer contentId = getContentId(platformType, externalContentId);
         Integer categoryTypeId = getCategoryTypeId(categoryName);
         Integer contentRank = row.getAs("contentRank");
 
+        // 1) DB 저장
+        saveDailyPopularContent(platformType, categoryTypeId, row, targetDate, contentId, contentRank);
 
-        // 1) MySQL에 저장
-        saveDailyPopularContent(platformType, categoryTypeId, row, targetDate,contentId,contentRank);
-
-        // 2) S3에도 저장
-        savePopularContentToS3(platformType, categoryName, row, targetDate,contentId,contentRank,externalContentId);
+        // 2) S3 저장
+        savePopularContentToS3(platformType, categoryName, row, targetDate, contentId, contentRank, externalContentId);
       }
 
     } catch (Exception e) {

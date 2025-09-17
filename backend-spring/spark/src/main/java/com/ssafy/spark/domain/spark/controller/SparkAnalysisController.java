@@ -63,7 +63,6 @@ public class SparkAnalysisController {
   @GetMapping("/test3")
   public ResponseEntity<String> dailyPopularContent(
       @RequestParam(defaultValue = "instagram") String platformType,
-      @RequestParam(defaultValue = "뷰티") String categoryName,
       @RequestParam(required = false)
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
   ) {
@@ -72,7 +71,7 @@ public class SparkAnalysisController {
       targetDate = LocalDate.now();
     }
 
-    sparkPopularContentService.generateDailyPopularContent(platformType, categoryName,targetDate);
+    sparkPopularContentService.generateDailyPopularContent(platformType,targetDate);
 
     return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
   }
@@ -80,7 +79,6 @@ public class SparkAnalysisController {
   @GetMapping("/test4")
   public ResponseEntity<String> dailyPopularInfluencer(
       @RequestParam(defaultValue = "instagram") String platformType,
-      @RequestParam(defaultValue = "뷰티") String categoryName,
       @RequestParam(required = false)
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
   ) {
@@ -89,7 +87,7 @@ public class SparkAnalysisController {
       targetDate = LocalDate.now();
     }
 
-    sparkPopularInfluencerService.generateDailyPopularInfluencer(platformType, categoryName,targetDate);
+    sparkPopularInfluencerService.generateDailyPopularInfluencer(platformType,targetDate);
 
     return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
   }
@@ -97,7 +95,6 @@ public class SparkAnalysisController {
   @GetMapping("/test5")
   public ResponseEntity<String> dailyAccountPopularContent(
       @RequestParam(defaultValue = "instagram") String platformType,
-      @RequestParam(defaultValue = "뷰티") String categoryName,
       @RequestParam(required = false)
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
   ) {
@@ -106,7 +103,7 @@ public class SparkAnalysisController {
       targetDate = LocalDate.now();
     }
 
-    sparkAccountPopularContentService.generateAccountPopularContent(platformType, categoryName,targetDate);
+    sparkAccountPopularContentService.generateAccountPopularContent(platformType, targetDate);
 
     return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
   }
