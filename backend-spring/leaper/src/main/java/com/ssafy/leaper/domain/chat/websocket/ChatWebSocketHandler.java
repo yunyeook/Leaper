@@ -2,6 +2,7 @@ package com.ssafy.leaper.domain.chat.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.leaper.domain.chat.dto.websocket.ChatWebSocketMessage;
+import com.ssafy.leaper.domain.chat.repository.ChatRoomRepository;
 import com.ssafy.leaper.global.common.entity.UserRole;
 import com.ssafy.leaper.global.common.response.ServiceResult;
 import com.ssafy.leaper.global.error.ErrorCode;
@@ -38,35 +39,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         log.info("WebSocket 연결 성공: {}", session.getId());
     }
 
-    // 채팅방 (CONNECT/DISCONNECT) 핸들러 : 세션 생성/제거 관리
-    @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        ChatWebSocketMessage wsMessage = objectMapper.readValue(message.getPayload(), ChatWebSocketMessage.class);
-        if (wsMessage == null) {
-            sendErrorCode(session, ErrorCode.COMMON_INVALID_FORMAT);
-            return;
-        }
-
-        log.info("WebSocket 메시지 수신: {}", wsMessage.getType());
-
-        ServiceResult<Void> result = switch (wsMessage.getType()) {
-            case "CONNECT" -> handleConnectMessage(session, wsMessage);
-            case "DISCONNECT" -> handleDisconnectMessage(session);
-            case "CHAT", "FILE" -> {
-                log.warn("CHAT/FILE 메시지는 REST API를 사용해주세요: {}", wsMessage.getType());
-                yield ServiceResult.fail(ErrorCode.COMMON_BAD_REQUEST);
-            }
-            default -> {
-                log.warn("알 수 없는 메시지 타입: {}", wsMessage.getType());
-                yield ServiceResult.fail(ErrorCode.COMMON_INVALID_FORMAT);
-            }
-        };
-
-        if (!result.success()) {
-            sendErrorCode(session, result.code());
-        }
-    }
-
     // 세션 종료
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
@@ -86,6 +58,35 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 }
             }
             sessionInfoMap.remove(session.getId());
+            log.info("사용자 {}이 채팅방 {}에서 나갔습니다.", sessionInfo.getUserId(), chatRoomId);
+        }
+    }
+
+    // 채팅방 (CONNECT/DISCONNECT) 핸들러 : 세션 생성/제거 관리
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        ChatWebSocketMessage wsMessage = objectMapper.readValue(message.getPayload(), ChatWebSocketMessage.class);
+        if (wsMessage == null) {
+            sendErrorCode(session, ErrorCode.COMMON_INVALID_FORMAT);
+            return;
+        }
+
+        log.info("WebSocket 메시지 수신: {}", wsMessage.getType());
+        ServiceResult<Void> result = switch (wsMessage.getType()) {
+            case "CONNECT" -> handleConnectMessage(session, wsMessage);
+            case "DISCONNECT" -> handleDisconnectMessage(session);
+            case "CHAT", "FILE" -> {
+                log.warn("CHAT/FILE 메시지는 REST API를 사용해주세요: {}", wsMessage.getType());
+                yield ServiceResult.fail(ErrorCode.COMMON_BAD_REQUEST);
+            }
+            default -> {
+                log.warn("알 수 없는 메시지 타입: {}", wsMessage.getType());
+                yield ServiceResult.fail(ErrorCode.COMMON_INVALID_FORMAT);
+            }
+        };
+
+        if (!result.success()) {
+            sendErrorCode(session, result.code());
         }
     }
 
@@ -104,7 +105,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         // 채팅방에 세션 추가
         chatRoomSessions.computeIfAbsent(chatRoomId, k -> new CopyOnWriteArraySet<>()).add(session);
-
         log.info("사용자 {}이 채팅방 {}에 참여했습니다.", userId, chatRoomId);
 
         // JOIN 성공 응답 (본인에게)
@@ -142,13 +142,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
 
         Integer chatRoomId = sessionInfo.getChatRoomId();
+        Integer senderId = sessionInfo.getUserId();
+        UserRole userRole = sessionInfo.getUserRole();
 
         // 다른 사용자들에게 DISCONNECT 메시지 브로드캐스트 (세션 제거 전에 실행)
         ChatWebSocketMessage disconnectMessage = ChatWebSocketMessage.builder()
                 .type("DISCONNECT")
                 .chatRoomId(chatRoomId)
-                .senderId(sessionInfo.getUserId())
-                .userRole(sessionInfo.getUserRole())
+                .senderId(senderId)
+                .userRole(userRole)
                 .content(null)
                 .messageType(null)
                 .timestamp(LocalDateTime.now())
@@ -156,17 +158,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         broadcastToChatRoom(chatRoomId, disconnectMessage);
 
-        // 채팅방에서 세션 제거
-        CopyOnWriteArraySet<WebSocketSession> sessions = chatRoomSessions.get(chatRoomId);
-        if (sessions != null) {
-            sessions.remove(session);
-            if (sessions.isEmpty()) {
-                chatRoomSessions.remove(chatRoomId);
-            }
-        }
-
-        sessionInfoMap.remove(session.getId());
-        log.info("사용자 {}이 채팅방 {}에서 나갔습니다.", sessionInfo.getUserId(), chatRoomId);
         return ServiceResult.ok();
     }
 
