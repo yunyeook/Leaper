@@ -173,3 +173,6 @@ logging:
 
 nts:
   service-key: ${NTS_SERVICE_KEY}
+
+server:
+  forward-headers-strategy: framework
