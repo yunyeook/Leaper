@@ -70,14 +70,23 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
-        .btn-kakao {
-            background: #fee500;
-            color: #000;
+        .btn-instagram {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            color: white;
         }
-        .btn-kakao:hover {
-            background: #fdd700;
+        .btn-instagram:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .section-title {
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            opacity: 0.9;
+        }
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -87,14 +96,26 @@
         <p>인플루언서와 광고주를 연결하는 플랫폼</p>
 
         <div class="login-buttons">
+            <div class="section-title">📱 소셜 로그인</div>
             <a href="/oauth2/authorization/google" class="btn btn-google">
                 Google로 로그인
             </a>
             <a href="/oauth2/authorization/naver" class="btn btn-naver">
                 Naver로 로그인
             </a>
-            <a href="/oauth2/authorization/kakao" class="btn btn-kakao">
-                Kakao로 로그인
+            <a href="/oauth2/authorization/instagram" class="btn btn-instagram">
+                Instagram으로 로그인
+            </a>
+
+            <div class="section-title">🔗 계정 연결 (JWT 토큰 필요)</div>
+            <a href="/connect/oauth2/authorization/google-connect" class="btn btn-google btn-small">
+                Google 계정 연결
+            </a>
+            <a href="/connect/oauth2/authorization/naver-connect" class="btn btn-naver btn-small">
+                Naver 계정 연결
+            </a>
+            <a href="/connect/oauth2/authorization/instagram-connect" class="btn btn-instagram btn-small">
+                Instagram 계정 연결
             </a>
         </div>
     </div>
