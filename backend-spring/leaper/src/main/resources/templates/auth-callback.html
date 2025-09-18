@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaper - 로그인 처리</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            max-width: 600px;
+            width: 90%;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .status {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .connect-section {
+            margin-top: 40px;
+        }
+        .connect-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 300px;
+            margin: 20px auto;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: block;
+        }
+        .btn-google {
+            background: #db4437;
+            color: white;
+        }
+        .btn-google:hover {
+            background: #c23321;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn-naver {
+            background: #03c75a;
+            color: white;
+        }
+        .btn-naver:hover {
+            background: #02b050;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn-instagram {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            color: white;
+        }
+        .btn-instagram:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .section-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+        .loading {
+            display: none;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .token-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>로그인 처리 중...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <h1>🎉 로그인 성공!</h1>
+            <div class="status" id="status"></div>
+
+            <div id="user-info" class="user-info" style="display: none;">
+                <h3>사용자 정보</h3>
+                <div id="user-details"></div>
+            </div>
+
+            <div id="token-info" class="token-info" style="display: none;">
+                <h4>저장된 토큰</h4>
+                <div id="token-display"></div>
+            </div>
+
+            <div class="connect-section">
+                <div class="section-title">🔗 추가 계정 연결</div>
+                <p>다른 플랫폼 계정을 연결하여 더 많은 기능을 사용해보세요!</p>
+
+                <div class="connect-buttons">
+                    <button onclick="connectAccount('google-connect')" class="btn btn-google">
+                        Google 계정 연결
+                    </button>
+                    <button onclick="connectAccount('naver-connect')" class="btn btn-naver">
+                        Naver 계정 연결
+                    </button>
+                    <button onclick="connectAccount('instagram-connect')" class="btn btn-instagram">
+                        Instagram 계정 연결
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // URL 파라미터 파싱
+        function getUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return {
+                isNew: urlParams.get('isNew') === 'true',
+                token: urlParams.get('token'),
+                registrationToken: urlParams.get('registrationToken'),
+                influencerId: urlParams.get('influencerId')
+            };
+        }
+
+        // 토큰을 localStorage에 저장
+        function saveToken(token) {
+            localStorage.setItem('leaper_token', token);
+            console.log('Token saved to localStorage:', token);
+        }
+
+        // 사용자 정보 표시
+        function displayUserInfo(params) {
+            const userInfoDiv = document.getElementById('user-info');
+            const userDetailsDiv = document.getElementById('user-details');
+
+            if (params.influencerId) {
+                userDetailsDiv.innerHTML = `<p><strong>인플루언서 ID:</strong> ${params.influencerId}</p>`;
+                userInfoDiv.style.display = 'block';
+            }
+        }
+
+        // 토큰 정보 표시
+        function displayTokenInfo(token) {
+            const tokenInfoDiv = document.getElementById('token-info');
+            const tokenDisplayDiv = document.getElementById('token-display');
+
+            if (token) {
+                const truncatedToken = token.length > 50 ? token.substring(0, 50) + '...' : token;
+                tokenDisplayDiv.innerHTML = `<p>${truncatedToken}</p>`;
+                tokenInfoDiv.style.display = 'block';
+            }
+        }
+
+        // 계정 연결 함수
+        function connectAccount(provider) {
+            const token = localStorage.getItem('leaper_token');
+            if (!token) {
+                alert('로그인 토큰이 없습니다. 다시 로그인해주세요.');
+                return;
+            }
+
+            // JWT 토큰을 Authorization 헤더에 포함하여 요청
+            const connectUrl = `/connect/oauth2/authorization/${provider}`;
+
+            // 새 창에서 계정 연결 진행
+            const popup = window.open(connectUrl, 'accountConnect', 'width=600,height=700');
+
+            // 팝업에서 메시지 수신 대기
+            window.addEventListener('message', function(event) {
+                if (event.origin !== window.location.origin) return;
+
+                if (event.data.type === 'ACCOUNT_CONNECT_SUCCESS') {
+                    popup.close();
+                    alert(`${event.data.provider} 계정 연결이 완료되었습니다!`);
+                    console.log('연결된 계정 정보:', event.data.data);
+                } else if (event.data.type === 'ACCOUNT_CONNECT_ERROR') {
+                    popup.close();
+                    alert('계정 연결에 실패했습니다.');
+                }
+            });
+        }
+
+        // 페이지 로드 시 실행
+        window.onload = function() {
+            document.getElementById('loading').style.display = 'block';
+
+            setTimeout(() => {
+                const params = getUrlParams();
+                const statusDiv = document.getElementById('status');
+
+                if (params.isNew) {
+                    // 신규 사용자
+                    if (params.registrationToken) {
+                        saveToken(params.registrationToken);
+                        statusDiv.textContent = '신규 사용자입니다. 회원가입을 완료해주세요.';
+                        displayTokenInfo(params.registrationToken);
+                    } else {
+                        statusDiv.textContent = '등록 토큰을 받지 못했습니다.';
+                    }
+                } else {
+                    // 기존 사용자
+                    if (params.token) {
+                        saveToken(params.token);
+                        statusDiv.textContent = '기존 사용자 로그인이 완료되었습니다!';
+                        displayUserInfo(params);
+                        displayTokenInfo(params.token);
+                    } else {
+                        statusDiv.textContent = '토큰을 받지 못했습니다.';
+                    }
+                }
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

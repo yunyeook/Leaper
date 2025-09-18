@@ -23,4 +23,9 @@ public class HomeController {
         }
         return "success";
     }
+
+    @GetMapping("/auth-callback")
+    public String authCallback() {
+        return "auth-callback";
+    }
 }
