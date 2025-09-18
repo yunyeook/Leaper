@@ -63,7 +63,7 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
 
         switch (provider.toLowerCase()) {
             case "google" -> {
-                extractedData.put("external_account_id", attributes.get("email"));
+                extractedData.put("externalAccountId", attributes.get("email"));
 
                 // YouTube 데이터를 원하는 형태로 변환
                 if (attributes.containsKey("youtube_channels")) {
@@ -78,12 +78,12 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
                         @SuppressWarnings("unchecked")
                         Map<String, Object> snippet = (Map<String, Object>) channel.get("snippet");
                         if (snippet != null) {
-                            account.put("account_nickname", snippet.get("title"));
+                            account.put("accountNickname", snippet.get("title"));
 
                             // 채널 URL 생성
                             String channelId = (String) channel.get("id");
                             String channelUrl = channelId != null ? "https://www.youtube.com/channel/" + channelId : "";
-                            account.put("account_url", channelUrl);
+                            account.put("accountUrl", channelUrl);
 
                             // 썸네일 URL 추출
                             @SuppressWarnings("unchecked")
@@ -96,7 +96,7 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
                                     thumbnailUrl = (String) defaultThumbnail.getOrDefault("url", "");
                                 }
                             }
-                            account.put("account_profile_image_url", thumbnailUrl);
+                            account.put("accountProfileImageUrl", thumbnailUrl);
                         }
 
                         youtubeAccounts.add(account);
