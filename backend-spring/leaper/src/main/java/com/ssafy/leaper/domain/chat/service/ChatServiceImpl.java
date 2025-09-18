@@ -261,8 +261,8 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public ServiceResult<ChatMessageListResponse> getChatMessages(Integer chatRoomId, String before, String after, int size) {
+    @Transactional
+    public ServiceResult<ChatMessageListResponse> getChatMessages(Integer chatRoomId, String before, String after, int size, String userRole) {
         log.info("ChatService : getChatMessages({}) 호출", chatRoomId);
 
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
@@ -289,6 +289,16 @@ public class ChatServiceImpl implements ChatService {
                     chatRoomId, PageRequest.of(0, size));
             hasMore = messages.size() == size;
         }
+
+        UserRole currentUserRole;
+        try {
+            currentUserRole = UserRole.valueOf(userRole.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ServiceResult.fail(ErrorCode.CHAT_INVALID_USER_TYPE);
+        }
+
+        // 마지막 접속 시간 갱신
+        updateLastSeen(chatRoomId, currentUserRole);
 
         return ServiceResult.ok(ChatMessageListResponse.of(
                 messages.stream()
@@ -317,9 +327,6 @@ public class ChatServiceImpl implements ChatService {
         );
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
-
-        // 마지막 읽은 시간 업데이트
-        updateLastSeen(chatRoom, request.getUserRole());
 
         // WebSocket 브로드캐스트
         ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
@@ -387,9 +394,6 @@ public class ChatServiceImpl implements ChatService {
 
             ChatMessage savedMessage = chatMessageRepository.save(fileMessage);
 
-            // 마지막 읽은 시간 업데이트
-            updateLastSeen(chatRoom, userRoleEnum);
-
             // WebSocket 브로드캐스트
             ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
                     .type("FILE")
@@ -441,8 +445,8 @@ public class ChatServiceImpl implements ChatService {
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
 
-        // 마지막 읽은 시간 업데이트
-        updateLastSeen(chatRoom, currentUserRole);
+//        // 마지막 읽은 시간 업데이트
+//        updateLastSeen(chatRoom, currentUserRole);
 
         // WebSocket 브로드캐스트 - DISCONNECT 메시지 전송
         ChatWebSocketMessage disconnectMessage = ChatWebSocketMessage.builder()
@@ -504,5 +508,18 @@ public class ChatServiceImpl implements ChatService {
 
         // 상대방이 보낸 메시지만 확인 (내 UserRole이 아닌 메시지만 확인)
         return chatMessageRepository.existsByRoomIdAndCreatedAtAfterAndUserRoleNot(chatRoom.getId(), lastSeenInstant, userRole);
+    }
+
+    @Override
+    @Transactional
+    public void updateLastSeen(Integer chatRoomId, UserRole userRole) {
+        log.info("ChatService : updateLastSeen({}, {}) 호출", chatRoomId, userRole);
+
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
+        if (userRole == UserRole.INFLUENCER) {
+            chatRoomRepository.updateInfluencerLastSeen(chatRoomId, now);
+        } else {
+            chatRoomRepository.updateAdvertiserLastSeen(chatRoomId, now);
+        }
     }
 }
