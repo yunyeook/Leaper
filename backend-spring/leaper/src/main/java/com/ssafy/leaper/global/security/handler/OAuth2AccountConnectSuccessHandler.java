@@ -49,12 +49,37 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
 
         log.info("OAuth2 Account Connect Data - provider: {}, data: {}", providerTypeId, extractedData);
 
-        // JSON 응답으로 계정 연결 정보 반환
+        // HTML 응답으로 팝업 닫기 및 부모 창에 데이터 전송
         ApiResponse<Map<String, Object>> apiResponse = new ApiResponse<>(ResponseStatus.SUCCESS, connectData);
+        String jsonData = objectMapper.writeValueAsString(apiResponse);
 
-        response.setContentType("application/json");
+        String htmlResponse = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>계정 연결 완료</title>
+            </head>
+            <body>
+                <script>
+                    const data = %s;
+                    if (window.opener) {
+                        window.opener.postMessage({
+                            type: 'OAUTH_SUCCESS',
+                            data: data
+                        }, '*');
+                        window.close();
+                    } else {
+                        console.error('부모 창을 찾을 수 없습니다.');
+                    }
+                </script>
+            </body>
+            </html>
+            """.formatted(jsonData);
+
+        response.setContentType("text/html");
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+        response.getWriter().write(htmlResponse);
     }
 
     private Map<String, Object> extractProviderData(OAuth2User oauth2User, String provider) {

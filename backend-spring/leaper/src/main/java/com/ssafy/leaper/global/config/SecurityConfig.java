@@ -49,9 +49,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource));
 
         http.securityMatcher("/connect/login/oauth2/**", "/connect/oauth2/authorization/**")
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .oauth2ResourceServer(res ->
-                        res.jwt(jwt -> jwt.jwtAuthenticationConverter(customJwtAuthenticationConverter)));
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
         http.oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
