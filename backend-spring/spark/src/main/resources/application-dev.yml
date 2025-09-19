@@ -56,3 +56,8 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    
+# Apify API 설정 : 인스타그램 설정
+apify:
+  api-key: ${APIFY_KEY}
+  base-url: https://api.apify.com/v2
