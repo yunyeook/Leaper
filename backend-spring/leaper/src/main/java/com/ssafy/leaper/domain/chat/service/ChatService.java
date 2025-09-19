@@ -5,6 +5,7 @@ import com.ssafy.leaper.domain.chat.dto.response.ChatMessageListResponse;
 import com.ssafy.leaper.domain.chat.dto.response.ChatRoomCreateResponse;
 import com.ssafy.leaper.domain.chat.dto.response.ChatRoomListResponse;
 import com.ssafy.leaper.global.common.response.ServiceResult;
+import com.ssafy.leaper.global.common.entity.UserRole;
 import jakarta.validation.Valid;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,7 +24,7 @@ public interface ChatService {
     /**
      * 채팅 메시지 조회
      */
-    ServiceResult<ChatMessageListResponse> getChatMessages(Integer chatRoomId, String before, String after, int size);
+    ServiceResult<ChatMessageListResponse> getChatMessages(Integer chatRoomId, String before, String after, int size, String userRole);
 
     /**
      * 텍스트 메시지 전송
@@ -39,4 +40,9 @@ public interface ChatService {
      * 채팅방 나가기
      */
     ServiceResult<Void> leaveChatRoom(Integer chatRoomId, Integer currentUserId, String userRole);
+
+    /**
+     * 마지막 접속 시간 갱신
+     */
+    void updateLastSeen(Integer chatRoomId, UserRole userRole);
 }

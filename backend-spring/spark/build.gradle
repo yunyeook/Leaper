@@ -90,6 +90,10 @@ dependencies {
 	// 스케줄링
 	implementation 'org.springframework.boot:spring-boot-starter-quartz'
 
+	// WebFlux 전체 대신 WebClient만 사용
+	implementation 'org.springframework:spring-webflux'
+	implementation 'io.projectreactor.netty:reactor-netty-http'
+
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

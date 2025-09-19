@@ -6,6 +6,7 @@ import com.ssafy.leaper.domain.chat.dto.response.ChatRoomCreateResponse;
 import com.ssafy.leaper.domain.chat.dto.response.ChatRoomListResponse;
 import com.ssafy.leaper.domain.chat.service.ChatService;
 import com.ssafy.leaper.global.common.controller.BaseController;
+import com.ssafy.leaper.global.common.entity.UserRole;
 import com.ssafy.leaper.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,10 +49,7 @@ public class ChatController implements BaseController {
             Authentication authentication) {
 
         Integer currentUserId = Integer.parseInt(authentication.getName());
-        String userRole = authentication.getAuthorities().iterator().next().getAuthority();
-        if (userRole != null && userRole.startsWith("ROLE_")) {
-            userRole = userRole.substring(5);
-        }
+        String userRole = extractUserRole(authentication);
 
         return handle(chatService.getChatRoomList(currentUserId, userRole));
     }
@@ -66,9 +64,12 @@ public class ChatController implements BaseController {
             @PathVariable Integer chatRoomId,
             @RequestParam(required = false) String before,
             @RequestParam(required = false) String after,
-            @RequestParam(defaultValue = "150") int size) {
+            @RequestParam(defaultValue = "150") int size,
+            Authentication authentication) {
 
-        return handle(chatService.getChatMessages(chatRoomId, before, after, size));
+        String userRole = extractUserRole(authentication);
+
+        return handle(chatService.getChatMessages(chatRoomId, before, after, size, userRole));
     }
 
     /**
@@ -113,11 +114,16 @@ public class ChatController implements BaseController {
             Authentication authentication) {
 
         Integer currentUserId = Integer.parseInt(authentication.getName());
+        String userRole = extractUserRole(authentication);
+
+        return handle(chatService.leaveChatRoom(chatRoomId, currentUserId, userRole));
+    }
+
+    public String extractUserRole(Authentication authentication) {
         String userRole = authentication.getAuthorities().iterator().next().getAuthority();
         if (userRole != null && userRole.startsWith("ROLE_")) {
             userRole = userRole.substring(5);
         }
-
-        return handle(chatService.leaveChatRoom(chatRoomId, currentUserId, userRole));
+        return userRole;
     }
 }
