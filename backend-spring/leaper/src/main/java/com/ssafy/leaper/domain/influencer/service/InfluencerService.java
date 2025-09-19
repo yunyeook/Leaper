@@ -292,9 +292,4 @@ public class InfluencerService {
         // S3에 파일 업로드 및 DB 저장
         return s3FileService.uploadFileToS3(profileImage, "business/profile");
     }
-
-    public ServiceResult<Void> deleteAccountByEmail(String email) {
-        influencerRepository.deleteByEmail(email);
-        return ServiceResult.ok();
-    }
 }

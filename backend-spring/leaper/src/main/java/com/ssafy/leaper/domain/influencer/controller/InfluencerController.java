@@ -6,6 +6,7 @@ import com.ssafy.leaper.domain.influencer.dto.response.InfluencerProfileResponse
 import com.ssafy.leaper.domain.influencer.dto.response.InfluencerPublicProfileResponse;
 import com.ssafy.leaper.domain.influencer.dto.response.InfluencerUpdateResponse;
 import com.ssafy.leaper.domain.influencer.dto.response.InfluencerSignupResponse;
+import com.ssafy.leaper.domain.influencer.service.InfluencerCommandService;
 import com.ssafy.leaper.domain.influencer.service.InfluencerService;
 import com.ssafy.leaper.global.common.controller.BaseController;
 import com.ssafy.leaper.global.common.response.ApiResponse;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 public class InfluencerController implements BaseController {
 
     private final InfluencerService influencerService;
+    private final InfluencerCommandService influencerCommandService;
 
     @Operation(summary = "인플루언서 회원가입", description = "소셜 로그인 후 인플루언서 계정을 생성합니다.")
     @PostMapping(value = "/signup", consumes = "multipart/form-data")
@@ -104,6 +106,6 @@ public class InfluencerController implements BaseController {
     @DeleteMapping("/delete")
     public ResponseEntity<ApiResponse<Void>> deleteAccountByEmail(@RequestParam String email) {
 
-        return handle(influencerService.deleteAccountByEmail(email));
+        return handle(influencerCommandService.deleteAccountByEmail(email));
     }
 }
