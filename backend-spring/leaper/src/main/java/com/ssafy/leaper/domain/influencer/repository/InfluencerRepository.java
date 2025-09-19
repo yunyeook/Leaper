@@ -20,5 +20,6 @@ public interface InfluencerRepository extends JpaRepository<Influencer, Integer>
     Optional<Influencer> findByIdAndIsDeletedFalse(Integer id);
 
     @Modifying
+    @Transactional
     void deleteByEmail(String email);
 }
