@@ -15,6 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 
 @Slf4j
 @Service
@@ -64,6 +67,73 @@ public class S3FileService {
             return fileRepository.save(file);
 
         } catch (IOException e) {
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    @Transactional
+    public File uploadFileFromUrl(String imageUrl, String fileType) {
+        if (imageUrl == null || imageUrl.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            log.info("URL에서 이미지 다운로드 시작: {}", imageUrl);
+
+            // 1. URL에서 이미지 다운로드
+            URL url = new URL(imageUrl);
+            URLConnection connection = url.openConnection();
+
+            // User-Agent 설정 (일부 사이트에서 봇 차단 방지)
+            connection.setRequestProperty("User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+
+            InputStream inputStream = connection.getInputStream();
+            String contentType = connection.getContentType();
+            int contentLength = connection.getContentLength();
+
+            // 2. 파일명 추출 (URL에서)
+            String fileName = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
+            if (fileName.indexOf('?') > 0) {
+                fileName = fileName.substring(0, fileName.indexOf('?'));
+            }
+            if (!fileName.contains(".")) {
+                fileName += ".jpg"; // 기본 확장자
+            }
+
+            // 3. 고유한 파일 키 생성
+            String key = File.generateUniqueKey(fileName, fileType);
+
+            // 4. S3 업로드를 위한 메타데이터 설정
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType(contentType != null ? contentType : "image/jpeg");
+            if (contentLength > 0) {
+                metadata.setContentLength(contentLength);
+            }
+
+            // 5. S3에 파일 업로드
+            PutObjectRequest putObjectRequest = new PutObjectRequest(
+                bucketName,
+                key,
+                inputStream,
+                metadata
+            );
+
+            amazonS3Client.putObject(putObjectRequest);
+
+            // 6. DB에 파일 정보 저장
+            File file = File.builder()
+                .accessKey(key)
+                .contentType(metadata.getContentType())
+                .build();
+
+            File savedFile = fileRepository.save(file);
+
+            log.info("URL에서 이미지 업로드 완료: {} -> S3 Key: {}", imageUrl, key);
+            return savedFile;
+
+        } catch (Exception e) {
+            log.error("URL에서 이미지 다운로드 실패: {}", imageUrl, e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
         }
     }
