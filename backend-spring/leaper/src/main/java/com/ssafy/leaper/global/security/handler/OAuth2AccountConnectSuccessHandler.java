@@ -44,7 +44,6 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
 
         // 응답 데이터 구성
         Map<String, Object> connectData = new HashMap<>();
-        connectData.put("provider", providerTypeId);
         connectData.putAll(extractedData);
 
         log.info("OAuth2 Account Connect Data - provider: {}, data: {}", providerTypeId, extractedData);
@@ -90,25 +89,24 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
             case "google" -> {
                 extractedData.put("externalAccountId", attributes.get("email"));
 
-                // YouTube 데이터를 원하는 형태로 변환
+                // YouTube 데이터를 단일 객체로 변환
                 if (attributes.containsKey("youtube_channels")) {
                     @SuppressWarnings("unchecked")
                     java.util.List<Map<String, Object>> channels = (java.util.List<Map<String, Object>>) attributes.get("youtube_channels");
 
-                    java.util.List<Map<String, Object>> youtubeAccounts = new java.util.ArrayList<>();
-
-                    for (Map<String, Object> channel : channels) {
-                        Map<String, Object> account = new HashMap<>();
+                    // 첫 번째(선택된) 채널만 처리
+                    if (!channels.isEmpty()) {
+                        Map<String, Object> channel = channels.get(0);
 
                         @SuppressWarnings("unchecked")
                         Map<String, Object> snippet = (Map<String, Object>) channel.get("snippet");
                         if (snippet != null) {
-                            account.put("accountNickname", snippet.get("title"));
+                            extractedData.put("accountNickname", snippet.get("title"));
 
                             // 채널 URL 생성
                             String channelId = (String) channel.get("id");
                             String channelUrl = channelId != null ? "https://www.youtube.com/channel/" + channelId : "";
-                            account.put("accountUrl", channelUrl);
+                            extractedData.put("accountUrl", channelUrl);
 
                             // 썸네일 URL 추출
                             @SuppressWarnings("unchecked")
@@ -121,35 +119,30 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
                                     thumbnailUrl = (String) defaultThumbnail.getOrDefault("url", "");
                                 }
                             }
-                            account.put("accountProfileImageUrl", thumbnailUrl);
+                            extractedData.put("accountProfileImageUrl", thumbnailUrl);
                         }
 
-                        youtubeAccounts.add(account);
+                        extractedData.put("platformTypeId", "YOUTUBE");
                     }
-
-                    extractedData.put("YOUTUBE", youtubeAccounts);
                 }
             }
             case "naver" -> {
                 Map<String, Object> naverResponse = (Map<String, Object>) attributes.get("response");
                 if (naverResponse != null) {
-                    extractedData.put("providerMemberId", naverResponse.get("id"));
-                    extractedData.put("email", naverResponse.get("email"));
-                    extractedData.put("name", naverResponse.get("name"));
-                    extractedData.put("nickname", naverResponse.get("nickname"));
-                    extractedData.put("profileImage", naverResponse.get("profile_image"));
-                    extractedData.put("age", naverResponse.get("age"));
-                    extractedData.put("gender", naverResponse.get("gender"));
-                    extractedData.put("birthday", naverResponse.get("birthday"));
-                    extractedData.put("birthyear", naverResponse.get("birthyear"));
-                    extractedData.put("mobile", naverResponse.get("mobile"));
+                    extractedData.put("externalAccountId", naverResponse.get("email"));
+                    extractedData.put("accountNickname", naverResponse.get("nickname"));
+                    extractedData.put("accountUrl", ""); // Naver는 직접적인 프로필 URL이 없음
+                    extractedData.put("accountProfileImageUrl", naverResponse.get("profile_image"));
                 }
+                extractedData.put("platformTypeId", "NAVER");
             }
             case "instagram" -> {
-                extractedData.put("providerMemberId", attributes.get("id"));
-                extractedData.put("username", attributes.get("username"));
-                extractedData.put("accountType", attributes.get("account_type"));
-                extractedData.put("mediaCount", attributes.get("media_count"));
+                String username = (String) attributes.get("username");
+                extractedData.put("externalAccountId", attributes.get("id"));
+                extractedData.put("accountNickname", username);
+                extractedData.put("accountUrl", username != null ? "https://www.instagram.com/" + username : "");
+                extractedData.put("accountProfileImageUrl", ""); // Instagram Graph API에서는 기본적으로 프로필 이미지를 제공하지 않음
+                extractedData.put("platformTypeId", "INSTAGRAM");
             }
             default -> {
                 log.warn("Unknown OAuth2 provider: {}", provider);
