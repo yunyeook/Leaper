@@ -16,4 +16,6 @@ public interface InfluencerRepository extends JpaRepository<Influencer, Integer>
     boolean existsByNickname(String nickname);
 
     Optional<Influencer> findByIdAndIsDeletedFalse(Integer id);
+
+    void deleteByEmail(String email);
 }

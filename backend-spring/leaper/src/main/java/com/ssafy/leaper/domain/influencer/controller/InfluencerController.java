@@ -99,4 +99,11 @@ public class InfluencerController implements BaseController {
 
         return handle(influencerService.updateProfile(influencerId, request));
     }
+
+    @Operation(summary = "개발용 계정 삭제", description = "인플루언서 계정을 이메일로 검색해 삭제합니다.")
+    @DeleteMapping("/delete")
+    public ResponseEntity<ApiResponse<Void>> deleteAccountByEmail(@RequestParam String email) {
+
+        return handle(influencerService.deleteAccountByEmail(email));
+    }
 }
