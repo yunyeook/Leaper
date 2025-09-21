@@ -61,3 +61,8 @@ logging:
 apify:
   api-key: ${APIFY_KEY}
   base-url: https://api.apify.com/v2
+
+youtube:
+  api:
+    key: ${YOUTUBE_API_V3_KEY}
+    base-url: https://www.googleapis.com/youtube/v3
