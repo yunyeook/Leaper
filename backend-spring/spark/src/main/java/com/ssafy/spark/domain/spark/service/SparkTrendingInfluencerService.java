@@ -60,7 +60,7 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
 
       for (Row row : results) {
         String accountNickname = row.getAs("accountNickname");
-        Integer platformAccountId = getPlatformAccountId(platformType, accountNickname);
+        Integer platformAccountId = getPlatformAccountId(platformType.toUpperCase(), accountNickname);
         String categoryName = row.getAs("categoryName");
         Integer categoryTypeId = getCategoryTypeId(categoryName);
         Integer influencerRank = row.getAs("influencerRank");
@@ -94,7 +94,7 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
           "created_at = VALUES(created_at)";
 
       jdbcTemplate.update(sql,
-          platformType,
+          platformType.toUpperCase(),
           influencerId,
           categoryTypeId,
           influencerRank,
@@ -113,7 +113,7 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
     try {
       ObjectNode statisticsJson = objectMapper.createObjectNode();
       statisticsJson.put("influencerId", influencerId);
-      statisticsJson.put("platformType", platformType);
+      statisticsJson.put("platformType", platformType.toUpperCase());
       statisticsJson.put("platformAccountId", platformAccountId);
       statisticsJson.put("accountNickname", accountNickname);
       statisticsJson.put("categoryName", categoryName);
@@ -126,7 +126,7 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
       String jsonData = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(statisticsJson);
 
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
       String fileName = String.format("daily_trending_influencer_%s_%s.json", accountNickname, timestamp);
       String s3Path = String.format("processed_data/%s/daily_trending_influencer/%s/%s",
           platformType, dateFolder, fileName);

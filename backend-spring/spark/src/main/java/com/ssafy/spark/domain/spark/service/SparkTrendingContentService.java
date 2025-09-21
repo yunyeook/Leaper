@@ -101,7 +101,7 @@ public class SparkTrendingContentService extends SparkBaseService {
           "created_at = VALUES(created_at)";
 
       jdbcTemplate.update(sql,
-          platformType,
+          platformType.toUpperCase(),
           contentId,
           categoryTypeId,
           contentRank,
@@ -120,7 +120,7 @@ public class SparkTrendingContentService extends SparkBaseService {
     try {
       ObjectNode statisticsJson = objectMapper.createObjectNode();
       statisticsJson.put("contentId", contentId);
-      statisticsJson.put("platformType", platformType);
+      statisticsJson.put("platformType", platformType.toUpperCase());
       statisticsJson.put("externalContentId", externalContentId);
       statisticsJson.put("accountNickname", accountNickname);
       statisticsJson.put("categoryName", categoryName);
@@ -133,7 +133,7 @@ public class SparkTrendingContentService extends SparkBaseService {
       String jsonData = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(statisticsJson);
 
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
       String fileName = String.format("daily_trending_content_%s_%s.json", externalContentId, timestamp);
       String s3Path = String.format("processed_data/%s/daily_trending_content/%s/%s",
           platformType, dateFolder, fileName);
