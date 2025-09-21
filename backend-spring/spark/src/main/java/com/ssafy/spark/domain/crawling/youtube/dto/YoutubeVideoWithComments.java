@@ -16,7 +16,10 @@ public class YoutubeVideoWithComments {
     private String channelTitle;
     private String channelId;
     private String thumbnailUrl;
+    private Integer thumbnailWidth;  // 썸네일 가로 크기
+    private Integer thumbnailHeight; // 썸네일 세로 크기
     private Integer durationSeconds;
+    private String dimension; // "2d" for normal videos, "2d" for shorts (YouTube API doesn't distinguish by dimension alone)
     private Long viewsCount;
     private Long likesCount;
     private Long commentsCount;
@@ -56,6 +59,11 @@ public class YoutubeVideoWithComments {
         result.setChannelId(video.getSnippet().getChannelId());
         result.setDurationSeconds(parseDuration(video.getContentDetails() != null ? video.getContentDetails().getDuration() : null));
 
+        // 비디오 차원 정보 설정 (dimension)
+        if (video.getContentDetails() != null) {
+            result.setDimension(video.getContentDetails().getDimension());
+        }
+
         // 통계 정보 설정
         if (video.getStatistics() != null) {
             result.setViewsCount(parseLong(video.getStatistics().getViewCount()));
@@ -66,17 +74,32 @@ public class YoutubeVideoWithComments {
         // 해시태그 추출
         result.setTags(extractHashtags(video.getSnippet().getDescription()));
 
-        // 썸네일 URL 추출 (Maxres 우선, 없으면 fallback)
+        // 썸네일 URL 및 크기 정보 추출 (Maxres 우선, 없으면 fallback)
         if (video.getSnippet().getThumbnails() != null) {
-            if (video.getSnippet().getThumbnails().getMaxres() != null) {
-                result.setThumbnailUrl(video.getSnippet().getThumbnails().getMaxres().getUrl());
-            } else if (video.getSnippet().getThumbnails().getHigh() != null) {
-                result.setThumbnailUrl(video.getSnippet().getThumbnails().getHigh().getUrl());
-            } else if (video.getSnippet().getThumbnails().getMedium() != null) {
-                result.setThumbnailUrl(video.getSnippet().getThumbnails().getMedium().getUrl());
-            } else if (video.getSnippet().getThumbnails().getDefaultThumbnail() != null) {
-                result.setThumbnailUrl(video.getSnippet().getThumbnails().getDefaultThumbnail().getUrl());
+            var thumbnails = video.getSnippet().getThumbnails();
+            if (thumbnails.getMaxres() != null) {
+                result.setThumbnailUrl(thumbnails.getMaxres().getUrl());
+                result.setThumbnailWidth(thumbnails.getMaxres().getWidth());
+                result.setThumbnailHeight(thumbnails.getMaxres().getHeight());
+                System.out.println("비디오 " + videoId + " - Maxres 썸네일: " + thumbnails.getMaxres().getWidth() + "x" + thumbnails.getMaxres().getHeight());
+            } else if (thumbnails.getHigh() != null) {
+                result.setThumbnailUrl(thumbnails.getHigh().getUrl());
+                result.setThumbnailWidth(thumbnails.getHigh().getWidth());
+                result.setThumbnailHeight(thumbnails.getHigh().getHeight());
+                System.out.println("비디오 " + videoId + " - High 썸네일: " + thumbnails.getHigh().getWidth() + "x" + thumbnails.getHigh().getHeight());
+            } else if (thumbnails.getMedium() != null) {
+                result.setThumbnailUrl(thumbnails.getMedium().getUrl());
+                result.setThumbnailWidth(thumbnails.getMedium().getWidth());
+                result.setThumbnailHeight(thumbnails.getMedium().getHeight());
+                System.out.println("비디오 " + videoId + " - Medium 썸네일: " + thumbnails.getMedium().getWidth() + "x" + thumbnails.getMedium().getHeight());
+            } else if (thumbnails.getDefaultThumbnail() != null) {
+                result.setThumbnailUrl(thumbnails.getDefaultThumbnail().getUrl());
+                result.setThumbnailWidth(thumbnails.getDefaultThumbnail().getWidth());
+                result.setThumbnailHeight(thumbnails.getDefaultThumbnail().getHeight());
+                System.out.println("비디오 " + videoId + " - Default 썸네일: " + thumbnails.getDefaultThumbnail().getWidth() + "x" + thumbnails.getDefaultThumbnail().getHeight());
             }
+        } else {
+            System.out.println("비디오 " + videoId + " - 썸네일 정보 없음");
         }
 
         result.setComments(new ArrayList<>());

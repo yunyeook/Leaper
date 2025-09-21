@@ -348,6 +348,60 @@ public class YoutubeApiService {
     }
 
     /**
+     * 플레이리스트의 모든 비디오와 댓글을 함께 가져옴
+     */
+    public Flux<YoutubeVideoWithComments> getAllVideosWithCommentsFromPlaylist(String playlistId, Integer maxCommentsPerVideo, String contentType) {
+        return getAllVideosFromPlaylist(playlistId)
+                .flatMap(video -> {
+                    final String videoId;
+                    if (video.getSnippet().getResourceId() != null) {
+                        videoId = video.getSnippet().getResourceId().getVideoId();
+                    } else {
+                        videoId = video.getVideoId();
+                    }
+
+                    if (videoId == null) {
+                        return Mono.empty();
+                    }
+
+                    // 비디오 상세 정보(통계 포함)를 가져온 후 댓글과 결합
+                    return getVideoDetails(videoId)
+                            .flatMap(detailedVideo -> {
+                                YoutubeVideoWithComments result = YoutubeVideoWithComments.fromYouTubeVideo(detailedVideo);
+
+                                if (maxCommentsPerVideo == null || maxCommentsPerVideo <= 0) {
+                                    // 댓글을 요청하지 않는 경우
+                                    result.setComments(new ArrayList<>());
+                                    return Mono.just(result);
+                                }
+
+                                return getVideoComments(videoId, maxCommentsPerVideo)
+                                        .map(this::convertToCommentInfo)
+                                        .filter(comment -> comment != null) // null 댓글 필터링
+                                        .collectList()
+                                        .map(comments -> {
+                                            result.setComments(comments);
+                                            result.setCommentsCount((long) comments.size());
+                                            return result;
+                                        })
+                                        .onErrorResume(throwable -> {
+                                            if (throwable.getMessage() != null && throwable.getMessage().contains("댓글이 비활성화된 비디오")) {
+                                                // 댓글이 비활성화된 경우 특별한 댓글 추가
+                                                YoutubeVideoWithComments.CommentInfo disabledComment = createDisabledCommentInfo();
+                                                result.setComments(List.of(disabledComment));
+                                                result.setCommentsCount(1L);
+                                            } else {
+                                                // 기타 오류의 경우 빈 댓글 리스트
+                                                result.setComments(new ArrayList<>());
+                                                result.setCommentsCount(0L);
+                                            }
+                                            return Mono.just(result);
+                                        });
+                            });
+                });
+    }
+
+    /**
      * 채널의 모든 비디오와 댓글을 함께 가져옴
      */
     public Flux<YoutubeVideoWithComments> getAllVideosWithCommentsFromChannel(String channelId, Integer maxCommentsPerVideo) {
@@ -519,16 +573,33 @@ public class YoutubeApiService {
     }
 
     /**
-     * 채널 정보 + 비디오 + 댓글 통합 조회
+     * 채널 정보 + 비디오 + 댓글 통합 조회 (긴 영상과 짧은 영상 모두 포함)
      */
     public Mono<ChannelWithVideosResponse> getChannelWithVideosResponse(String externalAccountId, Integer maxCommentsPerVideo) {
         Mono<ChannelInfoResponse> channelInfo = getChannelInfoResponse(externalAccountId);
 
-        Mono<List<VideoInfoWithCommentsResponse>> videos = getChannelVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo)
+        // 긴 영상과 짧은 영상을 각각 가져와서 합치기
+        Mono<List<VideoInfoWithCommentsResponse>> longVideos = getChannelLongVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo)
+                .collectList();
+        Mono<List<VideoInfoWithCommentsResponse>> shortVideos = getChannelShortVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo)
                 .collectList();
 
-        return Mono.zip(channelInfo, videos)
-                .map(tuple -> new ChannelWithVideosResponse(tuple.getT1(), tuple.getT2()));
+        return Mono.zip(channelInfo, longVideos, shortVideos)
+                .map(tuple -> {
+                    ChannelInfoResponse channel = tuple.getT1();
+                    List<VideoInfoWithCommentsResponse> longVids = tuple.getT2();
+                    List<VideoInfoWithCommentsResponse> shortVids = tuple.getT3();
+
+                    // 긴 영상과 짧은 영상을 합쳐서 하나의 리스트로 만들기
+                    List<VideoInfoWithCommentsResponse> allVideos = new ArrayList<>();
+                    allVideos.addAll(longVids);
+                    allVideos.addAll(shortVids);
+
+                    log.info("채널 {} - 긴 영상: {}개, 짧은 영상: {}개, 총 {}개",
+                            externalAccountId, longVids.size(), shortVids.size(), allVideos.size());
+
+                    return new ChannelWithVideosResponse(channel, allVideos);
+                });
     }
 
     /**
@@ -544,13 +615,34 @@ public class YoutubeApiService {
     }
 
     /**
-     * 비디오 제목을 기반으로 contentType 결정
+     * 채널 ID를 긴 영상 플레이리스트 ID로 변환
+     * UC... -> UULF...
      */
-    public String determineContentType(String title) {
-        if (title != null && title.toLowerCase().contains("#shorts")) {
-            return "VIDEO_SHORT";
+    private String getChannelLongVideosPlaylistId(String channelId) {
+        if (channelId != null && channelId.startsWith("UC")) {
+            return "UULF" + channelId.substring(2);
         }
-        return "VIDEO_LONG";
+        return channelId;
+    }
+
+    /**
+     * 채널 ID를 짧은 영상 플레이리스트 ID로 변환
+     * UC... -> UUPS...
+     */
+    private String getChannelShortVideosPlaylistId(String channelId) {
+        if (channelId != null && channelId.startsWith("UC")) {
+            return "UUPS" + channelId.substring(2);
+        }
+        return channelId;
+    }
+
+    /**
+     * 플레이리스트 기반으로 contentType 결정
+     * 이제 플레이리스트에 따라 contentType이 결정되므로 이 메서드는 단순화됨
+     */
+    public String determineContentType(YoutubeVideoWithComments video, String contentType) {
+        log.info("비디오 {} - 플레이리스트 기반 contentType: {}", video.getVideoId(), contentType);
+        return contentType;
     }
 
     /**
@@ -561,11 +653,45 @@ public class YoutubeApiService {
         response.setAccountNickname(accountNickname);
         response.setExternalContentId(video.getVideoId());
         response.setPlatformType("YOUTUBE");
-        response.setContentType(determineContentType(video.getTitle()));
+        response.setContentType(determineContentType(video, "VIDEO_LONG")); // 기본값
         response.setTitle(video.getTitle());
         response.setDescription(video.getDescription());
         response.setDurationSeconds(video.getDurationSeconds());
-        response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
+        // contentType에 따라 URL 형식 변경
+        if ("VIDEO_SHORT".equals(response.getContentType())) {
+            response.setContentUrl("https://www.youtube.com/shorts/" + video.getVideoId());
+        } else {
+            response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
+        }
+        response.setPublishedAt(video.getPublishedAt());
+        response.setTags(video.getTags());
+        response.setViewsCount(video.getViewsCount());
+        response.setLikesCount(video.getLikesCount());
+        response.setCommentsCount(video.getCommentsCount());
+
+        response.setThumbnailInfo(createThumbnailInfo(video));
+
+        return response;
+    }
+
+    /**
+     * YoutubeVideoWithComments를 VideoInfoResponse로 변환 (contentType 지정)
+     */
+    public VideoInfoResponse convertToVideoInfoResponse(YoutubeVideoWithComments video, String accountNickname, String contentType) {
+        VideoInfoResponse response = new VideoInfoResponse();
+        response.setAccountNickname(accountNickname);
+        response.setExternalContentId(video.getVideoId());
+        response.setPlatformType("YOUTUBE");
+        response.setContentType(contentType);
+        response.setTitle(video.getTitle());
+        response.setDescription(video.getDescription());
+        response.setDurationSeconds(video.getDurationSeconds());
+        // contentType에 따라 URL 형식 변경
+        if ("VIDEO_SHORT".equals(response.getContentType())) {
+            response.setContentUrl("https://www.youtube.com/shorts/" + video.getVideoId());
+        } else {
+            response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
+        }
         response.setPublishedAt(video.getPublishedAt());
         response.setTags(video.getTags());
         response.setViewsCount(video.getViewsCount());
@@ -611,6 +737,30 @@ public class YoutubeApiService {
     }
 
     /**
+     * 채널의 긴 영상만 조회 (플레이리스트 기반)
+     */
+    public Flux<VideoInfoResponse> getChannelLongVideosWithHandle(String externalAccountId) {
+        String longVideosPlaylistId = getChannelLongVideosPlaylistId(externalAccountId);
+        return getAllVideosWithCommentsFromPlaylist(longVideosPlaylistId, 0, "VIDEO_LONG")
+                .flatMap(video ->
+                    getChannelHandleWithCache(video.getChannelId())
+                        .map(accountNickname -> convertToVideoInfoResponse(video, accountNickname, "VIDEO_LONG"))
+                );
+    }
+
+    /**
+     * 채널의 짧은 영상만 조회 (플레이리스트 기반)
+     */
+    public Flux<VideoInfoResponse> getChannelShortVideosWithHandle(String externalAccountId) {
+        String shortVideosPlaylistId = getChannelShortVideosPlaylistId(externalAccountId);
+        return getAllVideosWithCommentsFromPlaylist(shortVideosPlaylistId, 0, "VIDEO_SHORT")
+                .flatMap(video ->
+                    getChannelHandleWithCache(video.getChannelId())
+                        .map(accountNickname -> convertToVideoInfoResponse(video, accountNickname, "VIDEO_SHORT"))
+                );
+    }
+
+    /**
      * 채널의 모든 비디오 + 댓글 조회 (채널 핸들 조회 포함)
      */
     public Flux<VideoInfoWithCommentsResponse> getChannelVideosWithCommentsAndHandle(String externalAccountId, Integer maxCommentsPerVideo) {
@@ -624,14 +774,47 @@ public class YoutubeApiService {
     }
 
     /**
+     * 채널의 긴 영상 + 댓글 조회 (플레이리스트 기반)
+     */
+    public Flux<VideoInfoWithCommentsResponse> getChannelLongVideosWithCommentsAndHandle(String externalAccountId, Integer maxCommentsPerVideo) {
+        String longVideosPlaylistId = getChannelLongVideosPlaylistId(externalAccountId);
+        return getAllVideosWithCommentsFromPlaylist(longVideosPlaylistId, maxCommentsPerVideo, "VIDEO_LONG")
+                .flatMap(video -> {
+                    return getChannelHandleWithCache(video.getChannelId())
+                            .map(accountNickname ->
+                                convertToVideoInfoWithCommentsResponse(video, accountNickname, "VIDEO_LONG")
+                            );
+                });
+    }
+
+    /**
+     * 채널의 짧은 영상 + 댓글 조회 (플레이리스트 기반)
+     */
+    public Flux<VideoInfoWithCommentsResponse> getChannelShortVideosWithCommentsAndHandle(String externalAccountId, Integer maxCommentsPerVideo) {
+        String shortVideosPlaylistId = getChannelShortVideosPlaylistId(externalAccountId);
+        return getAllVideosWithCommentsFromPlaylist(shortVideosPlaylistId, maxCommentsPerVideo, "VIDEO_SHORT")
+                .flatMap(video -> {
+                    return getChannelHandleWithCache(video.getChannelId())
+                            .map(accountNickname ->
+                                convertToVideoInfoWithCommentsResponse(video, accountNickname, "VIDEO_SHORT")
+                            );
+                });
+    }
+
+    /**
      * YoutubeVideoWithComments를 VideoWithCommentsResponse로 변환
      */
     public VideoWithCommentsResponse convertToVideoWithCommentsResponse(YoutubeVideoWithComments video) {
         VideoWithCommentsResponse response = new VideoWithCommentsResponse();
 
         response.setContentId(video.getVideoId());
-        response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
-        response.setContentType(determineContentType(video.getTitle()));
+        // contentType에 따라 URL 형식 변경
+        if ("VIDEO_SHORT".equals(response.getContentType())) {
+            response.setContentUrl("https://www.youtube.com/shorts/" + video.getVideoId());
+        } else {
+            response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
+        }
+        response.setContentType(determineContentType(video, "VIDEO_LONG")); // 기본값
         response.setCommentsCount(video.getCommentsCount());
 
         List<VideoWithCommentsResponse.CommentInfo> commentInfos = new java.util.ArrayList<>();
@@ -654,11 +837,56 @@ public class YoutubeApiService {
         response.setAccountNickname(accountNickname);
         response.setExternalContentId(video.getVideoId());
         response.setPlatformType("YOUTUBE");
-        response.setContentType(determineContentType(video.getTitle()));
+        response.setContentType(determineContentType(video, "VIDEO_LONG")); // 기본값
         response.setTitle(video.getTitle());
         response.setDescription(video.getDescription());
         response.setDurationSeconds(video.getDurationSeconds());
-        response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
+        // contentType에 따라 URL 형식 변경
+        if ("VIDEO_SHORT".equals(response.getContentType())) {
+            response.setContentUrl("https://www.youtube.com/shorts/" + video.getVideoId());
+        } else {
+            response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
+        }
+        response.setPublishedAt(video.getPublishedAt());
+        response.setTags(video.getTags());
+        response.setViewsCount(video.getViewsCount());
+        response.setLikesCount(video.getLikesCount());
+        response.setCommentsCount(video.getCommentsCount());
+
+        // 썸네일 정보 설정
+        response.setThumbnailInfo(createThumbnailInfo(video));
+
+        // 댓글 정보 변환
+        List<VideoWithCommentsResponse.CommentInfo> commentInfos = new java.util.ArrayList<>();
+        if (video.getComments() != null) {
+            for (YoutubeVideoWithComments.CommentInfo comment : video.getComments()) {
+                commentInfos.add(convertToCommentInfo(comment));
+            }
+        }
+        response.setComments(commentInfos);
+
+        return response;
+    }
+
+    /**
+     * YoutubeVideoWithComments를 VideoInfoWithCommentsResponse로 변환 (contentType 지정)
+     */
+    public VideoInfoWithCommentsResponse convertToVideoInfoWithCommentsResponse(YoutubeVideoWithComments video, String accountNickname, String contentType) {
+        VideoInfoWithCommentsResponse response = new VideoInfoWithCommentsResponse();
+
+        response.setAccountNickname(accountNickname);
+        response.setExternalContentId(video.getVideoId());
+        response.setPlatformType("YOUTUBE");
+        response.setContentType(contentType);
+        response.setTitle(video.getTitle());
+        response.setDescription(video.getDescription());
+        response.setDurationSeconds(video.getDurationSeconds());
+        // contentType에 따라 URL 형식 변경
+        if ("VIDEO_SHORT".equals(response.getContentType())) {
+            response.setContentUrl("https://www.youtube.com/shorts/" + video.getVideoId());
+        } else {
+            response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
+        }
         response.setPublishedAt(video.getPublishedAt());
         response.setTags(video.getTags());
         response.setViewsCount(video.getViewsCount());

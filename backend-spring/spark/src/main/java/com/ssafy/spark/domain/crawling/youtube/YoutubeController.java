@@ -11,22 +11,38 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class YoutubeController {
 
-    private final YoutubeApiService youTuBeApiService;
+    private final YoutubeApiService youtubeApiService;
 
     /**
      * 채널 정보 조회
      */
     @GetMapping("/channel/{externalAccountId}/info")
     public Mono<ChannelInfoResponse> getChannelInfo(@PathVariable String externalAccountId) {
-        return youTuBeApiService.getChannelInfoResponse(externalAccountId);
+        return youtubeApiService.getChannelInfoResponse(externalAccountId);
     }
 
     /**
-     * 채널의 모든 비디오 정보 조회
+     * 채널의 모든 영상 조회
      */
     @GetMapping("/channel/{externalAccountId}/videos")
     public Flux<VideoInfoResponse> getChannelVideos(@PathVariable String externalAccountId) {
-        return youTuBeApiService.getChannelVideosWithHandle(externalAccountId);
+        return youtubeApiService.getChannelVideosWithHandle(externalAccountId);
+    }
+
+    /**
+     * 채널의 긴 영상만 조회
+     */
+    @GetMapping("/channel/{externalAccountId}/video-long")
+    public Flux<VideoInfoResponse> getChannelLongVideos(@PathVariable String externalAccountId) {
+        return youtubeApiService.getChannelLongVideosWithHandle(externalAccountId);
+    }
+
+    /**
+     * 채널의 짧은 영상만 조회
+     */
+    @GetMapping("/channel/{externalAccountId}/video-short")
+    public Flux<VideoInfoResponse> getChannelShortVideos(@PathVariable String externalAccountId) {
+        return youtubeApiService.getChannelShortVideosWithHandle(externalAccountId);
     }
 
     /**
@@ -34,7 +50,7 @@ public class YoutubeController {
      */
     @GetMapping("/video/{videoId}/info")
     public Mono<VideoInfoResponse> getVideoInfo(@PathVariable("videoId") String videoId) {
-        return youTuBeApiService.getVideoInfoResponseWithHandle(videoId);
+        return youtubeApiService.getVideoInfoResponseWithHandle(videoId);
     }
 
     /**
@@ -44,8 +60,8 @@ public class YoutubeController {
     public Mono<VideoWithCommentsResponse> getVideoComments(
             @PathVariable("videoId") String videoId,
             @RequestParam(value = "maxResults", defaultValue = "20") Integer maxResults) {
-        return youTuBeApiService.getVideoWithComments(videoId, maxResults)
-                .map(youTuBeApiService::convertToVideoWithCommentsResponse);
+        return youtubeApiService.getVideoWithComments(videoId, maxResults)
+                .map(youtubeApiService::convertToVideoWithCommentsResponse);
     }
 
     /**
@@ -55,7 +71,7 @@ public class YoutubeController {
     public Mono<VideoInfoWithCommentsResponse> getVideoInfoWithComments(
             @PathVariable("videoId") String videoId,
             @RequestParam(value = "maxComments", defaultValue = "50") Integer maxComments) {
-        return youTuBeApiService.getVideoInfoWithCommentsResponseWithHandle(videoId, maxComments);
+        return youtubeApiService.getVideoInfoWithCommentsResponseWithHandle(videoId, maxComments);
     }
 
     /**
@@ -65,6 +81,6 @@ public class YoutubeController {
     public Mono<ChannelWithVideosResponse> getChannelInfoAndVideosWithComments(
             @PathVariable("externalAccountId") String externalAccountId,
             @RequestParam(value = "maxCommentsPerVideo", defaultValue = "10") Integer maxCommentsPerVideo) {
-        return youTuBeApiService.getChannelWithVideosResponse(externalAccountId, maxCommentsPerVideo);
+        return youtubeApiService.getChannelWithVideosResponse(externalAccountId, maxCommentsPerVideo);
     }
 }
