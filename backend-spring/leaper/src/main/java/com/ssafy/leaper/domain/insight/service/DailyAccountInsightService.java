@@ -121,7 +121,6 @@ public class DailyAccountInsightService {
   }
 
   public ServiceResult<List<DailyAccountInsightResponse>> getAccountInsightsToday(Integer influencerId) {
-   LocalDate today = LocalDate.now();
     List<DailyAccountInsight> entities = dailyAccountInsightRepository.findLatestByInfluencerId(influencerId);
 
     List<DailyAccountInsightResponse> responses = entities.stream()
@@ -132,7 +131,6 @@ public class DailyAccountInsightService {
   }
 
   public ServiceResult<DailyAccountInsightResponse> getPlatformAccountInsightsToday(Integer platformAccountId) {
-    LocalDate today = LocalDate.now();
     Optional<DailyAccountInsight> entity = dailyAccountInsightRepository.findLatestByPlatformAccountId(platformAccountId);
 
     if (entity.isEmpty()) {
