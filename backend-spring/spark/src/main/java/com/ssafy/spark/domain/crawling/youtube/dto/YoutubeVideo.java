@@ -28,16 +28,6 @@ public class YoutubeVideo {
         return null;
     }
 
-    // Channel ID 가져오기 (Search API용)
-    public String getChannelIdFromId() {
-        if (id instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> idMap = (Map<String, Object>) id;
-            return (String) idMap.get("channelId");
-        }
-        return null;
-    }
-
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Snippet {

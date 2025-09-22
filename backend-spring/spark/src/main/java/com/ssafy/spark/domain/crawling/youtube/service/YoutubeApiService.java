@@ -1,5 +1,11 @@
-package com.ssafy.spark.domain.crawling.youtube;
+package com.ssafy.spark.domain.crawling.youtube.service;
 
+import com.ssafy.spark.domain.business.platformAccount.dto.response.PlatformAccountResponse;
+import com.ssafy.spark.domain.business.platformAccount.entity.PlatformAccount;
+import com.ssafy.spark.domain.business.platformAccount.service.PlatformAccountService;
+import com.ssafy.spark.domain.business.type.entity.PlatformType;
+import com.ssafy.spark.domain.business.type.service.CategoryTypeService;
+import com.ssafy.spark.domain.business.type.service.PlatformTypeService;
 import com.ssafy.spark.domain.crawling.youtube.dto.*;
 import com.ssafy.spark.domain.crawling.youtube.dto.response.*;
 import com.ssafy.spark.domain.crawling.youtube.dto.response.raw.*;
@@ -13,6 +19,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +28,8 @@ public class YoutubeApiService {
 
     private final YoutubeApiConfig config;
     private final WebClient youtubeWebClient;
+    private final PlatformAccountService platformAccountService;
+    private final CategoryTypeService categoryTypeService;
 
     // 채널명 캐시를 위한 맵
     private final java.util.Map<String, String> channelIdToNameMap = new java.util.concurrent.ConcurrentHashMap<>();
@@ -78,28 +87,6 @@ public class YoutubeApiService {
     }
 
     /**
-     * 채널명으로 채널 정보 조회
-     */
-    public Mono<YoutubeChannelInfo> getChannelInfoByName(String channelName) {
-        return getChannelIdByName(channelName)
-                .flatMap(channelId -> {
-                    // 채널ID와 채널명 매핑 저장
-                    String normalizedChannelName = channelName.startsWith("@") ? channelName : "@" + channelName;
-                    channelIdToNameMap.put(channelId, normalizedChannelName);
-
-                    return getChannelInfo(channelId)
-                            .map(channelInfo -> {
-                                // 검색에 사용된 channelName이 핸들 형태라면 그것을 사용
-                                if (channelName.startsWith("@")) {
-                                    channelInfo.setAccountNickname(channelName);
-                                }
-                                return channelInfo;
-                            });
-                });
-    }
-
-
-    /**
      * 채널 ID로 업로드 플레이리스트 ID를 가져옴
      */
     private Mono<String> getUploadPlaylistId(String channelId) {
@@ -122,58 +109,6 @@ public class YoutubeApiService {
                     throw new RuntimeException("채널을 찾을 수 없습니다: " + channelId);
                 })
                 .doOnNext(playlistId -> log.info("업로드 플레이리스트 ID: {}", playlistId));
-    }
-
-    /**
-     * 채널명으로 채널 ID를 검색
-     */
-    private Mono<String> getChannelIdByName(String channelName) {
-        log.info("API 키 확인: {}", config.getKey() != null ? "설정됨" : "설정되지 않음");
-        log.info("채널명 검색: {}", channelName);
-
-        return youtubeWebClient.get()
-                .uri(uriBuilder -> {
-                    var uri = uriBuilder
-                            .path("/search")
-                            .queryParam("part", "snippet")
-                            .queryParam("type", "channel")
-                            .queryParam("q", channelName)
-                            .queryParam("key", config.getKey())
-                            .queryParam("maxResults", 1)
-                            .build();
-                    log.info("요청 URL: {}", uri.toString());
-                    return uri;
-                })
-                .retrieve()
-                .onStatus(
-                        status -> status.is4xxClientError() || status.is5xxServerError(),
-                        response -> {
-                            if (response.statusCode().value() == 403) {
-                                log.error("YouTube API 403 오류: API 키 확인 필요 또는 할당량 초과");
-                                return Mono.error(new RuntimeException("YouTube API 권한 오류: API 키를 확인하거나 할당량이 초과되었습니다."));
-                            }
-                            log.error("YouTube API 오류: {}", response.statusCode());
-                            return response.createException();
-                        }
-                )
-                .bodyToMono(RawYoutubeVideoListResponse.class)
-                .map(response -> {
-                    if (response.getItems() != null && !response.getItems().isEmpty()) {
-                        YoutubeVideo firstResult = response.getItems().get(0);
-                        // Search API에서는 snippet.channelId를 사용하거나 id에서 channelId를 추출
-                        String channelId = firstResult.getChannelIdFromId();
-                        if (channelId == null) {
-                            channelId = firstResult.getSnippet().getChannelId();
-                        }
-                        log.info("찾은 채널 ID: {}", channelId);
-
-                        // 검색 결과에서 실제 채널 타이틀도 로깅해보기
-                        log.info("검색된 채널 타이틀: {}", firstResult.getSnippet().getTitle());
-
-                        return channelId;
-                    }
-                    throw new RuntimeException("채널을 찾을 수 없습니다: " + channelName);
-                });
     }
 
     /**
@@ -280,18 +215,6 @@ public class YoutubeApiService {
                                 videoId, pageToken, response.getItems() != null ? response.getItems().size() : 0))
                 .onErrorReturn(new RawYoutubeCommentResponse()) // 에러시 빈 응답 반환
                 .filter(response -> response.getItems() != null); // null items 필터링
-    }
-
-    /**
-     * 특정 비디오 정보만 조회 (댓글 제외)
-     */
-    public Mono<YoutubeVideoWithComments> getVideoInfo(String videoId) {
-        return getVideoDetails(videoId)
-                .map(video -> {
-                    YoutubeVideoWithComments result = YoutubeVideoWithComments.fromYouTubeVideo(video);
-                    result.setComments(new ArrayList<>()); // 빈 댓글 리스트
-                    return result;
-                });
     }
 
     /**
@@ -554,6 +477,13 @@ public class YoutubeApiService {
      * 채널 정보 조회 (ChannelInfoResponse 반환)
      */
     public Mono<ChannelInfoResponse> getChannelInfoResponse(String externalAccountId) {
+
+        Optional<PlatformAccount> platformAccount =
+                platformAccountService.findEntityByExternalAccountIdAndPlatformType(externalAccountId, "YOUTUBE");
+        String categoryName =
+                categoryTypeService.findEntityById(platformAccount.get().getCategoryType().getId())
+                        .get().getCategoryName();
+
         return getChannelInfo(externalAccountId)
                 .flatMap(channelInfo -> {
                     return getChannelHandle(externalAccountId)
@@ -561,8 +491,7 @@ public class YoutubeApiService {
                                 ChannelInfoResponse response = new ChannelInfoResponse();
                                 response.setExternalAccountId(channelInfo.getExternalAccountId());
                                 response.setAccountNickname(accountNickname);
-                                // TODO: categoryName 넣는 방식 설정
-                                response.setCategoryName(null);
+                                response.setCategoryName(categoryName);
                                 response.setAccountUrl("https://youtube.com/channel/" + externalAccountId);
                                 response.setFollowersCount(channelInfo.getFollowersCount());
                                 response.setPostsCount(channelInfo.getPostsCount());
@@ -675,57 +604,6 @@ public class YoutubeApiService {
     }
 
     /**
-     * YoutubeVideoWithComments를 VideoInfoResponse로 변환 (contentType 지정)
-     */
-    public VideoInfoResponse convertToVideoInfoResponse(YoutubeVideoWithComments video, String accountNickname, String contentType) {
-        VideoInfoResponse response = new VideoInfoResponse();
-        response.setAccountNickname(accountNickname);
-        response.setExternalContentId(video.getVideoId());
-        response.setPlatformType("YOUTUBE");
-        response.setContentType(contentType);
-        response.setTitle(video.getTitle());
-        response.setDescription(video.getDescription());
-        response.setDurationSeconds(video.getDurationSeconds());
-        // contentType에 따라 URL 형식 변경
-        if ("VIDEO_SHORT".equals(response.getContentType())) {
-            response.setContentUrl("https://www.youtube.com/shorts/" + video.getVideoId());
-        } else {
-            response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
-        }
-        response.setPublishedAt(video.getPublishedAt());
-        response.setTags(video.getTags());
-        response.setViewsCount(video.getViewsCount());
-        response.setLikesCount(video.getLikesCount());
-        response.setCommentsCount(video.getCommentsCount());
-
-        response.setThumbnailInfo(createThumbnailInfo(video));
-
-        return response;
-    }
-
-    /**
-     * 비디오 정보 조회 (채널 핸들 조회 포함)
-     */
-    public Mono<VideoInfoResponse> getVideoInfoResponseWithHandle(String videoId) {
-        return getVideoInfo(videoId)
-                .flatMap(video ->
-                    getChannelHandleWithCache(video.getChannelId())
-                        .map(accountNickname -> convertToVideoInfoResponse(video, accountNickname))
-                );
-    }
-
-    /**
-     * 비디오 정보 + 댓글 조회 (채널 핸들 조회 포함)
-     */
-    public Mono<VideoInfoWithCommentsResponse> getVideoInfoWithCommentsResponseWithHandle(String videoId, Integer maxComments) {
-        return getVideoWithComments(videoId, maxComments)
-                .flatMap(video ->
-                    getChannelHandleWithCache(video.getChannelId())
-                        .map(accountNickname -> convertToVideoInfoWithCommentsResponse(video, accountNickname))
-                );
-    }
-
-    /**
      * 채널의 모든 비디오 조회 (채널 핸들 조회 포함)
      */
     public Flux<VideoInfoResponse> getChannelVideosWithHandle(String externalAccountId) {
@@ -734,43 +612,6 @@ public class YoutubeApiService {
                     getChannelHandleWithCache(video.getChannelId())
                         .map(accountNickname -> convertToVideoInfoResponse(video, accountNickname))
                 );
-    }
-
-    /**
-     * 채널의 긴 영상만 조회 (플레이리스트 기반)
-     */
-    public Flux<VideoInfoResponse> getChannelLongVideosWithHandle(String externalAccountId) {
-        String longVideosPlaylistId = getChannelLongVideosPlaylistId(externalAccountId);
-        return getAllVideosWithCommentsFromPlaylist(longVideosPlaylistId, 0, "VIDEO_LONG")
-                .flatMap(video ->
-                    getChannelHandleWithCache(video.getChannelId())
-                        .map(accountNickname -> convertToVideoInfoResponse(video, accountNickname, "VIDEO_LONG"))
-                );
-    }
-
-    /**
-     * 채널의 짧은 영상만 조회 (플레이리스트 기반)
-     */
-    public Flux<VideoInfoResponse> getChannelShortVideosWithHandle(String externalAccountId) {
-        String shortVideosPlaylistId = getChannelShortVideosPlaylistId(externalAccountId);
-        return getAllVideosWithCommentsFromPlaylist(shortVideosPlaylistId, 0, "VIDEO_SHORT")
-                .flatMap(video ->
-                    getChannelHandleWithCache(video.getChannelId())
-                        .map(accountNickname -> convertToVideoInfoResponse(video, accountNickname, "VIDEO_SHORT"))
-                );
-    }
-
-    /**
-     * 채널의 모든 비디오 + 댓글 조회 (채널 핸들 조회 포함)
-     */
-    public Flux<VideoInfoWithCommentsResponse> getChannelVideosWithCommentsAndHandle(String externalAccountId, Integer maxCommentsPerVideo) {
-        return getAllVideosWithCommentsFromChannel(externalAccountId, maxCommentsPerVideo)
-                .flatMap(video -> {
-                    return getChannelHandleWithCache(video.getChannelId())
-                            .map(accountNickname ->
-                                convertToVideoInfoWithCommentsResponse(video, accountNickname)
-                            );
-                });
     }
 
     /**
@@ -817,46 +658,6 @@ public class YoutubeApiService {
         response.setContentType(determineContentType(video, "VIDEO_LONG")); // 기본값
         response.setCommentsCount(video.getCommentsCount());
 
-        List<VideoWithCommentsResponse.CommentInfo> commentInfos = new java.util.ArrayList<>();
-        if (video.getComments() != null) {
-            for (YoutubeVideoWithComments.CommentInfo comment : video.getComments()) {
-                commentInfos.add(convertToCommentInfo(comment));
-            }
-        }
-        response.setComments(commentInfos);
-
-        return response;
-    }
-
-    /**
-     * YoutubeVideoWithComments를 VideoInfoWithCommentsResponse로 변환
-     */
-    public VideoInfoWithCommentsResponse convertToVideoInfoWithCommentsResponse(YoutubeVideoWithComments video, String accountNickname) {
-        VideoInfoWithCommentsResponse response = new VideoInfoWithCommentsResponse();
-
-        response.setAccountNickname(accountNickname);
-        response.setExternalContentId(video.getVideoId());
-        response.setPlatformType("YOUTUBE");
-        response.setContentType(determineContentType(video, "VIDEO_LONG")); // 기본값
-        response.setTitle(video.getTitle());
-        response.setDescription(video.getDescription());
-        response.setDurationSeconds(video.getDurationSeconds());
-        // contentType에 따라 URL 형식 변경
-        if ("VIDEO_SHORT".equals(response.getContentType())) {
-            response.setContentUrl("https://www.youtube.com/shorts/" + video.getVideoId());
-        } else {
-            response.setContentUrl("https://www.youtube.com/watch?v=" + video.getVideoId());
-        }
-        response.setPublishedAt(video.getPublishedAt());
-        response.setTags(video.getTags());
-        response.setViewsCount(video.getViewsCount());
-        response.setLikesCount(video.getLikesCount());
-        response.setCommentsCount(video.getCommentsCount());
-
-        // 썸네일 정보 설정
-        response.setThumbnailInfo(createThumbnailInfo(video));
-
-        // 댓글 정보 변환
         List<VideoWithCommentsResponse.CommentInfo> commentInfos = new java.util.ArrayList<>();
         if (video.getComments() != null) {
             for (YoutubeVideoWithComments.CommentInfo comment : video.getComments()) {
@@ -952,6 +753,47 @@ public class YoutubeApiService {
         } catch (NumberFormatException e) {
             return 0L;
         }
+    }
+
+    /**
+     * 채널 닉네임(@handle)으로 채널 기본 정보 검색
+     */
+    public Mono<ChannelInfoResponse> searchChannelByHandle(String handle) {
+        // @ 없으면 추가
+        String searchHandle = handle.startsWith("@") ? handle : "@" + handle;
+
+        return youtubeWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/channels")
+                        .queryParam("part", "snippet,statistics")
+                        .queryParam("forHandle", searchHandle)
+                        .queryParam("key", config.getKey())
+                        .build())
+                .retrieve()
+                .bodyToMono(RawYoutubeChannelResponse.class)
+                .flatMap(channelResponse -> {
+                    if (channelResponse.getItems() == null || channelResponse.getItems().isEmpty()) {
+                        return Mono.error(new RuntimeException("채널을 찾을 수 없습니다: " + searchHandle));
+                    }
+
+                    RawYoutubeChannelResponse.YouTubeChannel channel = channelResponse.getItems().get(0);
+                    String channelId = channel.getId();
+
+                    log.info("채널 핸들 조회 결과: {} -> {}", searchHandle, channelId);
+
+                    // 채널 정보 응답 생성
+                    ChannelInfoResponse response = new ChannelInfoResponse();
+                    response.setExternalAccountId(channelId);
+                    response.setAccountNickname(channel.getSnippet().getTitle());
+                    response.setCategoryName(null);
+                    response.setAccountUrl("https://www.youtube.com/" + searchHandle);
+                    response.setFollowersCount(Long.parseLong(channel.getStatistics().getSubscriberCount()));
+                    response.setPostsCount(Long.parseLong(channel.getStatistics().getVideoCount()));
+                    response.setCrawledAt(java.time.LocalDateTime.now().toString());
+
+                    return Mono.just(response);
+                })
+                .doOnError(error -> log.error("채널 핸들 조회 실패: {}", searchHandle, error));
     }
 
 }

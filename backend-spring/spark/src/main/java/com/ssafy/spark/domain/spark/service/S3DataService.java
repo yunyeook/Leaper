@@ -114,6 +114,95 @@ public class S3DataService {
     }
   }
 
+  // ========== YouTube 크롤링 데이터 저장 메서드 ==========
+
+  /**
+   * YouTube 채널 정보 저장 (날짜별 경로)
+   * 경로: raw_data/youtube/platform_account/yyyy/MM/dd/
+   */
+  public String saveYouTubeChannelInfo(String externalAccountId, String jsonData) {
+    try {
+      LocalDateTime now = LocalDateTime.now();
+      String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+      String timestamp = now.format(DateTimeFormatter.ofPattern("yyMMdd_HH_mm_ss_SSS"));
+
+      String folderPath = String.format("raw_data/youtube/platform_account/%s", datePath);
+      String fileName = String.format("%s_%s.json", externalAccountId, timestamp);
+      String accessKey = String.format("%s/%s", folderPath, fileName);
+
+      uploadFile(accessKey, jsonData.getBytes(), "application/json");
+      return amazonS3Client.getUrl(bucketName, accessKey).toString();
+
+    } catch (Exception e) {
+      throw new RuntimeException("YouTube 채널 정보 저장 실패", e);
+    }
+  }
+
+  /**
+   * YouTube 비디오 정보 저장 (날짜별 경로)
+   * 경로: raw_data/youtube/content/yyyy/MM/dd/
+   */
+  public String saveYouTubeVideoInfo(String videoId, String jsonData) {
+    try {
+      LocalDateTime now = LocalDateTime.now();
+      String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+      String timestamp = now.format(DateTimeFormatter.ofPattern("yyMMdd_HH_mm_ss_SSS"));
+
+      String folderPath = String.format("raw_data/youtube/content/%s", datePath);
+      String fileName = String.format("%s_%s.json", videoId, timestamp);
+      String accessKey = String.format("%s/%s", folderPath, fileName);
+
+      uploadFile(accessKey, jsonData.getBytes(), "application/json");
+      return amazonS3Client.getUrl(bucketName, accessKey).toString();
+
+    } catch (Exception e) {
+      throw new RuntimeException("YouTube 비디오 정보 저장 실패: " + videoId, e);
+    }
+  }
+
+  /**
+   * YouTube 댓글 정보 저장 (날짜별 경로)
+   * 경로: raw_data/youtube/comment/yyyy/MM/dd/
+   */
+  public String saveYouTubeComments(String videoId, String jsonData) {
+    try {
+      LocalDateTime now = LocalDateTime.now();
+      String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+      String timestamp = now.format(DateTimeFormatter.ofPattern("yyMMdd_HH_mm_ss_SSS"));
+
+      String folderPath = String.format("raw_data/youtube/comment/%s", datePath);
+      String fileName = String.format("%s_%s.json", videoId, timestamp);
+      String accessKey = String.format("%s/%s", folderPath, fileName);
+
+      uploadFile(accessKey, jsonData.getBytes(), "application/json");
+      return amazonS3Client.getUrl(bucketName, accessKey).toString();
+
+    } catch (Exception e) {
+      throw new RuntimeException("YouTube 댓글 정보 저장 실패: " + videoId, e);
+    }
+  }
+
+  /**
+   * 여러 비디오를 배치로 저장
+   */
+  public String saveYouTubeVideoBatch(String batchId, String jsonData) {
+    try {
+      LocalDateTime now = LocalDateTime.now();
+      String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+      String timestamp = now.format(DateTimeFormatter.ofPattern("yyMMdd_HH_mm_ss_SSS"));
+
+      String folderPath = String.format("raw_data/youtube/content/%s", datePath);
+      String fileName = String.format("batch_%s_%s.json", batchId, timestamp);
+      String accessKey = String.format("%s/%s", folderPath, fileName);
+
+      uploadFile(accessKey, jsonData.getBytes(), "application/json");
+      return amazonS3Client.getUrl(bucketName, accessKey).toString();
+
+    } catch (Exception e) {
+      throw new RuntimeException("YouTube 비디오 배치 저장 실패", e);
+    }
+  }
+
   // ========== JSON 조작 유틸리티 ==========
 
   /**
@@ -203,6 +292,64 @@ public class S3DataService {
       return object.getObjectContent();
     } catch (Exception e) {
       throw new RuntimeException("S3 파일 스트림 읽기 실패: " + accessKey, e);
+    }
+  }
+
+  // ========== 데이터 조회 기능 ==========
+
+  /**
+   * S3에서 JSON 파일 내용 읽기
+   */
+  public String getFileContent(String accessKey) {
+    try {
+      S3Object object = amazonS3Client.getObject(bucketName, accessKey);
+      InputStream inputStream = object.getObjectContent();
+      return new String(inputStream.readAllBytes());
+    } catch (Exception e) {
+      throw new RuntimeException("S3 파일 읽기 실패: " + accessKey, e);
+    }
+  }
+
+  /**
+   * 특정 날짜의 YouTube 채널 정보 파일 목록 조회
+   */
+  public java.util.List<String> listYouTubeChannelFiles(String date) {
+    String folderPath = String.format("raw_data/youtube/platform_account/%s/", date.replace("-", "/"));
+    return listFilesInFolder(folderPath);
+  }
+
+  /**
+   * 특정 날짜의 YouTube 비디오 파일 목록 조회
+   */
+  public java.util.List<String> listYouTubeVideoFiles(String date) {
+    String folderPath = String.format("raw_data/youtube/content/%s/", date.replace("-", "/"));
+    return listFilesInFolder(folderPath);
+  }
+
+  /**
+   * 특정 날짜의 YouTube 댓글 파일 목록 조회
+   */
+  public java.util.List<String> listYouTubeCommentFiles(String date) {
+    String folderPath = String.format("raw_data/youtube/comment/%s/", date.replace("-", "/"));
+    return listFilesInFolder(folderPath);
+  }
+
+  /**
+   * 폴더 내 파일 목록 조회
+   */
+  private java.util.List<String> listFilesInFolder(String folderPath) {
+    try {
+      ListObjectsV2Request request = new ListObjectsV2Request()
+          .withBucketName(bucketName)
+          .withPrefix(folderPath);
+
+      ListObjectsV2Result result = amazonS3Client.listObjectsV2(request);
+      return result.getObjectSummaries().stream()
+          .map(S3ObjectSummary::getKey)
+          .filter(key -> key.endsWith(".json"))
+          .collect(java.util.stream.Collectors.toList());
+    } catch (Exception e) {
+      throw new RuntimeException("S3 폴더 목록 조회 실패: " + folderPath, e);
     }
   }
 
