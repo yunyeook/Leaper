@@ -74,7 +74,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
       // 통계 결과를 JSON으로 변환
       ObjectNode statisticsJson = objectMapper.createObjectNode();
       statisticsJson.put("influencerId", influencerId);
-      statisticsJson.put("platformType", platformType);
+      statisticsJson.put("platformType", platformType.toUpperCase());
       statisticsJson.put("platformAccountId", platformAccountId);
       statisticsJson.put("accountNickname", accountNickname);
       statisticsJson.put("categoryName", categoryName);
@@ -88,7 +88,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
 
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
       String fileName = String.format("daily_popular_influencer_%s_%s_%s.json", accountNickname, categoryName, timestamp);
       String s3Path = String.format("processed_data/%s/daily_popular_influencer/%s/%s", platformType, dateFolder, fileName);
 
@@ -119,7 +119,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
 
       // 2. 파라미터 바인딩
       jdbcTemplate.update(sql,
-          platformType,
+          platformType.toUpperCase(),
           influencerId,
           categoryTypeId,
           influencerRank,

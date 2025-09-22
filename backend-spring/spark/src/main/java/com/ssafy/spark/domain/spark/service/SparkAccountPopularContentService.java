@@ -46,8 +46,8 @@ public class SparkAccountPopularContentService extends SparkBaseService{
       for (Row row : results) {
         String externalContentId = row.getAs("externalContentId");
         String accountNickname = row.getAs("accountNickname");
-        Integer platformAccountId = getPlatformAccountId(platformType, accountNickname);
-        Integer contentId = getContentId(platformType, externalContentId);
+        Integer platformAccountId = getPlatformAccountId(platformType.toUpperCase(), accountNickname);
+        Integer contentId = getContentId(platformType.toUpperCase(), externalContentId);
         Integer contentRank = row.getAs("contentRank");
 
         // 1) MySQL에 저장
@@ -68,7 +68,7 @@ public class SparkAccountPopularContentService extends SparkBaseService{
 
       // 통계 결과를 JSON으로 변환
       ObjectNode statisticsJson = objectMapper.createObjectNode();
-      statisticsJson.put("platformType", platformType);
+      statisticsJson.put("platformType", platformType.toUpperCase());
       statisticsJson.put("platformAccountId", platformAccountId);
       statisticsJson.put("contentId", contentId);
       statisticsJson.put("contentRank", contentRank);
@@ -82,7 +82,7 @@ public class SparkAccountPopularContentService extends SparkBaseService{
 
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
       String fileName = String.format("daily_account_popular_content_%s_%s.json",
            contentId, timestamp);
       String s3Path = String.format("processed_data/%s/daily_account_popular_content/%s/%s", platformType, dateFolder, fileName);

@@ -59,7 +59,7 @@ public class S3DataService {
   public String savePlatformAccount(String platform, String accountId, String jsonData, byte[] profileImageData, String mimeType) {
     try {
       // 1. 프로필 이미지 저장
-      String folderPath = String.format("raw_data/%s/platform-account", platform.toLowerCase());
+      String folderPath = String.format("raw_data/%s/platform_account", platform.toLowerCase());
       String profileFileName = String.format("profile_%s", accountId);
       String profileAccessKey = String.format("%s/%s", folderPath, profileFileName);
       uploadFile(profileAccessKey, profileImageData, mimeType);

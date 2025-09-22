@@ -53,11 +53,9 @@ public class SparkPopularContentService extends SparkBaseService {
 
       for (Row row : results) {
         String externalContentId = row.getAs("externalContentId");
-        String accountNickname = row.getAs("accountNickname");
         String categoryName = row.getAs("categoryName");
 
-        Integer platformAccountId = getPlatformAccountId(platformType, accountNickname);
-        Integer contentId = getContentId(platformType, externalContentId);
+        Integer contentId = getContentId(platformType.toUpperCase(), externalContentId);
         Integer categoryTypeId = getCategoryTypeId(categoryName);
         Integer contentRank = row.getAs("contentRank");
 
@@ -80,7 +78,7 @@ public class SparkPopularContentService extends SparkBaseService {
 
       // 통계 결과를 JSON으로 변환
       ObjectNode statisticsJson = objectMapper.createObjectNode();
-      statisticsJson.put("platformType", platformType);
+      statisticsJson.put("platformType", platformType.toUpperCase());
       statisticsJson.put("contentId", contentId);
       statisticsJson.put("categoryName", categoryName);
       statisticsJson.put("contentRank",contentRank);
@@ -93,7 +91,7 @@ public class SparkPopularContentService extends SparkBaseService {
 
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
       String fileName = String.format("daily_popular_content_%s_%s_%s.json", externalContentId, categoryName, timestamp);
       String s3Path = String.format("processed_data/%s/daily_popular_content/%s/%s",platformType, dateFolder, fileName);
 
@@ -108,7 +106,7 @@ public class SparkPopularContentService extends SparkBaseService {
     }
   }
 
-  private void saveDailyPopularContent(String platform, Integer categoryTypeId, Row row, LocalDate targetDate,Integer contentId,Integer contentRank) {
+  private void saveDailyPopularContent(String platformType, Integer categoryTypeId, Row row, LocalDate targetDate,Integer contentId,Integer contentRank) {
     try {
       // 1. MySQL INSERT/UPDATE 쿼리
       String sql = "INSERT INTO daily_popular_content " +
@@ -121,7 +119,7 @@ public class SparkPopularContentService extends SparkBaseService {
 
       // 2. 파라미터 바인딩
       jdbcTemplate.update(sql,
-          platform,
+          platformType.toUpperCase(),
           contentId,
           categoryTypeId,
           contentRank,

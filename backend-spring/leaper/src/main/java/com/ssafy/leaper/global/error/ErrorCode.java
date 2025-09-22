@@ -68,7 +68,12 @@ public enum ErrorCode {
 
   /* FILE – 파일 */
   FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE-001"),
-  FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-002");
+  FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-002"),
+
+  /* INSIGHT – 인사이트 */
+  INSIGHT_NOT_FOUND(HttpStatus.NOT_FOUND, "INSIGHT-001");
+  
+  
 
   private final HttpStatus httpStatus;
   private final String code;
