@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/spark")
-@RequiredArgsConstructor// ← 슬래시 추가
+@RequiredArgsConstructor
 public class SparkAnalysisController {
 
   private final SparkAccountInsightService sparkAccountInsightService;

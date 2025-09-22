@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +49,7 @@ public class ContentService extends BaseApifyService {
         String actorId = "apify~instagram-post-scraper";
 
         Map<String, Object> input = new HashMap<>();
-        input.put("resultsLimit", 10); // TODO : 총 몇개의 컨텐츠를 가져올건지
+        input.put("resultsLimit", 5); // TODO : 총 몇개의 컨텐츠를 가져올건지
         input.put("skipPinnedPosts", false);
         input.put("username", new String[]{username});
 
@@ -127,8 +128,8 @@ public class ContentService extends BaseApifyService {
           //db 저장
           Content savedContent = saveContentToDatabase(content, platformAccount);
 
-          //s3 저장
-          saveContentToS3(content, platformAccount);
+          //s3 저장 (savedContent 정보 활용)
+          saveContentToS3(content, platformAccount, savedContent);
 
           log.info("콘텐츠 저장 완료 - Content ID: {}, External ID: {}",
               savedContent.getId(), content.path("id").asText());
@@ -148,87 +149,35 @@ public class ContentService extends BaseApifyService {
     String contentTypeId = "Sidecar".equals(type) ? "POST" : "VIDEO_SHORT";
 
     String externalContentId = contentNode.path("id").asText();
-    String caption = contentNode.path("caption").asText();
-    String url = contentNode.path("url").asText();
-    String timestampStr = contentNode.path("timestamp").asText();
-    String displayUrl = contentNode.path("displayUrl").asText(); // 썸네일 URL
 
-    JsonNode hashtagsNode = contentNode.path("hashtags");
-    List<String> hashtags = new ArrayList<>();
-    if (hashtagsNode.isArray()) {
-      for (JsonNode hashtag : hashtagsNode) {
-        hashtags.add(hashtag.asText());
+    // 기존 콘텐츠 조회
+    Optional<Content> existingContent = contentRepository.findByExternalContentId(externalContentId);
+
+    if (existingContent.isPresent()) {
+      // 기존 콘텐츠가 있으면 metrics만 업데이트
+      Content content = existingContent.get();
+
+      Long likesCount = contentNode.path("likesCount").asLong(0);
+      Long commentsCount = contentNode.path("commentsCount").asLong(0);
+      Long viewsCount = contentNode.path("videoViewCount").asLong(0);
+      if (viewsCount == 0) {
+        viewsCount = contentNode.path("videoPlayCount").asLong(0);
       }
-    }
 
-    // 해시태그 제거 및 제목 추출
-    String cleanDescription = removeHashtagsFromText(caption, hashtags);
-    String title = extractTitle(cleanDescription);
+      content.setTotalViews(viewsCount);
+      content.setTotalLikes(likesCount);
+      content.setTotalComments(commentsCount);
+      content.setSnapshotDate(LocalDate.now());
+      content.setUpdatedAt(LocalDateTime.now());
 
-    Long likesCount = contentNode.path("likesCount").asLong(0);
-    Long commentsCount = contentNode.path("commentsCount").asLong(0);
-    Long viewsCount = contentNode.path("videoViewCount").asLong(0);
-    if (viewsCount == 0) {
-      viewsCount = contentNode.path("videoPlayCount").asLong(0);
-    }
-
-    Integer durationSeconds = null;
-    if (contentNode.has("videoDuration")) {
-      durationSeconds = (int) Math.round(contentNode.path("videoDuration").asDouble());
-    }
-
-    LocalDateTime publishedAt = null;
-    if (!timestampStr.isEmpty()) {
-      try {
-        publishedAt = LocalDateTime.parse(timestampStr,
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
-      } catch (Exception e) {
-        log.warn("시간 파싱 실패: {}", timestampStr);
-      }
-    }
-
-    String tagsJsonString = null;
-    try {
-      tagsJsonString = objectMapper.writeValueAsString(hashtags);
-    } catch (Exception e) {
-      log.error("해시태그 JSON 변환 실패: ", e);
-      tagsJsonString = "[]";
-    }
-
-    // 썸네일 이미지 다운로드 및 저장 (프로필 이미지와 동일한 방식)
-    File thumbnailFile = null;
-    if (!displayUrl.isEmpty()) {
-      thumbnailFile = imageService.downloadAndSaveThumbnailImage(displayUrl, platformAccount.getExternalAccountId(), externalContentId);
-    }
-
-    return contentRepository.save(Content.builder()
-        .platformAccountId(platformAccount.getId())
-        .platformTypeId("INSTAGRAM")
-        .contentTypeId(contentTypeId)
-        .externalContentId(externalContentId)
-        .title(title)
-        .description(cleanDescription)
-        .durationSeconds(durationSeconds)
-        .thumbnailId(thumbnailFile != null ? thumbnailFile.getId() : null) // 썸네일 File ID 연결
-        .contentUrl(url)
-        .publishedAt(publishedAt)
-        .tagsJson(tagsJsonString)
-        .totalViews(viewsCount)
-        .totalLikes(likesCount)
-        .totalComments(commentsCount)
-        .snapshotDate(LocalDate.now())
-        .createdAt(LocalDateTime.now())
-        .updatedAt(LocalDateTime.now())
-        .build());
-  }
-
-  private void saveContentToS3(JsonNode contentNode, PlatformAccount platformAccount) {
-    try {
-      String type = contentNode.path("type").asText();
-      String contentType = "Sidecar".equals(type) ? "POST" : "VIDEO_SHORT";
-
-      String externalContentId = contentNode.path("id").asText();
+      log.info("기존 콘텐츠 업데이트: {}", externalContentId);
+      return contentRepository.save(content);
+    } else {
+      // 새 콘텐츠면 전체 저장
       String caption = contentNode.path("caption").asText();
+      String url = contentNode.path("url").asText();
+      String timestampStr = contentNode.path("timestamp").asText();
+      String displayUrl = contentNode.path("displayUrl").asText();
 
       JsonNode hashtagsNode = contentNode.path("hashtags");
       List<String> hashtags = new ArrayList<>();
@@ -238,34 +187,103 @@ public class ContentService extends BaseApifyService {
         }
       }
 
-      // 해시태그 제거 및 제목 추출
       String cleanDescription = removeHashtagsFromText(caption, hashtags);
       String title = extractTitle(cleanDescription);
+
+      Long likesCount = contentNode.path("likesCount").asLong(0);
+      Long commentsCount = contentNode.path("commentsCount").asLong(0);
+      Long viewsCount = contentNode.path("videoViewCount").asLong(0);
+      if (viewsCount == 0) {
+        viewsCount = contentNode.path("videoPlayCount").asLong(0);
+      }
+
+      Integer durationSeconds = null;
+      if (contentNode.has("videoDuration")) {
+        durationSeconds = (int) Math.round(contentNode.path("videoDuration").asDouble());
+      }
+
+      LocalDateTime publishedAt = null;
+      if (!timestampStr.isEmpty()) {
+        try {
+          publishedAt = LocalDateTime.parse(timestampStr,
+              DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+        } catch (Exception e) {
+          log.warn("시간 파싱 실패: {}", timestampStr);
+        }
+      }
+
+      String tagsJsonString = null;
+      try {
+        tagsJsonString = objectMapper.writeValueAsString(hashtags);
+      } catch (Exception e) {
+        log.error("해시태그 JSON 변환 실패: ", e);
+        tagsJsonString = "[]";
+      }
+
+      // 썸네일 이미지 다운로드 및 저장
+      File thumbnailFile = null;
+      if (!displayUrl.isEmpty()) {
+        thumbnailFile = imageService.downloadAndSaveThumbnailImage(displayUrl, platformAccount.getExternalAccountId(), externalContentId);
+      }
+
+      log.info("새 콘텐츠 생성: {}", externalContentId);
+      return contentRepository.save(Content.builder()
+          .platformAccountId(platformAccount.getId())
+          .platformTypeId("INSTAGRAM")
+          .contentTypeId(contentTypeId)
+          .externalContentId(externalContentId)
+          .title(title)
+          .description(cleanDescription)
+          .durationSeconds(durationSeconds)
+          .thumbnailId(thumbnailFile != null ? thumbnailFile.getId() : null)
+          .contentUrl(url)
+          .publishedAt(publishedAt)
+          .tagsJson(tagsJsonString)
+          .totalViews(viewsCount)
+          .totalLikes(likesCount)
+          .totalComments(commentsCount)
+          .snapshotDate(LocalDate.now())
+          .createdAt(LocalDateTime.now())
+          .updatedAt(LocalDateTime.now())
+          .build());
+    }
+  }
+
+  private void saveContentToS3(JsonNode contentNode, PlatformAccount platformAccount, Content savedContent) {
+    try {
+      // 크롤링 데이터에서 해시태그 파싱 (S3에는 원본 해시태그 저장)
+      JsonNode hashtagsNode = contentNode.path("hashtags");
+      List<String> hashtags = new ArrayList<>();
+      if (hashtagsNode.isArray()) {
+        for (JsonNode hashtag : hashtagsNode) {
+          hashtags.add(hashtag.asText());
+        }
+      }
 
       ContentRawData.ThumbnailInfo thumbnailInfo = null;
       String displayUrl = contentNode.path("displayUrl").asText();
       if (!displayUrl.isEmpty()) {
         thumbnailInfo = ContentRawData.ThumbnailInfo.builder()
-            .accessKey("raw_data/instagram/content_thumbnail_images/" + externalContentId + "/thumbnail.jpg")
+            .accessKey("raw_data/instagram/content_thumbnail_images/" + savedContent.getExternalContentId() + "/thumbnail.jpg")
             .contentType("image/jpeg")
             .build();
       }
 
+      // DB에서 저장된 데이터와 크롤링 원본 데이터 조합
       ContentRawData rawData = ContentRawData.builder()
           .accountNickname(platformAccount.getAccountNickname())
           .platformType("INSTAGRAM")
-          .externalContentId(externalContentId)  // "3619194289876364495"
-          .contentType(contentType)
-          .title(title)
-          .description(cleanDescription)
-          .durationSeconds(contentNode.has("videoDuration") ?
-              (int) Math.round(contentNode.path("videoDuration").asDouble()) : null)
-          .contentUrl(contentNode.path("url").asText())
-          .publishedAt(contentNode.path("timestamp").asText())
-          .tags(hashtags)
-          .viewsCount(contentNode.path("videoViewCount").asLong(0))
-          .likesCount(contentNode.path("likesCount").asLong(0))
-          .commentsCount(contentNode.path("commentsCount").asLong(0))
+          .externalContentId(savedContent.getExternalContentId())
+          .contentType(savedContent.getContentTypeId())
+          .title(savedContent.getTitle())
+          .description(savedContent.getDescription())
+          .durationSeconds(savedContent.getDurationSeconds())
+          .contentUrl(savedContent.getContentUrl())
+          .publishedAt(contentNode.path("timestamp").asText())  // 크롤링 원본 포맷 유지
+          .tags(hashtags)  // 크롤링 원본 해시태그
+          .viewsCount(savedContent.getTotalViews())  // DB 저장된 최신 값
+          .likesCount(savedContent.getTotalLikes())
+          .commentsCount(savedContent.getTotalComments())
           .thumbnailInfo(thumbnailInfo)
           .build();
 
@@ -277,7 +295,7 @@ public class ContentService extends BaseApifyService {
           now.getYear(),
           now.getMonthValue(),
           now.getDayOfMonth(),
-          externalContentId,
+          savedContent.getExternalContentId(),
           System.currentTimeMillis());
 
       s3Service.uploadContentData(jsonData, s3Key);
@@ -296,14 +314,14 @@ public class ContentService extends BaseApifyService {
 
       for (PlatformAccount account : instagramAccounts) {
         try {
-          log.info("계정 {} 콘텐츠 수집 시작", account.getExternalAccountId());
-          CompletableFuture<String> future = getContentsByUsername(account.getExternalAccountId());
+          log.info("계정 {} 콘텐츠 수집 시작", account.getAccountNickname());
+          CompletableFuture<String> future = getContentsByUsername(account.getAccountNickname());
           future.get();
 
           Thread.sleep(5000);
 
         } catch (Exception e) {
-          log.error("계정 {} 콘텐츠 수집 실패: ", account.getExternalAccountId(), e);
+          log.error("계정 {} 콘텐츠 수집 실패: ", account.getAccountNickname(), e);
         }
       }
 
