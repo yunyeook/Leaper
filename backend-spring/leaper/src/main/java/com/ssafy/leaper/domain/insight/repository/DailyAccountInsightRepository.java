@@ -51,6 +51,11 @@ public interface DailyAccountInsightRepository extends JpaRepository<DailyAccoun
       "JOIN FETCH dai.platformAccount pa " +
       "JOIN FETCH pa.platformType pt " +
       "WHERE pa.influencer.id = :influencerId " +
+      "AND dai.snapshotDate = (" +
+      "SELECT MAX(dai2.snapshotDate) " +
+      "FROM DailyAccountInsight dai2 " +
+      "WHERE dai2.platformAccount.id = dai.platformAccount.id" +
+      ")" +
       "ORDER BY dai.snapshotDate DESC")
   List<DailyAccountInsight> findLatestByInfluencerId(@Param("influencerId") Integer influencerId);
 }
