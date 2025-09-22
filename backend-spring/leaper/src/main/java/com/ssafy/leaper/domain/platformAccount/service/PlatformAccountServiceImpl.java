@@ -9,7 +9,9 @@ import com.ssafy.leaper.domain.platformAccount.dto.request.PlatformAccountCreate
 import com.ssafy.leaper.domain.platformAccount.dto.response.PlatformAccountResponse;
 import com.ssafy.leaper.domain.platformAccount.entity.PlatformAccount;
 import com.ssafy.leaper.domain.platformAccount.repository.PlatformAccountRepository;
+import com.ssafy.leaper.domain.type.entity.CategoryType;
 import com.ssafy.leaper.domain.type.entity.PlatformType;
+import com.ssafy.leaper.domain.type.repository.CategoryTypeRepository;
 import com.ssafy.leaper.domain.type.repository.PlatformTypeRepository;
 import com.ssafy.leaper.global.error.ErrorCode;
 import com.ssafy.leaper.global.error.exception.BusinessException;
@@ -31,6 +33,7 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
     private final PlatformAccountRepository platformAccountRepository;
     private final InfluencerRepository influencerRepository;
     private final PlatformTypeRepository platformTypeRepository;
+    private final CategoryTypeRepository categoryTypeRepository;
     private final S3FileService s3FileService;
     private final S3PresignedUrlService s3PresignedUrlService;
 
@@ -46,6 +49,10 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
             // 플랫폼 타입 조회
             PlatformType platformType = platformTypeRepository.findById(request.getPlatformTypeId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.PLATFORM_TYPE_NOT_FOUND));
+
+            // 카테고리 타입 조회
+            CategoryType categoryType = categoryTypeRepository.findById(request.getCategoryTypeId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_TYPE_NOT_FOUND));
 
             // 프로필 이미지 파일 처리 (URL에서 다운로드)
             File profileImageFile = null;
@@ -64,6 +71,7 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
             PlatformAccount platformAccount = PlatformAccount.builder()
                     .influencer(influencer)
                     .platformType(platformType)
+                    .categoryType(categoryType)
                     .externalAccountId(request.getExternalAccountId())
                     .accountNickname(request.getAccountNickname())
                     .accountUrl(request.getAccountUrl() != null ? request.getAccountUrl() : "")
@@ -108,10 +116,10 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
                         }
                     }
 
-                    // 카테고리 이름 추출
-                    String categoryName = "";
+                    // 카테고리 타입 ID 추출
+                    Short categoryTypeId = null;
                     if (account.getCategoryType() != null) {
-                        categoryName = account.getCategoryType().getCategoryName();
+                        categoryTypeId = account.getCategoryType().getId();
                     }
 
                     return PlatformAccountResponse.of(
@@ -121,7 +129,7 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
                             account.getAccountNickname(),
                             account.getAccountUrl(),
                             profileImageUrl,
-                            categoryName
+                            categoryTypeId
                     );
                 })
                 .collect(Collectors.toList());
@@ -156,10 +164,10 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
             }
         }
 
-        // 카테고리 이름 추출
-        String categoryName = "";
+        // 카테고리 타입 ID 추출
+        Short categoryTypeId = null;
         if (platformAccount.getCategoryType() != null) {
-            categoryName = platformAccount.getCategoryType().getCategoryName();
+            categoryTypeId = platformAccount.getCategoryType().getId();
         }
 
         PlatformAccountResponse response = PlatformAccountResponse.of(
@@ -169,7 +177,7 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
                 platformAccount.getAccountNickname(),
                 platformAccount.getAccountUrl(),
                 profileImageUrl,
-                categoryName
+                categoryTypeId
         );
 
         log.info("개별 플랫폼 계정 조회 완료 - 계정 ID: {}", platformAccountId);

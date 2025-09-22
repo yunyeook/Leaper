@@ -1,6 +1,7 @@
 package com.ssafy.leaper.domain.platformAccount.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,4 +27,7 @@ public class PlatformAccountCreateRequest {
 
     @Size(max = 500, message = "accountProfileImageUrl은 500자를 초과할 수 없습니다")
     private String accountProfileImageUrl;
+
+    @NotNull(message = "categoryTypeId는 필수입니다")
+    private Short categoryTypeId;
 }
