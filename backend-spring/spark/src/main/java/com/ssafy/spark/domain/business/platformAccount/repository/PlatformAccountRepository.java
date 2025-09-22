@@ -23,4 +23,15 @@ public interface PlatformAccountRepository extends JpaRepository<PlatformAccount
         @Param("externalAccountId") String externalAccountId,
         @Param("platformTypeId") String platformTypeId
     );
+
+    /**
+     * platformTypeId로 PlatformAccount 조회
+     */
+    @Query("SELECT pa FROM PlatformAccount pa " +
+           "JOIN FETCH pa.platformType pt " +
+           "WHERE pt.id = :platformTypeId " +
+           "AND pa.isDeleted = false")
+    Optional<PlatformAccount> findByPlatformTypeId(
+        @Param("platformTypeId") String platformTypeId
+    );
 }

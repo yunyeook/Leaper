@@ -10,4 +10,5 @@ public class YoutubeChannelInfo {
     private String accountNickname;
     private Long followersCount;
     private Long postsCount;
+    private String profileImageUrl;
 }
