@@ -25,6 +25,6 @@ public class File {
      *
      */
      public static String generateUniqueKey(String fileName, String fileType) {
-         return fileType + "/" + UUID.randomUUID() + fileName;
+         return "file/" + fileType + "/" + UUID.randomUUID() + fileName;
      }
 }
