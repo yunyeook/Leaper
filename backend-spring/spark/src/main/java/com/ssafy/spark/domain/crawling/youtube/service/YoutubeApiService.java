@@ -72,6 +72,12 @@ public class YoutubeApiService {
                                 accountNickname = channel.getSnippet().getTitle();
                             }
                             channelInfo.setAccountNickname(accountNickname);
+
+                            // 프로필 이미지 URL 설정
+                            if (channel.getSnippet().getThumbnails() != null &&
+                                channel.getSnippet().getThumbnails().getDefault() != null) {
+                                channelInfo.setProfileImageUrl(channel.getSnippet().getThumbnails().getDefault().getUrl());
+                            }
                         }
 
                         if (channel.getStatistics() != null) {
@@ -496,6 +502,15 @@ public class YoutubeApiService {
                                 response.setFollowersCount(channelInfo.getFollowersCount());
                                 response.setPostsCount(channelInfo.getPostsCount());
                                 response.setCrawledAt(java.time.LocalDateTime.now().toString());
+
+                                // 프로필 이미지 정보 설정 (channelInfo에서 가져오기)
+                                if (channelInfo.getProfileImageUrl() != null) {
+                                    ChannelInfoResponse.ProfileImageInfo profileImageInfo = new ChannelInfoResponse.ProfileImageInfo();
+                                    profileImageInfo.setAccessKey(channelInfo.getProfileImageUrl()); // YouTube URL을 임시로 설정
+                                    profileImageInfo.setContentType("image/jpeg");
+                                    response.setProfileImageInfo(profileImageInfo);
+                                }
+
                                 return response;
                             });
                 });
@@ -790,6 +805,15 @@ public class YoutubeApiService {
                     response.setFollowersCount(Long.parseLong(channel.getStatistics().getSubscriberCount()));
                     response.setPostsCount(Long.parseLong(channel.getStatistics().getVideoCount()));
                     response.setCrawledAt(java.time.LocalDateTime.now().toString());
+
+                    // 프로필 이미지 정보 설정 (YouTube API에서 직접 가져오기)
+                    if (channel.getSnippet().getThumbnails() != null &&
+                        channel.getSnippet().getThumbnails().getDefault() != null) {
+                        ChannelInfoResponse.ProfileImageInfo profileImageInfo = new ChannelInfoResponse.ProfileImageInfo();
+                        profileImageInfo.setAccessKey(channel.getSnippet().getThumbnails().getDefault().getUrl());
+                        profileImageInfo.setContentType("image/jpeg");
+                        response.setProfileImageInfo(profileImageInfo);
+                    }
 
                     return Mono.just(response);
                 })

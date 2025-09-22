@@ -13,5 +13,12 @@ public class ChannelInfoResponse {
     private Long followersCount;
     private Long postsCount;
     private String crawledAt;
+    private ProfileImageInfo profileImageInfo;
 
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ProfileImageInfo {
+        private String accessKey;
+        private String contentType;
+    }
 }

@@ -40,6 +40,34 @@ public class RawYoutubeChannelResponse {
             private String defaultLanguage;
             private String country;
             private String handle;
+            private Thumbnails thumbnails;
+
+            @Data
+            @JsonIgnoreProperties(ignoreUnknown = true)
+            public static class Thumbnails {
+                private Thumbnail default_;
+                private Thumbnail medium;
+                private Thumbnail high;
+
+                @Data
+                @JsonIgnoreProperties(ignoreUnknown = true)
+                public static class Thumbnail {
+                    private String url;
+                    private Integer width;
+                    private Integer height;
+                }
+
+                // Jackson이 "default" 키워드를 처리할 수 있도록 별칭 메서드 추가
+                @com.fasterxml.jackson.annotation.JsonProperty("default")
+                public Thumbnail getDefault() {
+                    return default_;
+                }
+
+                @com.fasterxml.jackson.annotation.JsonProperty("default")
+                public void setDefault(Thumbnail thumbnail) {
+                    this.default_ = thumbnail;
+                }
+            }
         }
 
         @Data
