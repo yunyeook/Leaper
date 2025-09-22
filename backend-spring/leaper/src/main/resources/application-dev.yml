@@ -120,10 +120,8 @@ spring:
 
   data:
     mongodb:
-      host: ${MONGO_HOST}
-      port: 27017
-      database: leaper
-
+      uri: mongodb://${DB_USERNAME}:${DB_PASSWORD}@${MONGO_HOST}:27017/leaper?authSource=admin
+#  mongodb://user:password@leaper-mongodb:27017/leaper?authSource=admin
   jpa:
     hibernate:
       ddl-auto: none
