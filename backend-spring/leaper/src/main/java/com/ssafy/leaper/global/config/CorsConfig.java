@@ -14,10 +14,13 @@ public class CorsConfig {
     @Value("${front.url}")
     private String frontUrl;
 
+    @Value("${front.dev.url}")
+    private String frontDevUrl;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(frontUrl));
+        config.setAllowedOriginPatterns(List.of(frontUrl, frontDevUrl));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
