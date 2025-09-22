@@ -10,6 +10,7 @@ import com.ssafy.spark.domain.crawling.instagram.repository.PlatformAccountRepos
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -178,7 +179,7 @@ public class ProfileService extends BaseApifyService {
 
     return Influencer.builder()
         .providerTypeId("GOOGLE")
-        .providerMemberId(username)
+        .providerMemberId(username!=null?username:LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")))
         .nickname(fullName.isEmpty() ? username : fullName)
         .gender(false)
         .birthday(LocalDate.now().minusYears(25))

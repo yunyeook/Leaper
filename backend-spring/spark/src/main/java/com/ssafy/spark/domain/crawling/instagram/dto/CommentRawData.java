@@ -9,6 +9,7 @@ import lombok.Data;
 @Builder
 public class CommentRawData {
   private Integer contentId;
+  private Integer platformAccountId;
   private String contentUrl;
   private Integer commentsCount;
   private List<CommentItem> comments;

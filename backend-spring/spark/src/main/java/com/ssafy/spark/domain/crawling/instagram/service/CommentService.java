@@ -161,6 +161,7 @@ public class CommentService extends BaseApifyService {
 
       CommentRawData commentRawData = CommentRawData.builder()
           .contentId(content.getId())
+          .platformAccountId(content.getPlatformAccountId())
           .contentUrl(content.getContentUrl())
           .commentsCount(commentItems.size())
           .comments(commentItems)
