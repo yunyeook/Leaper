@@ -120,7 +120,7 @@ spring:
 
   data:
     mongodb:
-      host: localhost
+      host: ${MONGO_HOST}
       port: 27017
       database: leaper
 
