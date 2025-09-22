@@ -67,7 +67,7 @@ public class SparkAccountInsightService extends SparkBaseService {
 
       for (Row row : results) {
         String accountNickname = row.getAs("accountNickname");
-        Integer platformAccountId = getPlatformAccountId(platformType, accountNickname);
+        Integer platformAccountId = getPlatformAccountId(platformType.toUpperCase(), accountNickname);
 
         // 1) MySQL에 저장
         saveDailyAccountInsight(platformType, row, targetDate,platformAccountId, accountNickname);
@@ -86,7 +86,7 @@ public class SparkAccountInsightService extends SparkBaseService {
       // 통계 결과를 JSON으로 변환
       ObjectNode statisticsJson = objectMapper.createObjectNode();
       statisticsJson.put("platformAccountId", platformAccountId);
-      statisticsJson.put("platformType", platformType);
+      statisticsJson.put("platformType", platformType.toUpperCase());
       statisticsJson.put("totalViews", row.getAs("totalViews").toString());
       statisticsJson.put("totalLikes", row.getAs("totalLikes").toString());
       statisticsJson.put("totalComments", row.getAs("totalComments").toString());
@@ -100,7 +100,7 @@ public class SparkAccountInsightService extends SparkBaseService {
 
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+      String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
       String fileName = String.format("daily_account_insight_%s_%s.json", accountNickname, timestamp);
       String s3Path = String.format("processed_data/%s/daily_account_insight/%s/%s",
           platformType, dateFolder, fileName);

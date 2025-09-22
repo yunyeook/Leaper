@@ -69,7 +69,7 @@ public class SparkBaseService {
     try {
       // 특정 날짜 폴더의 계정 데이터 읽기
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String s3Path = String.format("s3a://%s/raw_data/%s/platform-account/%s/*.json",bucketName, platformType,dateFolder);
+      String s3Path = String.format("s3a://%s/raw_data/%s/platform_account/%s/*.json",bucketName, platformType,dateFolder);
 
       return sparkSession.read()
           .option("multiline", "true")
@@ -215,12 +215,12 @@ public class SparkBaseService {
   /**
    * 외부 계정 닉네임 ->  PlatformAccount ID 조회
    */
-  protected Integer getPlatformAccountId(String platform, String accountNickname) {
+  protected Integer getPlatformAccountId(String platformType, String accountNickname) {
     try {
       String sql = "SELECT platform_account_id FROM platform_account WHERE platform_type_id= ? AND account_nickname = ?";
-      return jdbcTemplate.queryForObject(sql, Integer.class, platform.toUpperCase(), accountNickname);
+      return jdbcTemplate.queryForObject(sql, Integer.class, platformType.toUpperCase(), accountNickname);
     } catch (Exception e) {
-      log.warn("PlatformAccount 조회 실패: platform={}, accountNickname={}", platform, accountNickname);
+      log.warn("PlatformAccount 조회 실패: platform={}, accountNickname={}", platformType, accountNickname);
       return null;
     }
   }
