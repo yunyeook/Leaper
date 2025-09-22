@@ -2,6 +2,7 @@ package com.ssafy.leaper.domain.insight.controller;
 
 import com.ssafy.leaper.domain.insight.dto.response.contentCommentInsight.ContentCommentInsightResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.AccountInsightResponse;
+import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.DailyAccountInsightResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.InfluencerViewsResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyTrendingInsight.DailyTrendingContentResponse;
 import com.ssafy.leaper.domain.insight.dto.response.dailyTrendingInsight.DailyTrendingInfluencerResponse;
@@ -40,6 +41,16 @@ public class InsightController implements BaseController {
     private final ContentCommentInsightService contentCommentInsightService;
     private final KeywordTrendService keywordTrendService;
 
+    @Operation(
+        summary = "인플루언서 계정 인사이트 전체 조회",
+        description = "특정 인플루언서의 모든 플랫폼 계정에 대해 현재 누적 인사이트(조회수, 팔로워, 좋아요, 댓글 등)를 조회합니다."
+    )
+    @GetMapping("/dailyAccountInsight/influencer/{influencerId}/today")
+    public ResponseEntity<ApiResponse<List<DailyAccountInsightResponse>>> getAccountInsightsToday(
+        @PathVariable Integer influencerId
+    ) {
+        return handle(dailyAccountInsightService.getAccountInsightsToday(influencerId));
+    }
 
     @Operation(
         summary = "인플루언서 계정 인사이트 전체 조회",
@@ -63,6 +74,16 @@ public class InsightController implements BaseController {
         return handle(dailyAccountInsightService.getInfluencerViews(influencerId));
     }
 
+    @Operation(
+        summary = "플랫폼 계정 인사이트 전체 조회",
+        description = "특정 플랫폼 계정에 대해 현재 누적 인사이트(조회수, 팔로워, 좋아요, 댓글 등)를 조회합니다."
+    )
+    @GetMapping("/dailyAccountInsight/platformAccount/{platformAccountId}/today")
+    public ResponseEntity<ApiResponse<DailyAccountInsightResponse>> getPlatformAccountInsightsToday(
+        @PathVariable Integer platformAccountId
+    ) {
+        return handle(dailyAccountInsightService.getPlatformAccountInsightsToday(platformAccountId));
+    }
     @Operation(
         summary = "플랫폼 계정 인사이트 전체 조회",
         description = "특정 플랫폼 계정에 대해 일별 및 월별 누적 인사이트(조회수, 팔로워, 좋아요, 댓글 등)를 조회합니다."

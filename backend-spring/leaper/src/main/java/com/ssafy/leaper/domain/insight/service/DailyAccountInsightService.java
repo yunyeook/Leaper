@@ -9,6 +9,8 @@ import com.ssafy.leaper.domain.insight.dto.response.dailyAccountInsight.MonthlyA
 import com.ssafy.leaper.domain.insight.entity.DailyAccountInsight;
 import com.ssafy.leaper.domain.insight.repository.DailyAccountInsightRepository;
 import com.ssafy.leaper.global.common.response.ServiceResult;
+import com.ssafy.leaper.global.error.ErrorCode;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,5 +118,28 @@ public class DailyAccountInsightService {
         .toList();
 
     return InfluencerViewsResponse.of(dailyResponses, monthlyResponses);
+  }
+
+  public ServiceResult<List<DailyAccountInsightResponse>> getAccountInsightsToday(Integer influencerId) {
+   LocalDate today = LocalDate.now();
+    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findLatestByInfluencerId(influencerId);
+
+    List<DailyAccountInsightResponse> responses = entities.stream()
+        .map(DailyAccountInsightResponse::from)
+        .toList();
+
+    return ServiceResult.ok(responses);
+  }
+
+  public ServiceResult<DailyAccountInsightResponse> getPlatformAccountInsightsToday(Integer platformAccountId) {
+    LocalDate today = LocalDate.now();
+    Optional<DailyAccountInsight> entity = dailyAccountInsightRepository.findLatestByPlatformAccountId(platformAccountId);
+
+    if (entity.isEmpty()) {
+      return ServiceResult.fail(ErrorCode.INSIGHT_NOT_FOUND);
+    }
+
+    DailyAccountInsightResponse response = DailyAccountInsightResponse.from(entity.get());
+    return ServiceResult.ok(response);
   }
 }
