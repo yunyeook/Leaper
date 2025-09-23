@@ -18,6 +18,8 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
@@ -40,6 +42,7 @@ public class SecurityConfig {
     private final CorsConfigurationSource corsConfigurationSource;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthorizationRequestResolver oAuth2AuthorizationRequestResolver;
+    private final OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> oAuth2AccessTokenResponseClient;
 
 
     @Bean
@@ -57,6 +60,7 @@ public class SecurityConfig {
                                 authorization.baseUri("/connect/oauth2/authorization"))
                         .redirectionEndpoint(redirection ->
                                 redirection.baseUri("/connect/login/oauth2/code/*"))
+                        .tokenEndpoint(token -> token.accessTokenResponseClient(oAuth2AccessTokenResponseClient))
                         .successHandler(oAuth2AccountConnectSuccessHandler)
                         .failureHandler(oAuth2AuthenticationFailureHandler));
 
