@@ -16,8 +16,10 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 @Slf4j
 @Service
@@ -29,11 +31,12 @@ public class ProfileService extends BaseApifyService {
   private final PlatformAccountRepository platformAccountRepository;
   private final S3Service s3Service;
   private final ImageService imageService;
+  private final JdbcTemplate jdbcTemplate; // ← 이 줄 추가
 
   /**
    * 프로필 정보 수집
    */
-  public CompletableFuture<String> getProfileOnly(String username) {
+  public CompletableFuture<String> getProfileOnly(String username,Integer categoryTypeId) {
     return CompletableFuture.supplyAsync(() -> {
       try {
         log.info("프로필 정보만 수집 시작: {}", username);
@@ -50,7 +53,7 @@ public class ProfileService extends BaseApifyService {
         String runId = runActor(actorId, input);
         log.info("프로필 수집 실행 - Run ID: {}", runId);
 
-        return waitAndGetProfileResults(runId);
+        return waitAndGetProfileResults(runId, categoryTypeId);
 
       } catch (Exception e) {
         log.error("프로필 수집 중 오류: ", e);
@@ -62,7 +65,7 @@ public class ProfileService extends BaseApifyService {
   /**
    * 프로필 수집 완료 대기 및 결과 반환
    */
-  private String waitAndGetProfileResults(String runId) {
+  private String waitAndGetProfileResults(String runId,Integer categoryTypeId) {
     try {
       log.info("프로필 결과 대기 시작 - Run ID: {}", runId);
 
@@ -95,8 +98,7 @@ public class ProfileService extends BaseApifyService {
         parseAndPrintProfile(jsonResults);
 
         // DB & S3 저장
-        saveProfileToDatabase(jsonResults);
-
+        saveProfileToDatabase(jsonResults, categoryTypeId);
 
 
         return jsonResults;
@@ -172,7 +174,7 @@ public class ProfileService extends BaseApifyService {
     }
   }
 
-  private Influencer createInfluencerFromProfile(JsonNode profile) {
+  private Influencer createInfluencerFromProfile(JsonNode profile, File profileImageFile) {
     String username = profile.path("username").asText();
     String fullName = profile.path("fullName").asText();
     String biography = profile.path("biography").asText();
@@ -181,69 +183,68 @@ public class ProfileService extends BaseApifyService {
         .providerTypeId("GOOGLE")
         .providerMemberId(username!=null?username:LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")))
         .nickname(fullName.isEmpty() ? username : fullName)
-        .gender(false)
+        .gender(true)
         .birthday(LocalDate.now().minusYears(25))
         .email(username + "@instagram.com")
         .bio(biography.length() > 401 ? biography.substring(0, 401) : biography)
+        .influencerProfileImageId(profileImageFile != null ? profileImageFile.getId() : null)
         .isDeleted(false)
         .build();
   }
 
-  private PlatformAccount createPlatformAccountFromProfile(JsonNode profile, Integer influencerId) {
+  private PlatformAccount createPlatformAccountFromProfile(JsonNode profile, Integer influencerId, Integer categoryTypeId, File profileImageFile) {
     String username = profile.path("username").asText();
     String fullName = profile.path("fullName").asText();
     String url = profile.path("url").asText();
-    String profilePicUrl = profile.path("profilePicUrl").asText();
 
-    File profileImageFile = null;
-    if (!profilePicUrl.isEmpty()) {
-      profileImageFile = imageService.downloadAndSaveProfileImage(profilePicUrl, username);
-    }
 
     return PlatformAccount.builder()
         .influencerId(influencerId)
         .platformTypeId("INSTAGRAM")
-        .externalAccountId(profile.path("id").asText())      // "58740544295"
+        .externalAccountId(profile.path("id").asText())
         .accountNickname(username)
         .accountUrl(url)
         .accountProfileImageId(profileImageFile != null ? profileImageFile.getId() : null)
-        //TODO : 카테고리는 DB에 있는걸로 넣기
-        .categoryTypeId(1)
+        .categoryTypeId(categoryTypeId)
         .isDeleted(false)
         .deletedAt(LocalDateTime.now())
         .build();
   }
 
-  private void saveProfileToDatabase(String jsonResults) {
+  private void saveProfileToDatabase(String jsonResults, Integer categoryTypeId) {
     try {
       JsonNode results = objectMapper.readTree(jsonResults);
       JsonNode profile = results.get(0);
 
-      //TODO : 지금은 더미데이터때문에 넣는거니까 나중에는 수정하기 = 나중에는 influencer랑 platfromAccount 생성할 db 저장 필요없으니까 빼기..
-      // 1. DB 저장
-      Influencer influencer = createInfluencerFromProfile(profile);
+      String profilePicUrl = profile.path("profilePicUrl").asText();
+      String username = profile.path("username").asText();
+
+      File profileImageFile = null;
+      if (!profilePicUrl.isEmpty()) {
+        profileImageFile = imageService.downloadAndSaveProfileImage(profilePicUrl, username);
+      }
+
+      Influencer influencer = createInfluencerFromProfile(profile, profileImageFile);
       Influencer savedInfluencer = influencerRepository.save(influencer);
 
-      PlatformAccount platformAccount = createPlatformAccountFromProfile(profile, savedInfluencer.getId());
+      PlatformAccount platformAccount = createPlatformAccountFromProfile(profile, savedInfluencer.getId(), categoryTypeId, profileImageFile);
       platformAccountRepository.save(platformAccount);
 
-      // 2. S3 저장
-      saveProfileToS3(profile);
+      saveProfileToS3(profile, categoryTypeId);
 
-      log.info("DB 및 S3 저장 완료 - Influencer ID: {}", savedInfluencer.getId());
+      log.info("DB 및 S3 저장 완료 - Influencer ID: {}, Category: {}", savedInfluencer.getId(), categoryTypeId);
 
     } catch (Exception e) {
       log.error("DB/S3 저장 중 오류: ", e);
     }
   }
 
-  private void saveProfileToS3(JsonNode profile) {
+  private void saveProfileToS3(JsonNode profile, Integer categoryTypeId) {
     try {
       String externalAccountId = profile.path("id").asText();        // "58740544295"
       String accountNickname = profile.path("username").asText();
 
-      //TODO : DB에 있는걸로 바꾸기!!
-      String categoryName = "IT";
+      String categoryName = getCategoryNameById(categoryTypeId);
       String accountUrl = profile.path("url").asText();
       Integer followersCount = profile.path("followersCount").asInt();
       Integer postsCount = profile.path("postsCount").asInt();
@@ -269,6 +270,113 @@ public class ProfileService extends BaseApifyService {
     }
   }
 
+  //======================================================================================
+  /**
+   * 기존 인플루언서에 새 플랫폼 계정 연결
+   */
+  public CompletableFuture<String> linkPlatformAccountToExistingInfluencer(String username, Integer existingInfluencerId, Integer categoryTypeId) {
+    return CompletableFuture.supplyAsync(() -> {
+      try {
+        log.info("기존 인플루언서({})에 플랫폼 계정 연결 시작: {}", existingInfluencerId, username);
+
+        String actorId = "apify~instagram-profile-scraper";
+
+        Map<String, Object> input = new HashMap<>();
+        input.put("resultsType", "details");
+        input.put("usernames", new String[]{username});
+        input.put("resultsLimit", 1);
+
+        String runId = runActor(actorId, input);
+        log.info("프로필 수집 실행 - Run ID: {}", runId);
+
+        return waitAndLinkToExistingInfluencer(runId, existingInfluencerId, categoryTypeId);
+
+      } catch (Exception e) {
+        log.error("기존 인플루언서 연결 중 오류: ", e);
+        return "{\"error\": \"연결 실패: " + e.getMessage() + "\"}";
+      }
+    });
+  }
+
+  private String waitAndLinkToExistingInfluencer(String runId, Integer existingInfluencerId, Integer categoryTypeId) {
+    try {
+      // 기존 waitAndGetProfileResults와 동일한 대기 로직
+      boolean isCompleted = false;
+      int maxAttempts = 30;
+      String finalStatus = "";
+
+      for (int i = 0; i < maxAttempts; i++) {
+        String status = checkRunStatus(runId);
+        finalStatus = status;
+        log.info("프로필 실행 상태 확인 ({}/{}): {}", i + 1, maxAttempts, status);
+
+        if ("SUCCEEDED".equals(status)) {
+          isCompleted = true;
+          break;
+        } else if ("FAILED".equals(status) || "ABORTED".equals(status)) {
+          log.error("프로필 수집 실패: {}", status);
+          return "{\"error\": \"프로필 수집 실패: " + status + "\"}";
+        }
+
+        Thread.sleep(10000);
+      }
+
+      if (isCompleted) {
+        String jsonResults = getRunResults(runId);
+        linkProfileToExistingInfluencer(jsonResults, existingInfluencerId, categoryTypeId);
+        return jsonResults;
+      } else {
+        String errorMessage = String.format("프로필 수집 시간 초과 - Run ID: %s, 마지막 상태: %s", runId, finalStatus);
+        log.warn(errorMessage);
+        return "{\"error\": \"" + errorMessage + "\"}";
+      }
+
+    } catch (Exception e) {
+      log.error("기존 인플루언서 연결 대기 중 오류: ", e);
+      return "{\"error\": \"연결 대기 중 오류: " + e.getMessage() + "\"}";
+    }
+  }
+
+  private void linkProfileToExistingInfluencer(String jsonResults, Integer existingInfluencerId, Integer categoryTypeId) {
+    try {
+      JsonNode results = objectMapper.readTree(jsonResults);
+      JsonNode profile = results.get(0);
+
+      Influencer existingInfluencer = influencerRepository.findById(existingInfluencerId)
+          .orElseThrow(() -> new RuntimeException("존재하지 않는 인플루언서: " + existingInfluencerId));
+      // 프로필 이미지 다운로드 (누락된 부분)
+      String profilePicUrl = profile.path("profilePicUrl").asText();
+      String username = profile.path("username").asText();
+
+      File profileImageFile = null;
+      if (!profilePicUrl.isEmpty()) {
+        profileImageFile = imageService.downloadAndSaveProfileImage(profilePicUrl, username);
+      }
+
+      PlatformAccount platformAccount = createPlatformAccountFromProfile(profile, existingInfluencerId, categoryTypeId, profileImageFile);
+      platformAccountRepository.save(platformAccount);
+
+      saveProfileToS3(profile, categoryTypeId);
+
+      log.info("기존 인플루언서에 플랫폼 계정 연결 완료 - Influencer ID: {}, Category: {}",
+          existingInfluencerId, categoryTypeId);
+
+    } catch (Exception e) {
+      log.error("기존 인플루언서 연결 중 오류: ", e);
+    }
+  }
+  /**
+   * 카테고리 ID로 카테고리명 조회
+   */
+  private String getCategoryNameById(Integer categoryTypeId) {
+    try {
+      String sql = "SELECT category_name FROM category_type WHERE category_type_id = ?";
+      return jdbcTemplate.queryForObject(sql, String.class, categoryTypeId);
+    } catch (Exception e) {
+      log.warn("카테고리 조회 실패: categoryTypeId={}", categoryTypeId);
+      return "기타"; // 기본값
+    }
+  }
 
 
 }

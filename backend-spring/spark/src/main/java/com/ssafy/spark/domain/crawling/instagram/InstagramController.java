@@ -3,6 +3,7 @@ package com.ssafy.spark.domain.crawling.instagram;
 import com.ssafy.spark.domain.crawling.instagram.service.CommentService;
 import com.ssafy.spark.domain.crawling.instagram.service.ContentService;
 import com.ssafy.spark.domain.crawling.instagram.service.ProfileService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -21,27 +22,63 @@ public class InstagramController {
   private final CommentService commentService;
 
   /**
-   * 1. 프로필 정보만 조회 GET /api/instagram/profile/humansofny
+   * 1. 프로필 정보 생성 (카테고리 지정)
    */
-  @GetMapping(value = "/profile/{username}", produces = "application/json")
+//  @PostMapping(value = "/profile/{username}/category/{categoryTypeId}")
+  @PostMapping(value = "/profile")
   @ResponseBody
-  public String getProfile(@PathVariable String username) {
-    log.info("프로필 정보만 조회 요청: {}", username);
+//  public String getProfile(@PathVariable String username, @PathVariable Integer categoryTypeId) {
+    public String getProfile() {
 
-    try {
-      // 동기 실행으로 변경하여 JSON 결과 직접 반환
-      CompletableFuture<String> future = profileService.getProfileOnly(username);
-      String jsonResult = future.get(); // 결과를 기다림
+//    log.info("프로필 정보 생성 요청: {}, 카테고리: {}", username, categoryTypeId);
+    List<String> usernames = List.of(
+        "poorr_official",
+        "contereve_",
+        "t._.zzoon",
+        "yya_ddak_",
+        "dodoong.2",
+        "mhseonbae",
+        "plithus_toon",
+        "rse1853"
 
-      log.info("프로필 조회 완료: {}", username);
-      return jsonResult; // JSON 데이터 그대로 반환
-
-    } catch (Exception e) {
-      log.error("프로필 조회 실패: ", e);
-      return "{\"error\": \"프로필 조회 실패: " + e.getMessage() + "\"}";
-    }
+    );
+for(String username:usernames){
+  try {
+    CompletableFuture<String> future = profileService.getProfileOnly(username, 12);
+    String jsonResult = future.get();
+    log.info("프로필 생성 완료: {}", username);
+  } catch (Exception e) {
+    log.error("프로필 생성 실패: ", e);
+//    return "{\"error\": \"프로필 생성 실패: " + e.getMessage() + "\"}";
   }
 
+}
+   return "성공";
+  }
+
+
+  /**
+   * 1-2. 기존 인플루언서에 플랫폼 계정 연결 (카테고리 지정)
+   */
+  @PostMapping("/profile/link/{existingInfluencerId}/username/{username}/category/{categoryTypeId}")
+  public String linkToExistingInfluencer(
+      @PathVariable Integer existingInfluencerId,
+      @PathVariable String username,
+      @PathVariable Integer categoryTypeId) {
+
+    try {
+      log.info("기존 인플루언서에 연결 요청 - Influencer ID: {}, Username: {}, Category: {}",
+          existingInfluencerId, username, categoryTypeId);
+      CompletableFuture<String> future = profileService.linkPlatformAccountToExistingInfluencer(
+          username, existingInfluencerId, categoryTypeId);
+      String result = future.get();
+      log.info("기존 인플루언서 연결 완료 - Influencer ID: {}", existingInfluencerId);
+      return result;
+    } catch (Exception e) {
+      log.error("기존 인플루언서 연결 실패 - Influencer ID: {}, Username: {}", existingInfluencerId, username, e);
+      return "{\"error\": \"연결 실패: " + e.getMessage() + "\"}";
+    }
+  }
   /**
    * 2. 특정 사용자의 콘텐츠 수집
    */
@@ -59,6 +96,22 @@ public class InstagramController {
     }
   }
 
+  /**
+   * 2-2. DB에 저장된 모든 Instagram 계정의 콘텐츠 일괄 수집
+   */
+  @PostMapping("/content/collect/all")
+  public String collectAllContent() {
+    try {
+      log.info("전체 Instagram 계정 콘텐츠 일괄 수집 요청");
+      contentService.collectAllRegisteredUsersContent();
+      log.info("전체 Instagram 계정 콘텐츠 일괄 수집 완료");
+      return "{\"message\": \"전체 계정 콘텐츠 수집이 완료되었습니다.\", \"status\": \"success\"}";
+    } catch (Exception e) {
+      log.error("전체 콘텐츠 수집 실패: ", e);
+      return "{\"error\": \"전체 콘텐츠 수집 실패: " + e.getMessage() + "\", \"status\": \"failed\"}";
+    }
+  }
+
 
   /**
    * 3. 특정 콘텐츠의 댓글 수집
@@ -73,6 +126,23 @@ public class InstagramController {
       return result;
     } catch (Exception e) {
       log.error("댓글 수집 실패 - Content ID: {}", contentId, e);
+      return "{\"error\": \"" + e.getMessage() + "\"}";
+    }
+  }
+  /**
+   * 전체 콘텐츠 댓글 배치 수집 (기존 API 활용)
+   */
+  @PostMapping("/comment/collect-all-batch-safe")
+  public String collectAllCommentsBatchSafe(@RequestParam(defaultValue = "5") int batchSize) {
+    try {
+      log.info("안전한 배치 댓글 수집 요청 - 배치 크기: {}", batchSize);
+
+      List<Integer> allContentIds = contentService.getInstagramContentIds();
+      commentService.collectCommentsBatchUsingExistingApi(allContentIds, batchSize);
+
+      return "{\"message\": \"안전한 배치 댓글 수집 완료\", \"status\": \"success\"}";
+    } catch (Exception e) {
+      log.error("안전한 배치 댓글 수집 실패: ", e);
       return "{\"error\": \"" + e.getMessage() + "\"}";
     }
   }

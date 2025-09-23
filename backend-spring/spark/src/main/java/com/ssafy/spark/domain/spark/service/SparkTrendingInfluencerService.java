@@ -36,23 +36,24 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
           .select("accountNickname", "followersCount")
           .withColumnRenamed("followersCount", "yesterdayFollowers");
 
-// 3. 계정명으로만 조인
+// 3. 계정명으로 left 조인
       Dataset<Row> joined = todayData.join(
           yesterdayFollowers,
-          "accountNickname"
+          new String[]{"accountNickname"},
+          "left"
       );
 
-// 4. 증감량 계산 및 카테고리별 Top10 한번에 처리
+// 4. 증감량 계산 (어제 데이터가 없으면 증감량을 0으로)
       Dataset<Row> trendingTop10 = joined
           .withColumn("deltaFollowers",
-              col("followersCount").minus(col("yesterdayFollowers")))
+              when(col("yesterdayFollowers").isNull(), lit(0L))
+                  .otherwise(col("followersCount").minus(col("yesterdayFollowers"))))
           .withColumn("influencerRank",
               row_number().over(
                   Window.partitionBy("categoryName")
                       .orderBy(col("deltaFollowers").desc())
               ))
           .filter(col("influencerRank").leq(10));
-
 // 5. 결과 수집
       List<Row> results = trendingTop10.collectAsList();
 

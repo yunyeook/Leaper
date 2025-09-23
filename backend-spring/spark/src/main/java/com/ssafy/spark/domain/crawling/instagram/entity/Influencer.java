@@ -48,8 +48,7 @@ public class Influencer {
   @Column(nullable = false, length = 320)
   private String email;
 
-  @Column(name = "influencer_profile_image_id")
-  private Integer profileImageId;
+  private Integer influencerProfileImageId;
 
   @Column(length = 401)
   private String bio;

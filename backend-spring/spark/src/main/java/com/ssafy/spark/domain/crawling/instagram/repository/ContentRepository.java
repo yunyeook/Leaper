@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ContentRepository extends JpaRepository<Content, Integer> {
   List<Content> findByPlatformAccountId(Integer platformAccountId);
   Optional<Content> findByExternalContentId(String externalContentId);
+
+  List<Content> findByPlatformTypeId(String platformTypeId);
 }
