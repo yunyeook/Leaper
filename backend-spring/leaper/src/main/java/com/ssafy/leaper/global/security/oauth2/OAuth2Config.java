@@ -2,12 +2,20 @@ package com.ssafy.leaper.global.security.oauth2;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
+import org.springframework.security.oauth2.client.http.OAuth2ErrorResponseErrorHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.MediaType;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -47,6 +55,35 @@ public class OAuth2Config {
                         .build();
             }
         };
+    }
+
+    public static OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> createInstagramAccessTokenResponseClient() {
+        DefaultAuthorizationCodeTokenResponseClient tokenResponseClient = new DefaultAuthorizationCodeTokenResponseClient();
+
+        // Instagram 전용 컨버터 설정
+        OAuth2AccessTokenResponseHttpMessageConverter tokenResponseHttpMessageConverter =
+            new OAuth2AccessTokenResponseHttpMessageConverter();
+
+        // form-encoded 응답도 처리하도록 MediaType 추가
+        tokenResponseHttpMessageConverter.setSupportedMediaTypes(Arrays.asList(
+            MediaType.APPLICATION_JSON,
+            MediaType.APPLICATION_FORM_URLENCODED
+        ));
+
+        tokenResponseHttpMessageConverter.setAccessTokenResponseConverter(new InstagramTokenResponseConverter());
+
+        // Form URL Encoded 응답을 먼저 파싱하는 컨버터 추가
+        org.springframework.http.converter.FormHttpMessageConverter formConverter =
+            new org.springframework.http.converter.FormHttpMessageConverter();
+
+        RestTemplate restTemplate = new RestTemplate(Arrays.asList(
+            formConverter,  // form-encoded를 MultiValueMap으로 파싱
+            tokenResponseHttpMessageConverter  // OAuth2 응답 처리
+        ));
+        restTemplate.setErrorHandler(new OAuth2ErrorResponseErrorHandler());
+
+        tokenResponseClient.setRestOperations(restTemplate);
+        return tokenResponseClient;
     }
 }
 
