@@ -6,7 +6,7 @@ import com.ssafy.leaper.global.security.handler.OAuth2AccountConnectSuccessHandl
 import com.ssafy.leaper.global.security.handler.OAuth2AuthenticationFailureHandler;
 import com.ssafy.leaper.global.security.handler.OAuth2AuthenticationSuccessHandler;
 import com.ssafy.leaper.global.security.oauth2.CustomOAuth2UserService;
-import jakarta.servlet.http.HttpServletRequest;
+import com.ssafy.leaper.global.security.oauth2.OAuth2Config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,16 +18,10 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import com.ssafy.leaper.global.security.oauth2.OAuth2Config;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
-import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfigurationSource;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Configuration
 @RequiredArgsConstructor
@@ -58,7 +52,15 @@ public class SecurityConfig {
                                 authorization.baseUri("/connect/oauth2/authorization"))
                         .redirectionEndpoint(redirection ->
                                 redirection.baseUri("/connect/login/oauth2/code/*"))
-                        .tokenEndpoint(token -> token.accessTokenResponseClient(OAuth2Config.createInstagramAccessTokenResponseClient()))
+                        .tokenEndpoint(token -> token.accessTokenResponseClient(request -> {
+                            String registrationId = request.getClientRegistration().getRegistrationId();
+                            if ("instagram-connect".equals(registrationId)) {
+                                return OAuth2Config.createInstagramAccessTokenResponseClient().getTokenResponse(request);
+                            } else {
+                                // Google, Naver는 기본 클라이언트 사용
+                                return new DefaultAuthorizationCodeTokenResponseClient().getTokenResponse(request);
+                            }
+                        }))
                         .successHandler(oAuth2AccountConnectSuccessHandler)
                         .failureHandler(oAuth2AuthenticationFailureHandler));
 
@@ -86,7 +88,7 @@ public class SecurityConfig {
     @Order(3)
     public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
         http.csrf(c -> c.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource));;
+                .cors(cors -> cors.configurationSource(corsConfigurationSource));
 
         http.securityMatcher("/api/**")
                 .authorizeHttpRequests(auth ->

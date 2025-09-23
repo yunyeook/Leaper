@@ -6,8 +6,8 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -15,21 +15,9 @@ public class InstagramTokenResponseConverter implements Converter<Map<String, Ob
 
     @Override
     public OAuth2AccessTokenResponse convert(Map<String, Object> tokenResponseParameters) {
-        log.info("Converting token response: {}", tokenResponseParameters);
+        log.info("Converting Instagram token response: {}", tokenResponseParameters);
 
-        // Instagram 토큰인지 확인 (user_id 필드가 있고 token_type이 없으면 Instagram)
-        boolean isInstagramToken = tokenResponseParameters.containsKey("user_id") &&
-                                  !tokenResponseParameters.containsKey("token_type");
-
-        if (!isInstagramToken) {
-            // Instagram이 아닌 경우 기본 처리 (Google, Naver 등)
-            log.info("Non-Instagram token detected, using default processing");
-            return convertStandardToken(tokenResponseParameters);
-        }
-
-        log.info("Instagram token detected, using custom processing");
-
-        String accessToken = (String) tokenResponseParameters.get(OAuth2ParameterNames.ACCESS_TOKEN);
+        String accessToken = extractStringValue(tokenResponseParameters, OAuth2ParameterNames.ACCESS_TOKEN);
         if (accessToken == null) {
             log.error("No access_token found in response");
             return null;
@@ -44,8 +32,9 @@ public class InstagramTokenResponseConverter implements Converter<Map<String, Ob
 
         // Instagram 특화 추가 파라미터들
         Map<String, Object> additionalParameters = new HashMap<>();
-        if (tokenResponseParameters.containsKey("user_id")) {
-            additionalParameters.put("user_id", tokenResponseParameters.get("user_id"));
+        String userId = extractStringValue(tokenResponseParameters, "user_id");
+        if (userId != null) {
+            additionalParameters.put("user_id", userId);
         }
 
         return OAuth2AccessTokenResponse.withToken(accessToken)
@@ -55,43 +44,24 @@ public class InstagramTokenResponseConverter implements Converter<Map<String, Ob
                 .build();
     }
 
-    private OAuth2AccessTokenResponse convertStandardToken(Map<String, Object> tokenResponseParameters) {
-        String accessToken = (String) tokenResponseParameters.get(OAuth2ParameterNames.ACCESS_TOKEN);
-        if (accessToken == null) {
-            log.error("No access_token found in response");
+    /**
+     * form-encoded 응답에서 String 값을 안전하게 추출
+     * LinkedMultiValueMap의 경우 값이 List<String> 형태로 저장됨
+     */
+    private String extractStringValue(Map<String, Object> parameters, String key) {
+        Object value = parameters.get(key);
+        if (value == null) {
             return null;
         }
 
-        // token_type 처리
-        String tokenTypeValue = (String) tokenResponseParameters.get(OAuth2ParameterNames.TOKEN_TYPE);
-        OAuth2AccessToken.TokenType tokenType = OAuth2AccessToken.TokenType.BEARER;
-        if ("bearer".equalsIgnoreCase(tokenTypeValue)) {
-            tokenType = OAuth2AccessToken.TokenType.BEARER;
+        // LinkedMultiValueMap의 경우 List<String> 형태
+        if (value instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<String> list = (List<String>) value;
+            return list.isEmpty() ? null : list.get(0);
         }
 
-        // expires_in 처리
-        long expiresIn = 3600L; // 기본값 1시간
-        if (tokenResponseParameters.containsKey(OAuth2ParameterNames.EXPIRES_IN)) {
-            Object expiresInObj = tokenResponseParameters.get(OAuth2ParameterNames.EXPIRES_IN);
-            if (expiresInObj instanceof Number) {
-                expiresIn = ((Number) expiresInObj).longValue();
-            }
-        }
-
-        // 추가 파라미터들
-        Map<String, Object> additionalParameters = new HashMap<>();
-        for (Map.Entry<String, Object> entry : tokenResponseParameters.entrySet()) {
-            if (!OAuth2ParameterNames.ACCESS_TOKEN.equals(entry.getKey()) &&
-                !OAuth2ParameterNames.TOKEN_TYPE.equals(entry.getKey()) &&
-                !OAuth2ParameterNames.EXPIRES_IN.equals(entry.getKey())) {
-                additionalParameters.put(entry.getKey(), entry.getValue());
-            }
-        }
-
-        return OAuth2AccessTokenResponse.withToken(accessToken)
-                .tokenType(tokenType)
-                .expiresIn(expiresIn)
-                .additionalParameters(additionalParameters)
-                .build();
+        // 일반적인 경우 String 형태
+        return value.toString();
     }
 }
