@@ -10,4 +10,5 @@ public interface PlatformAccountRepository extends JpaRepository<PlatformAccount
   Optional<PlatformAccount> findByExternalAccountId(String externalAccountId);
   List<PlatformAccount> findByPlatformTypeId(String platformTypeId);
   Optional<PlatformAccount> findByAccountNickname(String username);
+  List<PlatformAccount> findByPlatformTypeIdAndIsDeleted(String platformTypeId, Boolean isDeleted);
 }
