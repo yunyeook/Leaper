@@ -100,9 +100,34 @@ public class ChatServiceImpl implements ChatService {
             influencerJoinRequired = true;
             advertiserJoinRequired = true;
 
-            ChatRoom newRoom = ChatRoom.of(influencerId, advertiserId);
-            chatRoom = chatRoomRepository.save(newRoom);
-            log.info("새 채팅방 생성 : {}", chatRoom.getId());
+            try {
+                ChatRoom newRoom = ChatRoom.of(influencerId, advertiserId);
+                chatRoom = chatRoomRepository.save(newRoom);
+                log.info("새 채팅방 생성 : {}", chatRoom.getId());
+            } catch (Exception e) {
+                log.info("채팅방 중복 생성 시도 감지, 기존 채팅방 재조회");
+                Optional<ChatRoom> retryRoom = chatRoomRepository
+                        .findByInfluencerIdAndAdvertiserId(influencerId, advertiserId);
+
+                if (retryRoom.isPresent()) {
+                    chatRoom = retryRoom.get();
+
+                    // 삭제된 상태면 복구 처리
+                    if (chatRoom.getInfluencerDeleted()) {
+                        influencerJoinRequired = true;
+                        chatRoomRepository.restoreInfluencer(chatRoom.getId());
+                        log.info("인플루언서가 채팅방 복구 : {}", chatRoom.getId());
+                    }
+
+                    if (chatRoom.getAdvertiserDeleted()) {
+                        advertiserJoinRequired = true;
+                        chatRoomRepository.restoreAdvertiser(chatRoom.getId());
+                        log.info("광고주가 채팅방 복구 : {}", chatRoom.getId());
+                    }
+                } else {
+                    return ServiceResult.fail(ErrorCode.CHAT_ROOM_CREATION_FAILED);
+                }
+            }
         }
 
         // 인플루언서 JOIN 처리 했을 경우
