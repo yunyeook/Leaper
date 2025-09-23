@@ -72,7 +72,14 @@ public class OAuth2Config {
 
         tokenResponseHttpMessageConverter.setAccessTokenResponseConverter(new InstagramTokenResponseConverter());
 
-        RestTemplate restTemplate = new RestTemplate(Arrays.asList(tokenResponseHttpMessageConverter));
+        // Form URL Encoded 응답을 먼저 파싱하는 컨버터 추가
+        org.springframework.http.converter.FormHttpMessageConverter formConverter =
+            new org.springframework.http.converter.FormHttpMessageConverter();
+
+        RestTemplate restTemplate = new RestTemplate(Arrays.asList(
+            formConverter,  // form-encoded를 MultiValueMap으로 파싱
+            tokenResponseHttpMessageConverter  // OAuth2 응답 처리
+        ));
         restTemplate.setErrorHandler(new OAuth2ErrorResponseErrorHandler());
 
         tokenResponseClient.setRestOperations(restTemplate);
