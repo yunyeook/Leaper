@@ -486,9 +486,35 @@ public class YoutubeApiService {
 
         Optional<PlatformAccount> platformAccount =
                 platformAccountService.findEntityByExternalAccountIdAndPlatformType(externalAccountId, "YOUTUBE");
-        String categoryName =
-                categoryTypeService.findEntityById(platformAccount.get().getCategoryType().getId())
-                        .get().getCategoryName();
+        String categoryName = platformAccount
+                .map(pa -> pa.getCategoryType())
+                .map(ct -> ct.getId())
+                .flatMap(categoryId -> categoryTypeService.findEntityById(categoryId))
+                .map(ct -> ct.getCategoryName())
+                .orElse("일반"); // 기본값 설정
+
+        return getChannelInfoResponseInternal(externalAccountId, categoryName);
+    }
+
+    /**
+     * 채널 정보 조회 (ChannelInfoResponse 반환) - categoryTypeId를 받는 버전
+     */
+    public Mono<ChannelInfoResponse> getChannelInfoResponse(String externalAccountId, Short categoryTypeId) {
+        String categoryName = "일반"; // 기본값
+
+        if (categoryTypeId != null) {
+            categoryName = categoryTypeService.findEntityById(categoryTypeId)
+                    .map(ct -> ct.getCategoryName())
+                    .orElse("일반");
+        }
+
+        return getChannelInfoResponseInternal(externalAccountId, categoryName);
+    }
+
+    /**
+     * 채널 정보 조회 내부 구현
+     */
+    private Mono<ChannelInfoResponse> getChannelInfoResponseInternal(String externalAccountId, String categoryName) {
 
         return getChannelInfo(externalAccountId)
                 .flatMap(channelInfo -> {
@@ -519,13 +545,17 @@ public class YoutubeApiService {
     /**
      * 채널 정보 + 비디오 + 댓글 통합 조회 (긴 영상과 짧은 영상 모두 포함)
      */
-    public Mono<ChannelWithVideosResponse> getChannelWithVideosResponse(String externalAccountId, Integer maxCommentsPerVideo) {
-        Mono<ChannelInfoResponse> channelInfo = getChannelInfoResponse(externalAccountId);
+    public Mono<ChannelWithVideosResponse> getChannelWithVideosResponse(String externalAccountId, Integer maxCommentsPerVideo, Integer maxVideos, Short categoryTypeId) {
+        Mono<ChannelInfoResponse> channelInfo = getChannelInfoResponse(externalAccountId, categoryTypeId);
 
-        // 긴 영상과 짧은 영상을 각각 가져와서 합치기
+        // 긴 영상과 짧은 영상을 각각 maxVideos만큼 가져온 후, 총합으로 제한
+        // 각각 충분히 가져와서 부족한 경우를 방지
+
         Mono<List<VideoInfoWithCommentsResponse>> longVideos = getChannelLongVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo)
+                .take(maxVideos)
                 .collectList();
         Mono<List<VideoInfoWithCommentsResponse>> shortVideos = getChannelShortVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo)
+                .take(maxVideos)
                 .collectList();
 
         return Mono.zip(channelInfo, longVideos, shortVideos)
@@ -539,8 +569,13 @@ public class YoutubeApiService {
                     allVideos.addAll(longVids);
                     allVideos.addAll(shortVids);
 
-                    log.info("채널 {} - 긴 영상: {}개, 짧은 영상: {}개, 총 {}개",
-                            externalAccountId, longVids.size(), shortVids.size(), allVideos.size());
+                    // 게시물 수를 maxVideos로 제한
+                    if (allVideos.size() > maxVideos) {
+                        allVideos = allVideos.subList(0, maxVideos);
+                    }
+
+                    log.info("채널 {} - 긴 영상: {}개, 짧은 영상: {}개, 총 {}개 ({}개로 제한)",
+                            externalAccountId, longVids.size(), shortVids.size(), allVideos.size(), maxVideos);
 
                     return new ChannelWithVideosResponse(channel, allVideos);
                 });

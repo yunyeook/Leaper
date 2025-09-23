@@ -235,7 +235,6 @@ public class S3DataService {
         fileService.createFile(accessKey, "image/jpeg");
         // 로그는 FileService에서 처리
       } catch (Exception fileError) {
-        // File 테이블 저장 실패해도 S3 저장은 성공이므로 로그만 남기고 계속 진행
         System.err.println("File 테이블 저장 실패: " + accessKey + " - " + fileError.getMessage());
       }
 
@@ -253,53 +252,32 @@ public class S3DataService {
    */
   public ProfileImageSaveResult saveProfileImageFromUrl(String username, String profileImageUrl) {
     try {
-      System.out.println("=== 프로필 이미지 저장 시작 ===");
-      System.out.println("username: " + username);
-      System.out.println("profileImageUrl: " + profileImageUrl);
-
       // 프로필 이미지 URL에서 이미지 다운로드
       URL url = new URL(profileImageUrl);
       InputStream inputStream = url.openStream();
       byte[] imageData = inputStream.readAllBytes();
       inputStream.close();
-      System.out.println("이미지 다운로드 완료, 크기: " + imageData.length + " bytes");
 
       // 파일 경로 및 이름 생성
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd_HH_mm_ss_SSS"));
       String folderPath = String.format("raw_data/youtube/profile_images/%s", username);
       String fileName = String.format("%s_%s.jpg", username, timestamp);
       String accessKey = String.format("%s/%s", folderPath, fileName);
-      System.out.println("생성된 accessKey: " + accessKey);
 
       // S3에 업로드
       uploadFile(accessKey, imageData, "image/jpeg");
-      System.out.println("S3 업로드 완료");
 
       // File 테이블에 저장하고 ID 받기
       Integer fileId = null;
       try {
-        System.out.println("File 테이블 저장 시도 중...");
         var fileResponse = fileService.createFile(accessKey, "image/jpeg");
         fileId = fileResponse.getId();
-        System.out.println("File 테이블 저장 성공: ID=" + fileId + ", accessKey=" + accessKey);
       } catch (Exception fileError) {
-        System.err.println("File 테이블 저장 실패: " + accessKey + " - " + fileError.getMessage());
         fileError.printStackTrace();
-        // 더 자세한 디버깅을 위해 FileService 호출을 다시 시도
-        try {
-          System.out.println("FileService 재시도...");
-          System.out.println("FileService 객체: " + fileService);
-          System.out.println("accessKey: " + accessKey + ", contentType: image/jpeg");
-        } catch (Exception debugError) {
-          System.err.println("디버깅 중 에러: " + debugError.getMessage());
-        }
       }
-
-      System.out.println("=== 프로필 이미지 저장 완료 ===");
       return new ProfileImageSaveResult(accessKey, fileId);
 
     } catch (Exception e) {
-      System.err.println("전체 프로필 이미지 저장 실패: " + e.getMessage());
       e.printStackTrace();
       throw new RuntimeException("프로필 이미지 저장 실패: " + username, e);
     }

@@ -75,31 +75,23 @@ public class YoutubeVideoWithComments {
         result.setTags(extractHashtags(video.getSnippet().getDescription()));
 
         // 썸네일 URL 및 크기 정보 추출 (Maxres 우선, 없으면 fallback)
-        if (video.getSnippet().getThumbnails() != null) {
-            var thumbnails = video.getSnippet().getThumbnails();
-            if (thumbnails.getMaxres() != null) {
-                result.setThumbnailUrl(thumbnails.getMaxres().getUrl());
-                result.setThumbnailWidth(thumbnails.getMaxres().getWidth());
-                result.setThumbnailHeight(thumbnails.getMaxres().getHeight());
-                System.out.println("비디오 " + videoId + " - Maxres 썸네일: " + thumbnails.getMaxres().getWidth() + "x" + thumbnails.getMaxres().getHeight());
-            } else if (thumbnails.getHigh() != null) {
-                result.setThumbnailUrl(thumbnails.getHigh().getUrl());
-                result.setThumbnailWidth(thumbnails.getHigh().getWidth());
-                result.setThumbnailHeight(thumbnails.getHigh().getHeight());
-                System.out.println("비디오 " + videoId + " - High 썸네일: " + thumbnails.getHigh().getWidth() + "x" + thumbnails.getHigh().getHeight());
-            } else if (thumbnails.getMedium() != null) {
-                result.setThumbnailUrl(thumbnails.getMedium().getUrl());
-                result.setThumbnailWidth(thumbnails.getMedium().getWidth());
-                result.setThumbnailHeight(thumbnails.getMedium().getHeight());
-                System.out.println("비디오 " + videoId + " - Medium 썸네일: " + thumbnails.getMedium().getWidth() + "x" + thumbnails.getMedium().getHeight());
-            } else if (thumbnails.getDefaultThumbnail() != null) {
-                result.setThumbnailUrl(thumbnails.getDefaultThumbnail().getUrl());
-                result.setThumbnailWidth(thumbnails.getDefaultThumbnail().getWidth());
-                result.setThumbnailHeight(thumbnails.getDefaultThumbnail().getHeight());
-                System.out.println("비디오 " + videoId + " - Default 썸네일: " + thumbnails.getDefaultThumbnail().getWidth() + "x" + thumbnails.getDefaultThumbnail().getHeight());
-            }
-        } else {
-            System.out.println("비디오 " + videoId + " - 썸네일 정보 없음");
+        var thumbnails = video.getSnippet().getThumbnails();
+        if (thumbnails.getMaxres() != null) {
+            result.setThumbnailUrl(thumbnails.getMaxres().getUrl());
+            result.setThumbnailWidth(thumbnails.getMaxres().getWidth());
+            result.setThumbnailHeight(thumbnails.getMaxres().getHeight());
+        } else if (thumbnails.getHigh() != null) {
+            result.setThumbnailUrl(thumbnails.getHigh().getUrl());
+            result.setThumbnailWidth(thumbnails.getHigh().getWidth());
+            result.setThumbnailHeight(thumbnails.getHigh().getHeight());
+        } else if (thumbnails.getMedium() != null) {
+            result.setThumbnailUrl(thumbnails.getMedium().getUrl());
+            result.setThumbnailWidth(thumbnails.getMedium().getWidth());
+            result.setThumbnailHeight(thumbnails.getMedium().getHeight());
+        } else if (thumbnails.getDefaultThumbnail() != null) {
+            result.setThumbnailUrl(thumbnails.getDefaultThumbnail().getUrl());
+            result.setThumbnailWidth(thumbnails.getDefaultThumbnail().getWidth());
+            result.setThumbnailHeight(thumbnails.getDefaultThumbnail().getHeight());
         }
 
         result.setComments(new ArrayList<>());

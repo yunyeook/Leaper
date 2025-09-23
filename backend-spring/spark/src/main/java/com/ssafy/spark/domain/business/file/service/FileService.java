@@ -27,11 +27,6 @@ public class FileService {
      */
     @Transactional
     public FileResponse createFile(FileCreateRequest request) {
-        System.out.println("FileService.createFile(request) 호출됨");
-        System.out.println("request: " + request);
-        System.out.println("request.accessKey: " + request.getAccessKey());
-        System.out.println("request.contentType: " + request.getContentType());
-
         log.info("파일 생성 시작 - accessKey: {}", request.getAccessKey());
 
         try {
@@ -41,22 +36,14 @@ public class FileService {
                     .createdAt(LocalDateTime.now())
                     .build();
 
-            System.out.println("File 엔티티 생성 완료: " + file);
-            System.out.println("fileRepository.save() 호출 중...");
-
             File savedFile = fileRepository.save(file);
-
-            System.out.println("fileRepository.save() 완료: " + savedFile);
-            System.out.println("savedFile.getId(): " + savedFile.getId());
 
             log.info("파일 생성 완료 - id: {}, accessKey: {}", savedFile.getId(), savedFile.getAccessKey());
 
             FileResponse response = FileResponse.from(savedFile);
-            System.out.println("FileResponse 생성 완료: " + response);
             return response;
 
         } catch (Exception e) {
-            System.err.println("FileService.createFile 에러: " + e.getMessage());
             e.printStackTrace();
             throw e;
         }
@@ -67,11 +54,6 @@ public class FileService {
      */
     @Transactional
     public FileResponse createFile(String accessKey, String contentType) {
-        System.out.println("FileService.createFile() 호출됨");
-        System.out.println("accessKey: " + accessKey);
-        System.out.println("contentType: " + contentType);
-        System.out.println("fileRepository: " + fileRepository);
-
         FileCreateRequest request = new FileCreateRequest(accessKey, contentType);
         return createFile(request);
     }

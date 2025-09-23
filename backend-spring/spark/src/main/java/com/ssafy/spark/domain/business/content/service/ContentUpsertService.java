@@ -52,7 +52,7 @@ public class ContentUpsertService {
             log.info("Upsert videos from youTube");
 
             // 1. 필요한 기준 데이터 조회
-            String platformTypeId = "youtube"; // YouTube 플랫폼 타입 ID
+            String platformTypeId = "YOUTUBE"; // YouTube 플랫폼 타입 ID
             PlatformType platformType = platformTypeService.findEntityByPlatformTypeId(platformTypeId)
                     .orElseThrow(() -> new IllegalArgumentException("YouTube 플랫폼 타입을 찾을 수 없습니다: " + platformTypeId));
 

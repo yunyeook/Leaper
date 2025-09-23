@@ -30,8 +30,10 @@ public class YoutubeController {
     @PostMapping("/channel/{externalAccountId}/full-crawl")
     public Mono<ChannelWithVideosResponse> getChannelFullDataAndSave(
             @PathVariable("externalAccountId") String externalAccountId,
-            @RequestParam(value = "maxCommentsPerVideo", defaultValue = "10") Integer maxCommentsPerVideo) {
-        return youtubeCrawlingService.getChannelFullDataAndSave(externalAccountId, maxCommentsPerVideo);
+            @RequestParam(value = "maxCommentsPerVideo", defaultValue = "20") Integer maxCommentsPerVideo,
+            @RequestParam(value = "maxVideos", defaultValue = "20") Integer maxVideos,
+            @RequestParam(value = "categoryTypeId", defaultValue = "1") short categoryTypeId) {
+        return youtubeCrawlingService.getChannelFullDataAndSave(externalAccountId, maxCommentsPerVideo, maxVideos, categoryTypeId);
     }
 
     /**
