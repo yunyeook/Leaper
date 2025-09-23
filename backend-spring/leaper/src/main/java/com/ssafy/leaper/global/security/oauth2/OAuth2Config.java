@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.MediaType;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
@@ -56,13 +57,19 @@ public class OAuth2Config {
         };
     }
 
-    @Bean
-    public OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient() {
+    public static OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> createInstagramAccessTokenResponseClient() {
         DefaultAuthorizationCodeTokenResponseClient tokenResponseClient = new DefaultAuthorizationCodeTokenResponseClient();
 
         // Instagram 전용 컨버터 설정
         OAuth2AccessTokenResponseHttpMessageConverter tokenResponseHttpMessageConverter =
             new OAuth2AccessTokenResponseHttpMessageConverter();
+
+        // form-encoded 응답도 처리하도록 MediaType 추가
+        tokenResponseHttpMessageConverter.setSupportedMediaTypes(Arrays.asList(
+            MediaType.APPLICATION_JSON,
+            MediaType.APPLICATION_FORM_URLENCODED
+        ));
+
         tokenResponseHttpMessageConverter.setAccessTokenResponseConverter(new InstagramTokenResponseConverter());
 
         RestTemplate restTemplate = new RestTemplate(Arrays.asList(tokenResponseHttpMessageConverter));
