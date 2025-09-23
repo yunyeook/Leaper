@@ -67,7 +67,6 @@ spring:
             redirect-uri: ${BACK_URL}/connect/login/oauth2/code/instagram-connect
             scope:
               - instagram_business_basic
-              - pages_show_list
             provider: instagram
 
 
@@ -85,10 +84,11 @@ spring:
             user-name-attribute: response
 
           instagram:
+            authorization-uri: https://api.instagram.com/oauth/authorize
+            token-uri: https://api.instagram.com/oauth/access_token
+            user-info-uri: https://graph.instagram.com/me?fields=id,username,account_type
+            user-info-authentication-method: header
             user-name-attribute: id
-            authorization-uri: https://www.facebook.com/v19.0/dialog/oauth
-            token-uri: https://graph.facebook.com/v19.0/oauth/access_token
-            user-info-uri: https://graph.facebook.com/v19.0/me?fields=id,name
 
 
 
