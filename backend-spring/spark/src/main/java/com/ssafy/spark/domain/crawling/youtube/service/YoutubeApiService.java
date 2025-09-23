@@ -118,17 +118,10 @@ public class YoutubeApiService {
     }
 
     /**
-     * 플레이리스트의 모든 비디오를 페이지별로 가져옴
+     * 플레이리스트의 첫 페이지 비디오들을 가져옴
      */
     private Flux<YoutubeVideo> getAllVideosFromPlaylist(String playlistId) {
         return getVideosFromPlaylist(playlistId, null)
-                .expand(response -> {
-                    if (response.getNextPageToken() != null) {
-                        return getVideosFromPlaylist(playlistId, response.getNextPageToken());
-                    } else {
-                        return Mono.empty();
-                    }
-                })
                 .flatMapIterable(RawYoutubeVideoListResponse::getItems);
     }
 
@@ -173,15 +166,7 @@ public class YoutubeApiService {
             maxResults = 20; // 기본값
         }
 
-        Integer finalMaxResults = maxResults;
         return getCommentsFromVideo(videoId, null, maxResults)
-                .expand(response -> {
-                    if (response.getNextPageToken() != null) {
-                        return getCommentsFromVideo(videoId, response.getNextPageToken(), finalMaxResults);
-                    } else {
-                        return Mono.empty();
-                    }
-                })
                 .flatMapIterable(RawYoutubeCommentResponse::getItems);
     }
 
