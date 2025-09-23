@@ -99,38 +99,67 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                script {
-                    // 환경별로 다른 EC2 서버 사용
-                    def targetServer = 'ubuntu@ip-172-26-12-81'
-                    def composeFile = env.BRANCH_NAME == 'main' ? 'docker-compose.prod.yml' : 'docker-compose.dev.yml'
+                withCredentials([
+                    string(credentialsId: 'app-server', variable: 'APP_SERVER')
+                ]) {
+                    script {
+                        // 환경별로 다른 EC2 서버 사용
+                        def targetServer = env.APP_SERVER
+                        def infraComposeFile = 'docker-compose.infra.yml'
+                        def serverComposeFile = 'docker-compose.server.yml'
 
-                    sshagent(['ec2-ssh-key']) {
-                        sh """
-                            # EC2 서버에 SSH 접속하여 배포
-                            ssh -o StrictHostKeyChecking=no ${targetServer} '
-                                # 현재 실행 중인 컨테이너 중지
-                                cd ./app
-                                docker-compose -f ${composeFile} down
+                        sshagent(['ec2-ssh-key']) {
+                            sh """
+                                # EC2 서버에 SSH 접속하여 배포
+                                ssh -o StrictHostKeyChecking=no ${targetServer} '
+                                    cd ./app
 
-                                # 최신 이미지 Pull
-                                docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true
-                                docker rmi ${DOCKER_IMAGE}:latest || true
-                                docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
-                                docker pull ${DOCKER_IMAGE}:latest
+                                    echo "🔍 현재 실행 중인 컨테이너 확인..."
+                                    docker-compose -f ${infraComposeFile} -f ${serverComposeFile} ps
 
-                                # 오래된 이미지 정리
-                                docker image prune -f
+                                    # 1. 기존 서버 컨테이너만 중지 및 제거 (infra는 유지)
+                                    echo "🛑 기존 서버 컨테이너를 중지합니다..."
+                                    docker-compose -f ${serverComposeFile} down
 
-                                # 새로운 컨테이너 시작
-                                docker-compose -f ${composeFile} up -d
+                                    # 2. 최신 서버 이미지 Pull 및 기존 이미지 정리
+                                    echo "📥 최신 서버 이미지를 다운로드합니다..."
+                                    docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true
+                                    docker rmi ${DOCKER_IMAGE}:latest || true
+                                    docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+                                    docker pull ${DOCKER_IMAGE}:latest
 
-                                # 컨테이너 상태 확인
-                                docker-compose -f ${composeFile} ps
+                                    # 3. 인프라 서비스가 실행 중인지 확인 (DB, Redis 등)
+                                    echo "🔍 인프라 서비스 상태 확인..."
+                                    if ! docker-compose -f ${infraComposeFile} ps | grep -q "Up"; then
+                                        echo "🚀 인프라 서비스를 시작합니다..."
+                                        docker-compose -f ${infraComposeFile} up -d
+                                        echo "⏳ 인프라 서비스가 준비될 때까지 대기..."
+                                        sleep 10
+                                    else
+                                        echo "✅ 인프라 서비스가 이미 실행 중입니다."
+                                    fi
 
-                                # 로그 확인 (최근 50줄)
-                                docker-compose -f ${composeFile} logs --tail=50 leaper-backend
-                            '
-                        """
+                                    # 4. 새로운 서버 컨테이너 시작
+                                    echo "🚀 새로운 서버 컨테이너를 시작합니다..."
+                                    docker-compose -f ${serverComposeFile} up -d
+
+                                    # 5. 전체 서비스 상태 확인
+                                    echo "📊 전체 서비스 상태 확인..."
+                                    echo "=== 인프라 서비스 ==="
+                                    docker-compose -f ${infraComposeFile} ps
+                                    echo "=== 서버 서비스 ==="
+                                    docker-compose -f ${serverComposeFile} ps
+
+                                    # 6. 서버 로그 확인
+                                    echo "📋 서버 로그 확인 (최근 50줄)..."
+                                    docker-compose -f ${serverComposeFile} logs --tail=50 leaper-backend
+
+                                    # 7. 오래된 이미지 정리
+                                    echo "🧹 사용하지 않는 이미지 정리..."
+                                    docker image prune -f
+                                '
+                            """
+                        }
                     }
                 }
             }
@@ -138,26 +167,59 @@ pipeline {
 
         stage('Health Check') {
             steps {
-                script {
-                    def targetServer = 'ubuntu@ip-172-26-12-81'
+                withCredentials([
+                    string(credentialsId: 'app-server', variable: 'APP_SERVER')
+                ]) {
+                    script {
+                        // 환경별로 다른 EC2 서버 사용
+                        def targetServer = env.APP_SERVER
+                        def infraComposeFile = 'docker-compose.infra.yml'
+                        def serverComposeFile = 'docker-compose.server.yml'
 
-                    // 애플리케이션이 완전히 시작될 때까지 대기
-                    sleep(30)
+                        // 애플리케이션이 완전히 시작될 때까지 대기
+                        echo "⏳ 서버가 완전히 시작될 때까지 30초 대기..."
+                        sleep(30)
 
-                    sshagent(['ec2-ssh-key']) {
-                        sh """
-                            # 헬스체크 수행
-                            ssh -o StrictHostKeyChecking=no ${targetServer} '
-                                # 컨테이너 상태 확인
-                                if docker-compose -f ./app/docker-compose.${env.BRANCH_NAME == 'main' ? 'prod' : 'dev'}.yml ps | grep -q "Up"; then
-                                    echo "✅ 컨테이너가 정상적으로 실행 중입니다."
+                        sshagent(['ec2-ssh-key']) {
+                            sh """
+                                # 헬스체크 수행
+                                ssh -o StrictHostKeyChecking=no ${targetServer} '
+                                    cd ./app
 
-                                else
-                                    echo "❌ 컨테이너 실행 실패!"
-                                    exit 1
-                                fi
-                            '
-                        """
+                                    echo "🔍 서비스 헬스체크를 수행합니다..."
+
+                                    # 인프라 서비스 상태 확인
+                                    echo "=== 인프라 서비스 상태 ==="
+                                    INFRA_STATUS=\$(docker-compose -f ${infraComposeFile} ps --services --filter "status=running" | wc -l)
+                                    INFRA_TOTAL=\$(docker-compose -f ${infraComposeFile} config --services | wc -l)
+                                    echo "인프라 서비스: \$INFRA_STATUS/\$INFRA_TOTAL 실행 중"
+
+                                    # 서버 서비스 상태 확인
+                                    echo "=== 서버 서비스 상태 ==="
+                                    if docker-compose -f ${serverComposeFile} ps | grep leaper-backend | grep -q "Up"; then
+                                        echo "✅ 서버 컨테이너가 정상적으로 실행 중입니다."
+
+                                        # 추가 헬스체크: 서버 응답 확인 (포트 체크)
+                                        if docker-compose -f ${serverComposeFile} exec -T leaper-backend wget --spider -q http://localhost:8080/actuator/health 2>/dev/null; then
+                                            echo "✅ 서버 헬스체크 엔드포인트 응답 정상"
+                                        else
+                                            echo "⚠️ 헬스체크 엔드포인트 응답 없음 (아직 시작 중일 수 있음)"
+                                        fi
+                                    else
+                                        echo "❌ 서버 컨테이너 실행 실패!"
+                                        echo "=== 서버 컨테이너 로그 ==="
+                                        docker-compose -f ${serverComposeFile} logs --tail=100 leaper-backend
+                                        exit 1
+                                    fi
+
+                                    # 전체 서비스 요약
+                                    echo "=== 배포 완료 요약 ==="
+                                    echo "📊 인프라 서비스: \$INFRA_STATUS/\$INFRA_TOTAL 정상"
+                                    echo "🚀 서버 서비스: 정상 실행"
+                                    echo "🎉 배포가 성공적으로 완료되었습니다!"
+                                '
+                            """
+                        }
                     }
                 }
             }
@@ -167,8 +229,10 @@ pipeline {
             steps {
                 dir('backend-spring/leaper') {
                     sh '''
-                        # 로컬 Docker 이미지 정리
-                        docker images shinjwde/leaper-backend | grep -v latest | awk 'NR>1 {print $1":"$2}' | xargs docker rmi                    '''
+                        echo "🧹 로컬 Docker 이미지 정리..."
+                        # 현재 빌드를 제외한 이전 버전들만 정리
+                        docker images ${DOCKER_IMAGE} | grep -v latest | grep -v ${DOCKER_TAG} | awk 'NR>1 {print $1":"$2}' | xargs -r docker rmi || echo "정리할 이미지가 없습니다."
+                    '''
                 }
             }
         }

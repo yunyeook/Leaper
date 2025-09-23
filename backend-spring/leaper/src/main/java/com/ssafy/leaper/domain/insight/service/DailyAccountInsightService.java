@@ -27,7 +27,8 @@ public class DailyAccountInsightService {
 
   //  인플루언서 단위 풀데이터
   public ServiceResult<AccountInsightResponse> getAccountInsights(Integer influencerId) {
-    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId);
+    LocalDate fromDate = LocalDate.now().minusDays(365);
+    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId, fromDate);
 
     List<DailyAccountInsightResponse> dailyResponses = entities.stream()
         .map(DailyAccountInsightResponse::from)
@@ -40,7 +41,8 @@ public class DailyAccountInsightService {
 
   // 플랫폼 계정 단위 풀데이터
   public ServiceResult<AccountInsightResponse> getPlatformAccountInsights(Integer platformAccountId) {
-    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId);
+    LocalDate fromDate = LocalDate.now().minusDays(365);
+    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId, fromDate);
 
     List<DailyAccountInsightResponse> dailyResponses = entities.stream()
         .map(DailyAccountInsightResponse::from)
@@ -53,13 +55,15 @@ public class DailyAccountInsightService {
 
   // 인플루언서 단위 조회수 전용
   public ServiceResult<InfluencerViewsResponse> getInfluencerViews(Integer influencerId) {
-    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId);
+    LocalDate fromDate = LocalDate.now().minusDays(365);
+    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByInfluencerId(influencerId, fromDate);
     return ServiceResult.ok(aggregateDailyAndMonthlyViews(entities));
   }
 
   // ✅ 플랫폼 계정 단위 조회수 전용
   public ServiceResult<InfluencerViewsResponse> getPlatformAccountViews(Integer platformAccountId) {
-    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId);
+    LocalDate fromDate = LocalDate.now().minusDays(365);
+    List<DailyAccountInsight> entities = dailyAccountInsightRepository.findByPlatformAccountId(platformAccountId, fromDate);
     return ServiceResult.ok(aggregateDailyAndMonthlyViews(entities));
   }
 

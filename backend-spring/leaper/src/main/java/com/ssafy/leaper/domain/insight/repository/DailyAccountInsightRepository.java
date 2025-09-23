@@ -58,4 +58,22 @@ public interface DailyAccountInsightRepository extends JpaRepository<DailyAccoun
       ")" +
       "ORDER BY dai.snapshotDate DESC")
   List<DailyAccountInsight> findLatestByInfluencerId(@Param("influencerId") Integer influencerId);
+  // 기존 메서드는 그대로 두고, 365일 제한 메서드 추가
+  @Query("SELECT dai FROM DailyAccountInsight dai " +
+      "JOIN FETCH dai.platformAccount pa " +
+      "JOIN FETCH pa.platformType pt " +
+      "WHERE pa.influencer.id = :influencerId " +
+      "AND dai.snapshotDate >= :fromDate " +
+      "ORDER BY dai.snapshotDate")
+  List<DailyAccountInsight> findByInfluencerId(@Param("influencerId") Integer influencerId,
+      @Param("fromDate") LocalDate fromDate);
+
+  @Query("SELECT dai FROM DailyAccountInsight dai " +
+      "JOIN FETCH dai.platformAccount pa " +
+      "JOIN FETCH pa.platformType pt " +
+      "WHERE pa.id = :platformAccountId " +
+      "AND dai.snapshotDate >= :fromDate " +
+      "ORDER BY dai.snapshotDate ASC")
+  List<DailyAccountInsight> findByPlatformAccountId(@Param("platformAccountId") Integer platformAccountId,
+      @Param("fromDate") LocalDate fromDate);
 }

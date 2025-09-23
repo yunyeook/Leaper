@@ -2,6 +2,7 @@ package com.ssafy.spark.domain.spark.controller;
 
 import com.ssafy.spark.domain.spark.service.SparkAccountInsightService;
 import com.ssafy.spark.domain.spark.service.SparkAccountPopularContentService;
+import com.ssafy.spark.domain.spark.service.SparkKeywordTrendService;
 import com.ssafy.spark.domain.spark.service.SparkPopularContentService;
 import com.ssafy.spark.domain.spark.service.SparkPopularInfluencerService;
 import com.ssafy.spark.domain.spark.service.SparkTrendingContentService;
@@ -28,8 +29,33 @@ public class SparkAnalysisController {
   private final SparkAccountPopularContentService sparkAccountPopularContentService;
   private final SparkTrendingInfluencerService sparkTrendingInfluencerService;
   private final SparkTrendingContentService sparkTrendingContentService;
+  private final  SparkKeywordTrendService sparkKeywordTrendService;
+
+  @GetMapping("/testTotal")
+  public ResponseEntity<String> totalInsights(
+      @RequestParam(defaultValue = "instagram") String platformType,
+      @RequestParam(required = false)
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
+  ) {
+    // targetDate가 null이면 오늘 날짜 사용
+    if (targetDate == null) {
+//      targetDate = LocalDate.now();
+      targetDate= LocalDate.of(2025, 9, 22);
+    }
+
+    sparkAccountInsightService.generateDailyAccountInsight(platformType, targetDate);
+    sparkTypeInsightService.generateDailyTypeInsight(platformType, targetDate);
+    sparkPopularContentService.generateDailyPopularContent(platformType,targetDate);
+    sparkPopularInfluencerService.generateDailyPopularInfluencer(platformType,targetDate);
+    sparkAccountPopularContentService.generateAccountPopularContent(platformType, targetDate);
+    sparkTrendingInfluencerService.generateDailyTrendingInfluencer(platformType,targetDate);
+    sparkTrendingContentService.generateDailyTrendingContent(platformType,targetDate);
+    sparkKeywordTrendService.generateDailyKeywordTrend(platformType, targetDate);
 
 
+
+    return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
+  }
   @GetMapping("/test")
   public ResponseEntity<String> dailyAccountInsight(
       @RequestParam(defaultValue = "instagram") String platform,
@@ -48,18 +74,21 @@ public class SparkAnalysisController {
 
   @GetMapping("/test2")
   public ResponseEntity<String> dailyTypeInsight(
-      @RequestParam(defaultValue = "instagram") String platform,
+      @RequestParam(defaultValue = "instagram") String platformType,
       @RequestParam(required = false)
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
   ) {
     // targetDate가 null이면 오늘 날짜 사용
     if (targetDate == null) {
-      targetDate = LocalDate.now();
+//      targetDate = LocalDate.now();
+      targetDate= LocalDate.of(2025, 9, 22);
+
     }
 
-    sparkTypeInsightService.generateDailyTypeInsight(platform, targetDate);
+    sparkKeywordTrendService.generateDailyKeywordTrend(platformType, targetDate);
+//    sparkTypeInsightService.generateDailyTypeInsight(platform, targetDate);
 
-    return ResponseEntity.ok("통계 생성 완료: " + platform + ", " + targetDate);
+    return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
   }
 
 
@@ -150,4 +179,5 @@ public class SparkAnalysisController {
     sparkAccountInsightService.readAndLogS3File(s3Path);
     return ResponseEntity.ok("S3 파일 내용을 로그에서 확인하세요");
   }
+
 }

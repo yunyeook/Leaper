@@ -2,7 +2,6 @@ package com.ssafy.spark.domain.crawling.instagram.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ssafy.spark.domain.crawling.instagram.dto.CommentRawData;
-import com.ssafy.spark.domain.crawling.instagram.dto.CommentRawData.CommentItem;
 import com.ssafy.spark.domain.crawling.instagram.entity.Content;
 import com.ssafy.spark.domain.crawling.instagram.repository.ContentRepository;
 import java.time.Instant;
@@ -148,7 +147,6 @@ public class CommentService extends BaseApifyService {
             .text(text)
             .likesCount(likesCount)
             .publishedAt(publishedAt)
-            // crawledAt 제거
             .build();
 
         commentItems.add(commentItem);
@@ -210,6 +208,57 @@ public class CommentService extends BaseApifyService {
 
     } catch (Exception e) {
       log.error("전체 댓글 수집 중 오류: ", e);
+    }
+  }
+
+  /**
+   * 배치 댓글 수집 (기존 개별 API 활용)
+   */
+  public void collectCommentsBatchUsingExistingApi(List<Integer> contentIds, int batchSize) {
+    try {
+      log.info("기존 API 활용 배치 댓글 수집 시작 - 총 {}개 콘텐츠, 배치 크기: {}", contentIds.size(), batchSize);
+
+      // 배치 단위로 나누어서 처리
+      for (int i = 0; i < contentIds.size(); i += batchSize) {
+        int endIndex = Math.min(i + batchSize, contentIds.size());
+        List<Integer> batchIds = contentIds.subList(i, endIndex);
+
+        log.info("배치 {}/{} 처리 중 ({}~{}번째)",
+            (i/batchSize) + 1,
+            (contentIds.size() + batchSize - 1) / batchSize,
+            i + 1, endIndex);
+
+        // 배치 내 개별 처리
+        for (Integer contentId : batchIds) {
+          try {
+            log.info("개별 댓글 수집 시작 - Content ID: {}", contentId);
+
+            // 🟢 기존에 잘 되는 개별 메서드 사용
+            CompletableFuture<String> future = getCommentsByContentId(contentId);
+            String result = future.get();
+
+            log.info("개별 댓글 수집 완료 - Content ID: {}", contentId);
+
+            // 개별 처리 간 대기 (API 제한 방지)
+            Thread.sleep(3000); // 3초 대기
+
+          } catch (Exception e) {
+            log.error("개별 댓글 수집 실패 - Content ID: {}", contentId, e);
+          }
+        }
+
+        // 배치 간 대기 (API 제한 방지)
+        if (endIndex < contentIds.size()) {
+          Thread.sleep(10000); // 10초 대기
+          log.info("다음 배치까지 10초 대기...");
+        }
+      }
+
+      log.info("기존 API 활용 배치 댓글 수집 완료");
+
+    } catch (Exception e) {
+      log.error("배치 댓글 수집 중 오류: ", e);
+      throw new RuntimeException("배치 댓글 수집 실패", e);
     }
   }
 }

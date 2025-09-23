@@ -32,10 +32,6 @@ public class GoogleKeywordTrend {
   @Column(name = "keywords_json", columnDefinition = "JSON")
   private List<String> keywords;
 
-
-  @Column(name = "search_volume")
-  private BigInteger searchVolume;
-
   @Column(name = "snapshot_date", nullable = false)
   private LocalDate snapshotDate;
 

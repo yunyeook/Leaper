@@ -1,5 +1,7 @@
 package com.ssafy.spark.domain.spark.service;
 
+import static org.apache.spark.sql.functions.lit;
+
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
@@ -9,6 +11,7 @@ import java.io.ByteArrayInputStream;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +49,6 @@ public class SparkBaseService {
    */
   protected Dataset<Row> readS3ContentDataByDate(String platformType, LocalDate targetDate) {
     try {
-      // 특정 날짜 폴더의 콘텐츠 데이터 읽기
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String s3Path = String.format("s3a://%s/raw_data/%s/content/%s/*.json", bucketName,platformType, dateFolder);
 
@@ -57,17 +59,19 @@ public class SparkBaseService {
     } catch (Exception e) {
       log.warn("S3 특정날짜 콘텐츠 데이터 읽기 실패: platform={}, date={}",
           platformType, targetDate, e);
-      // 빈 DataFrame 반환
-      return sparkSession.emptyDataFrame();
+      // 빈 DataFrame을 필요한 컬럼과 함께 생성
+      return sparkSession.emptyDataFrame()
+          .withColumn("externalContentId", lit("").cast("string"))
+          .withColumn("accountNickname", lit("").cast("string"))
+          .withColumn("viewsCount", lit(0L).cast("long"));
     }
   }
 
   /**
    * 특정 날짜의 전체 계정 데이터 읽기
    */
-  protected Dataset<Row> readS3AccountData(String platformType,LocalDate targetDate) {
+  protected Dataset<Row> readS3AccountData(String platformType, LocalDate targetDate) {
     try {
-      // 특정 날짜 폴더의 계정 데이터 읽기
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String s3Path = String.format("s3a://%s/raw_data/%s/platform_account/%s/*.json",bucketName, platformType,dateFolder);
 
@@ -77,7 +81,11 @@ public class SparkBaseService {
 
     } catch (Exception e) {
       log.error("S3 특정날짜 전체 계정 데이터 읽기 실패: platform={}, date={}", platformType,targetDate, e);
-      return sparkSession.emptyDataFrame();
+      // 빈 DataFrame을 필요한 컬럼과 함께 생성
+      return sparkSession.emptyDataFrame()
+          .withColumn("accountNickname", lit("").cast("string"))
+          .withColumn("categoryName", lit("").cast("string"))
+          .withColumn("followersCount", lit(0L).cast("long"));
     }
   }
 
