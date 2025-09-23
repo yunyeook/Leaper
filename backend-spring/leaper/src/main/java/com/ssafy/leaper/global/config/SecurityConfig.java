@@ -111,7 +111,7 @@ public class SecurityConfig {
     public SecurityFilterChain defaultSecurity(HttpSecurity http) throws Exception {
         http.csrf(c -> c.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/home", "/auth-callback", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**", "/ws/**").permitAll()
+                        .requestMatchers("/", "/home", "/auth-callback", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**", "/ws/**", "/test/jwt").permitAll()
                         .anyRequest().authenticated());
 
         return http.build();

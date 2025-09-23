@@ -57,7 +57,7 @@ public class PlatformAccount {
   @Column(nullable = false)
   private Boolean isDeleted;
 
-  @Column( nullable = false)
+  @Column(nullable = true)
   private LocalDateTime deletedAt;
 
   @CreatedDate
