@@ -84,9 +84,19 @@ public class S3FileService {
             URL url = new URL(imageUrl);
             URLConnection connection = url.openConnection();
 
-            // User-Agent 설정 (일부 사이트에서 봇 차단 방지)
+            // YouTube/Google 이미지를 위한 강화된 헤더 설정
             connection.setRequestProperty("User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36");
+            connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
+            connection.setRequestProperty("Accept-Language", "ko-KR,ko;q=0.9,en;q=0.8");
+            connection.setRequestProperty("Cache-Control", "no-cache");
+            connection.setRequestProperty("Sec-Fetch-Dest", "image");
+            connection.setRequestProperty("Sec-Fetch-Mode", "no-cors");
+            connection.setRequestProperty("Sec-Fetch-Site", "cross-site");
+
+            // 연결 및 읽기 타임아웃 설정
+            connection.setConnectTimeout(10000); // 10초
+            connection.setReadTimeout(10000);    // 10초
 
             InputStream inputStream = connection.getInputStream();
             String contentType = connection.getContentType();
