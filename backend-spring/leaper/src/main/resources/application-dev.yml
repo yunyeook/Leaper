@@ -62,7 +62,7 @@ spring:
           instagram-connect:
             client-id: ${INSTAGRAM_CLIENT_ID}
             client-secret: ${INSTAGRAM_CLIENT_SECRET}
-            client-authentication-method: post
+            client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             redirect-uri: ${BACK_URL}/connect/login/oauth2/code/instagram-connect
             scope:
