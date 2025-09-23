@@ -86,13 +86,13 @@ public class SparkTypeInsightService extends SparkBaseService {
       SnapshotRow yesterday = yesterdaySnapshot.getOrDefault(key, new SnapshotRow());
       SnapshotRow lastMonth = lastMonthSnapshot.getOrDefault(key, new SnapshotRow());
 
-      int todayViews = totalViews.subtract(yesterday.getViews()).intValue();
-      int todayLikes = totalLikes.subtract(yesterday.getLikes()).intValue();
-      int todayContents = totalContents - yesterday.getContents();
+      int todayViews = Math.max(0, totalViews.subtract(yesterday.getViews()).intValue());
+      int todayLikes = Math.max(0, totalLikes.subtract(yesterday.getLikes()).intValue());
+      int todayContents = Math.max(0, totalContents - yesterday.getContents());
 
-      BigInteger monthViews = totalViews.subtract(lastMonth.getViews());
-      BigInteger monthLikes = totalLikes.subtract(lastMonth.getLikes());
-      int monthContents = totalContents - lastMonth.getContents();
+      BigInteger monthViews = totalViews.subtract(lastMonth.getViews()).max(BigInteger.ZERO);
+      BigInteger monthLikes = totalLikes.subtract(lastMonth.getLikes()).max(BigInteger.ZERO);
+      int monthContents = Math.max(0, totalContents - lastMonth.getContents());
 
       // DB insert/update
       String sql = "INSERT INTO daily_type_insight " +

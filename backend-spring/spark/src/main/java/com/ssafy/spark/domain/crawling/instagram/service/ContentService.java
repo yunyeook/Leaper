@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,7 +50,7 @@ public class ContentService extends BaseApifyService {
         String actorId = "apify~instagram-post-scraper";
 
         Map<String, Object> input = new HashMap<>();
-        input.put("resultsLimit", 5); // TODO : 총 몇개의 컨텐츠를 가져올건지
+        input.put("resultsLimit", 30); // TODO : 총 몇개의 컨텐츠를 가져올건지
         input.put("skipPinnedPosts", false);
         input.put("username", new String[]{username});
 
@@ -307,8 +308,7 @@ public class ContentService extends BaseApifyService {
 
   public void collectAllRegisteredUsersContent() {
     try {
-      List<PlatformAccount> instagramAccounts = platformAccountRepository
-          .findByPlatformTypeId("INSTAGRAM");
+      List<PlatformAccount> instagramAccounts = platformAccountRepository.findByPlatformTypeId("INSTAGRAM");
 
       log.info("등록된 Instagram 계정 {}개의 콘텐츠 수집 시작", instagramAccounts.size());
 
@@ -357,4 +357,31 @@ public class ContentService extends BaseApifyService {
 
     return firstLine.isEmpty() ? "Instagram 게시물" : firstLine;
   }
+
+//  /**
+//   * 모든 콘텐츠 ID 조회
+//   */
+//  public List<Integer> getAllContentIds() {
+//    return contentRepository.findAll().stream()
+//        .map(Content::getId)
+//        .collect(Collectors.toList());
+//  }
+  /**
+   * Instagram 콘텐츠 ID만 조회
+   */
+//  public List<Integer> getInstagramContentIds() {
+//    return contentRepository.findByPlatformTypeId("INSTAGRAM").stream()
+//        .map(Content::getId)
+//        .collect(Collectors.toList());
+//  }
+  /**
+   * Instagram 콘텐츠 ID만 조회 (215번부터)
+   */
+  public List<Integer> getInstagramContentIds() {
+    return contentRepository.findByPlatformTypeId("INSTAGRAM").stream()
+        .filter(content -> content.getId() >= 239)
+        .map(Content::getId)
+        .collect(Collectors.toList());
+  }
+
 }

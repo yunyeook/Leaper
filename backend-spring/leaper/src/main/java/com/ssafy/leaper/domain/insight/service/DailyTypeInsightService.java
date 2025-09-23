@@ -6,6 +6,7 @@ import com.ssafy.leaper.domain.insight.dto.response.dailyTypeInsight.TypeInsight
 import com.ssafy.leaper.domain.insight.entity.DailyTypeInsight;
 import com.ssafy.leaper.domain.insight.repository.DailyTypeInsightRepository;
 import com.ssafy.leaper.global.common.response.ServiceResult;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,12 +24,14 @@ public class DailyTypeInsightService {
   private final DailyTypeInsightRepository repository;
 
   public ServiceResult<TypeInsightResponse> getTypeInsightsByInfluencer(Long influencerId, String contentTypeId) {
-    List<DailyTypeInsight> entities = repository.findByInfluencerIdAndContentType(influencerId, contentTypeId);
+    LocalDate fromDate = LocalDate.now().minusDays(365);
+    List<DailyTypeInsight> entities = repository.findByInfluencerIdAndContentType(influencerId, contentTypeId, fromDate);
     return ServiceResult.ok(aggregateDailyAndMonthly(entities));
   }
 
   public ServiceResult<TypeInsightResponse> getTypeInsightsByPlatformAccount(Long platformAccountId, String contentTypeId) {
-    List<DailyTypeInsight> entities = repository.findByPlatformAccountIdAndContentType(platformAccountId, contentTypeId);
+    LocalDate fromDate = LocalDate.now().minusDays(365);
+    List<DailyTypeInsight> entities = repository.findByPlatformAccountIdAndContentType(platformAccountId, contentTypeId, fromDate);
     return ServiceResult.ok(aggregateDailyAndMonthly(entities));
   }
 

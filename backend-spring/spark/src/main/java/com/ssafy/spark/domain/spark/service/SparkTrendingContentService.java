@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import static org.apache.spark.sql.functions.*;
+
 
 import static org.apache.spark.sql.functions.*;
 
@@ -45,14 +47,15 @@ public class SparkTrendingContentService extends SparkBaseService {
           .join(accountData, "accountNickname")
           .filter(col("categoryName").isNotNull());
 
-      // 5. 어제 조회수와 조인
+      // 5. 어제 조회수와 left 조인
       Dataset<Row> joined = contentWithCategory
-          .join(yesterdayViews, "externalContentId");
+          .join(yesterdayViews, new String[]{"externalContentId"}, "left");
 
-      // 6. 증감량 계산 및 카테고리별 Top10 처리
+// 6. 증감량 계산 (어제 데이터가 없으면 증감량을 0으로)
       Dataset<Row> trendingTop10 = joined
           .withColumn("deltaViews",
-              col("viewsCount").minus(col("yesterdayViews")))
+              when(col("yesterdayViews").isNull(), lit(0L))
+                  .otherwise(col("viewsCount").minus(col("yesterdayViews"))))
           .withColumn("contentRank",
               row_number().over(
                   Window.partitionBy("categoryName")
