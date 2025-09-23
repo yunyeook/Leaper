@@ -33,7 +33,7 @@ public class YoutubeCrawlingService {
                     return Mono.fromCallable(() -> {
                         ChannelInfoResponse channelInfo = channelData.getChannelInfo();
                         String nickname = channelInfo.getAccountNickname();
-                        String bio = channelInfo.getCategoryName(); // 카테고리를 bio로 사용
+                        String bio = channelInfo.getAccountNickname(); // 카테고리를 bio로 사용
                         Integer profileImageId = null; // 프로필 이미지는 S3 저장 후에 설정될 예정
 
                         // 인플루언서 생성

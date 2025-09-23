@@ -689,6 +689,13 @@ public class YoutubeApiService {
                             .map(accountNickname ->
                                 convertToVideoInfoWithCommentsResponse(video, accountNickname, "VIDEO_SHORT")
                             );
+                })
+                .onErrorResume(throwable -> {
+                    if (throwable.getMessage() != null && (throwable.getMessage().contains("404") || throwable.getMessage().contains("playlistNotFound"))) {
+                        log.info("채널 {}에 숏폼 플레이리스트가 존재하지 않음 (UUPS 플레이리스트 없음)", externalAccountId);
+                        return Flux.empty(); // 빈 스트림 반환
+                    }
+                    return Flux.error(throwable); // 다른 에러는 그대로 전파
                 });
     }
 
