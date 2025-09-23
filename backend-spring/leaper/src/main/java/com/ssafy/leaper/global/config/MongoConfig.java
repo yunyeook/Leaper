@@ -48,7 +48,7 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
 
         // 사용자명과 비밀번호가 있는 경우
         if (!username.isEmpty() && !password.isEmpty()) {
-            connectionString = String.format("mongodb://%s:%s@%s:%d/%s",
+            connectionString = String.format("mongodb://%s:%s@%s:%d/%s?authSource=admin",
                     username, password, mongoHost, mongoPort, databaseName);
         } else {
             // 인증 없는 경우

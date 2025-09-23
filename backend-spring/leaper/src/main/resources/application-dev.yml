@@ -125,6 +125,8 @@ spring:
       database: ${DB_DATABASE:leaper}
       username: ${DB_USERNAME:}
       password: ${DB_PASSWORD:}
+      authentication-database: admin
+
   jpa:
     hibernate:
       ddl-auto: none
