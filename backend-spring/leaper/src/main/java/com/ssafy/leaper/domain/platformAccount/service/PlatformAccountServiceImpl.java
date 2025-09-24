@@ -46,14 +46,14 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
     private final S3PresignedUrlService s3PresignedUrlService;
     private final RestTemplate restTemplate;
 
-    @Value("${spark.server.host}")
-    private String sparkServerHost;
-
-    @Value("${spark.server.port}")
-    private String sparkServerPort;
-
-    @Value("${spark.api.key}")
-    private String sparkApiKey;
+//    @Value("${spark.server.host}")
+//    private String sparkServerHost;
+//
+//    @Value("${spark.server.port}")
+//    private String sparkServerPort;
+//
+//    @Value("${spark.api.key}")
+//    private String sparkApiKey;
 
 
     @Override
@@ -112,38 +112,38 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
         log.info("모든 플랫폼 계정 등록 완료 - 인플루언서 ID: {}", influencerId);
     }
 
-    /**
-     * Spark 서버에 비동기로 크롤링 요청
-     */
-    @Async("taskExecutor")
-    public void triggerCrawlingAsync(PlatformAccount platformAccount) {
-        try {
-            String sparkUrl = "http://" + sparkServerHost + ":" + sparkServerPort;
-
-            // 크롤링 요청 DTO
-            CrawlingRequest crawlingRequest = CrawlingRequest.from(platformAccount);
-
-            // HTTP 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON); // 보내는 데이터는 JSON 형태
-            headers.set("X-API-Key", sparkApiKey); // 아무나 Spark 서버에 크롤링 요청을 보낼 수 없게 막는 용도
-
-            HttpEntity<CrawlingRequest> entity = new HttpEntity<>(crawlingRequest, headers);
-
-            // Spark 서버에 POST 요청
-            ResponseEntity<Boolean> response = restTemplate.postForEntity(
-                sparkUrl + "/api/v1/crawling/start",
-                entity,
-                Boolean.class  // Boolean으로 변경
-            );
-
-            log.info("Spark 서버로 크롤링 요청 전송 완료 - 계정 ID: {}, 응답 상태: {}, 성공 여부: {}",
-                platformAccount.getId(), response.getStatusCode(), response.getBody());
-
-        } catch (Exception e) {
-            log.error("Spark 서버로 크롤링 요청 전송 실패 - 계정 ID: {}", platformAccount.getId(), e);
-        }
-    }
+//    /**
+//     * Spark 서버에 비동기로 크롤링 요청
+//     */
+//    @Async("taskExecutor")
+//    public void triggerCrawlingAsync(PlatformAccount platformAccount) {
+//        try {
+//            String sparkUrl = "http://" + sparkServerHost + ":" + sparkServerPort;
+//
+//            // 크롤링 요청 DTO
+//            CrawlingRequest crawlingRequest = CrawlingRequest.from(platformAccount);
+//
+//            // HTTP 헤더 설정
+//            HttpHeaders headers = new HttpHeaders();
+//            headers.setContentType(MediaType.APPLICATION_JSON); // 보내는 데이터는 JSON 형태
+//            headers.set("X-API-Key", sparkApiKey); // 아무나 Spark 서버에 크롤링 요청을 보낼 수 없게 막는 용도
+//
+//            HttpEntity<CrawlingRequest> entity = new HttpEntity<>(crawlingRequest, headers);
+//
+//            // Spark 서버에 POST 요청
+//            ResponseEntity<Boolean> response = restTemplate.postForEntity(
+//                sparkUrl + "/api/v1/crawling/start",
+//                entity,
+//                Boolean.class  // Boolean으로 변경
+//            );
+//
+//            log.info("Spark 서버로 크롤링 요청 전송 완료 - 계정 ID: {}, 응답 상태: {}, 성공 여부: {}",
+//                platformAccount.getId(), response.getStatusCode(), response.getBody());
+//
+//        } catch (Exception e) {
+//            log.error("Spark 서버로 크롤링 요청 전송 실패 - 계정 ID: {}", platformAccount.getId(), e);
+//        }
+//    }
 
     @Override
     @Transactional(readOnly = true)
