@@ -43,6 +43,7 @@ public class SparkAnalysisController {
     // targetDate가 null이면 오늘 날짜 사용
     if (targetDate == null) {
 //      targetDate = LocalDate.now();
+//
       targetDate= LocalDate.of(2025, 9, 23);
     }
 
