@@ -45,7 +45,7 @@ public class CommentService extends BaseApifyService {
         input.put("directUrls", new String[]{content.getContentUrl()});
         input.put("includeNestedComments", false);
         input.put("isNewestComments", false);
-        input.put("resultsLimit", 15);
+        input.put("resultsLimit", 10);// TODO : 댓글 몇개 수집할건지
 
         log.info("댓글 크롤링 입력: {}", objectMapper.writeValueAsString(input));
 
@@ -260,5 +260,48 @@ public class CommentService extends BaseApifyService {
       log.error("배치 댓글 수집 중 오류: ", e);
       throw new RuntimeException("배치 댓글 수집 실패", e);
     }
+  }
+
+  /**
+   * 여러 콘텐츠 ID들에 대한 댓글 수집
+   */
+  public CompletableFuture<String> getCommentsByContentIds(String accountNickname, List<String> contentIds) {
+    return CompletableFuture.supplyAsync(() -> {
+      try {
+        log.info("배치 댓글 수집 시작: {} ({}개 콘텐츠)", accountNickname, contentIds.size());
+
+        int successCount = 0;
+        int failCount = 0;
+
+        for (String contentIdStr : contentIds) {
+          try {
+            Integer contentId = Integer.parseInt(contentIdStr);
+
+            // 기존 메서드 활용
+            CompletableFuture<String> future = getCommentsByContentId(contentId);
+            String result = future.get();
+
+            successCount++;
+            log.info("댓글 수집 완료 - Content ID: {} ({}/{})",
+                contentId, successCount + failCount, contentIds.size());
+
+            // API 제한 방지를 위한 대기
+            Thread.sleep(3000);
+
+          } catch (Exception e) {
+            failCount++;
+            log.error("댓글 수집 실패 - Content ID: {}", contentIdStr, e);
+          }
+        }
+
+        String result = String.format("배치 댓글 수집 완료 - 성공: %d, 실패: %d", successCount, failCount);
+        log.info(result);
+        return result;
+
+      } catch (Exception e) {
+        log.error("배치 댓글 수집 중 오류: ", e);
+        return "댓글 수집 실패: " + e.getMessage();
+      }
+    });
   }
 }

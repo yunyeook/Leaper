@@ -72,7 +72,7 @@ public class ProfileService extends BaseApifyService {
 
       // 실행 완료 대기 (최대 5분)
       boolean isCompleted = false;
-      int maxAttempts = 30;
+      int maxAttempts = 10;
       String finalStatus = "";
 
       for (int i = 0; i < maxAttempts; i++) {
