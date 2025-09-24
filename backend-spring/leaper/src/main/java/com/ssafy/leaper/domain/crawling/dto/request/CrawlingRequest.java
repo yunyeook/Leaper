@@ -1,8 +1,7 @@
 package com.ssafy.leaper.domain.crawling.dto.request;
 
 import com.ssafy.leaper.domain.platformAccount.entity.PlatformAccount;
-import com.ssafy.leaper.domain.type.entity.CategoryType;
-import lombok.Builder;
+
 
 public record CrawlingRequest (
    Integer platformAccountId,
