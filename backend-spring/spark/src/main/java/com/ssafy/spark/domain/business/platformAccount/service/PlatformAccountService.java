@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -41,6 +42,13 @@ public class PlatformAccountService {
      */
     public Optional<PlatformAccount> findByPlatformTypeId(String platformTypeId) {
         return platformAccountRepository.findByPlatformTypeId(platformTypeId);
+    }
+
+    /**
+     * YOUTUBE 플랫폼의 모든 PlatformAccount 조회
+     */
+    public List<PlatformAccount> getAllYoutubePlatformAccounts() {
+        return platformAccountRepository.findAllByPlatformTypeId("YOUTUBE");
     }
 
     /**

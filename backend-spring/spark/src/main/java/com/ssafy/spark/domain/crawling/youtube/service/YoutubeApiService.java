@@ -53,12 +53,14 @@ public class YoutubeApiService {
                         errorMessage.contains("quotaExceeded") ||
                         errorMessage.contains("dailyLimitExceeded") ||
                         errorMessage.contains("403") ||
-                        errorMessage.contains("429")
+                        errorMessage.contains("429") ||
+                        errorMessage.contains("권한 오류") ||
+                        errorMessage.contains("할당량")
                     );
 
                     if (isQuotaError && attempt < config.getKeyCount() - 1) {
-                        log.warn("YouTube API 할당량 초과 감지 ({}회차 시도), 다음 키로 전환: {}",
-                                attempt + 1, operationName);
+                        log.warn("YouTube API 할당량 초과 감지 ({}회차 시도), 다음 키로 전환: {} - 오류: {}",
+                                attempt + 1, operationName, errorMessage);
 
                         // 다음 키로 전환
                         config.switchToNextKey();
@@ -67,6 +69,7 @@ public class YoutubeApiService {
                         return executeWithRetry(apiCall, operationName, attempt + 1);
                     }
 
+                    log.error("YouTube API 호출 최종 실패 - 시도 횟수: {}, 오류: {}", attempt + 1, errorMessage);
                     return Mono.error(throwable);
                 });
     }
@@ -135,7 +138,7 @@ public class YoutubeApiService {
      * 채널 ID로 업로드 플레이리스트 ID를 가져옴
      */
     private Mono<String> getUploadPlaylistId(String channelId) {
-        return youtubeWebClient.get()
+        return executeWithRetry(() -> youtubeWebClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/channels")
                         .queryParam("part", "contentDetails")
@@ -153,7 +156,9 @@ public class YoutubeApiService {
                     }
                     throw new RuntimeException("채널을 찾을 수 없습니다: " + channelId);
                 })
-                .doOnNext(playlistId -> log.info("업로드 플레이리스트 ID: {}", playlistId));
+                .doOnNext(playlistId -> log.info("업로드 플레이리스트 ID: {}", playlistId)),
+                "getUploadPlaylistId(" + channelId + ")"
+        );
     }
 
     /**
@@ -174,7 +179,7 @@ public class YoutubeApiService {
      * 특정 페이지의 비디오들을 가져옴
      */
     private Mono<RawYoutubeVideoListResponse> getVideosFromPlaylist(String playlistId, String pageToken) {
-        return youtubeWebClient.get()
+        return executeWithRetry(() -> youtubeWebClient.get()
                 .uri(uriBuilder -> {
                     var builder = uriBuilder
                             .path("/playlistItems")
@@ -192,7 +197,9 @@ public class YoutubeApiService {
                 .bodyToMono(RawYoutubeVideoListResponse.class)
                 .doOnNext(response ->
                         log.info("페이지 토큰: {}, 비디오 개수: {}",
-                                pageToken, response.getItems().size()));
+                                pageToken, response.getItems().size())),
+                "getVideosFromPlaylist(" + playlistId + ", " + pageToken + ")"
+        );
     }
 
     /**
@@ -219,7 +226,7 @@ public class YoutubeApiService {
      * 특정 페이지의 댓글들을 가져옴
      */
     private Mono<RawYoutubeCommentResponse> getCommentsFromVideo(String videoId, String pageToken, Integer maxResults) {
-        return youtubeWebClient.get()
+        return executeWithRetry(() -> youtubeWebClient.get()
                 .uri(uriBuilder -> {
                     var builder = uriBuilder
                             .path("/commentThreads")
@@ -250,7 +257,9 @@ public class YoutubeApiService {
                         log.info("비디오 {} - 페이지 토큰: {}, 댓글 개수: {}",
                                 videoId, pageToken, response.getItems() != null ? response.getItems().size() : 0))
                 .onErrorReturn(new RawYoutubeCommentResponse()) // 에러시 빈 응답 반환
-                .filter(response -> response.getItems() != null); // null items 필터링
+                .filter(response -> response.getItems() != null), // null items 필터링
+                "getCommentsFromVideo(" + videoId + ", " + pageToken + ", " + maxResults + ")"
+        );
     }
 
     /**
@@ -287,7 +296,7 @@ public class YoutubeApiService {
      * 비디오 상세 정보 조회
      */
     private Mono<YoutubeVideo> getVideoDetails(String videoId) {
-        return youtubeWebClient.get()
+        return executeWithRetry(() -> youtubeWebClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/videos")
                         .queryParam("part", "snippet,statistics,contentDetails")
@@ -303,7 +312,9 @@ public class YoutubeApiService {
                         return video;
                     }
                     throw new RuntimeException("비디오를 찾을 수 없습니다: " + videoId);
-                });
+                }),
+                "getVideoDetails(" + videoId + ")"
+        );
     }
 
     /**
@@ -469,7 +480,7 @@ public class YoutubeApiService {
      * 채널 ID로 실제 채널 핸들 가져오기 (customUrl 우선)
      */
     public Mono<String> getChannelHandle(String channelId) {
-        return youtubeWebClient.get()
+        return executeWithRetry(() -> youtubeWebClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/channels")
                         .queryParam("part", "snippet")
@@ -505,7 +516,9 @@ public class YoutubeApiService {
                     }
                     return null;
                 })
-                .onErrorReturn("");
+                .onErrorReturn(""),
+                "getChannelHandle(" + channelId + ")"
+        );
     }
 
 
@@ -841,7 +854,7 @@ public class YoutubeApiService {
         // @ 없으면 추가
         String searchHandle = handle.startsWith("@") ? handle : "@" + handle;
 
-        return youtubeWebClient.get()
+        return executeWithRetry(() -> youtubeWebClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/channels")
                         .queryParam("part", "snippet,statistics")
@@ -881,7 +894,9 @@ public class YoutubeApiService {
 
                     return Mono.just(response);
                 })
-                .doOnError(error -> log.error("채널 핸들 조회 실패: {}", searchHandle, error));
+                .doOnError(error -> log.error("채널 핸들 조회 실패: {}", searchHandle, error)),
+                "searchChannelByHandle(" + handle + ")"
+        );
     }
 
 }

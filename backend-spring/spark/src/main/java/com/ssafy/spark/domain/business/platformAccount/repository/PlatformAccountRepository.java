@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -32,6 +33,18 @@ public interface PlatformAccountRepository extends JpaRepository<PlatformAccount
            "WHERE pt.id = :platformTypeId " +
            "AND pa.isDeleted = false")
     Optional<PlatformAccount> findByPlatformTypeId(
+        @Param("platformTypeId") String platformTypeId
+    );
+
+    /**
+     * platformTypeId로 모든 PlatformAccount 조회
+     */
+    @Query("SELECT pa FROM PlatformAccount pa " +
+           "JOIN FETCH pa.platformType pt " +
+           "JOIN FETCH pa.categoryType ct " +
+           "WHERE pt.id = :platformTypeId " +
+           "AND pa.isDeleted = false")
+    List<PlatformAccount> findAllByPlatformTypeId(
         @Param("platformTypeId") String platformTypeId
     );
 }

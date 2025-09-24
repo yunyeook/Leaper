@@ -5,6 +5,8 @@ import com.ssafy.spark.domain.crawling.youtube.service.YoutubeApiService;
 import com.ssafy.spark.domain.crawling.youtube.service.YoutubeCrawlingService;
 import com.ssafy.spark.domain.spark.service.S3DataService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -18,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/youtube")
 @RequiredArgsConstructor
+@Slf4j
 public class YoutubeController {
 
     private final YoutubeApiService youtubeApiService;
@@ -25,15 +28,46 @@ public class YoutubeController {
     private final S3DataService s3DataService;
 
     /**
-     * 채널의 모든 데이터 조회 및 S3 저장 (원스톱 크롤링)
+     * Influencer + platformAcount 생성 후 채널의 모든 데이터 조회 및 S3 저장 (원스톱 크롤링)
      */
     @PostMapping("/channel/{externalAccountId}/full-crawl")
-    public Mono<ChannelWithVideosResponse> getChannelFullDataAndSave(
+    public Mono<ChannelWithVideosResponse> getNewChannelFullDataAndSave(
             @PathVariable("externalAccountId") String externalAccountId,
             @RequestParam(value = "maxCommentsPerVideo", defaultValue = "20") Integer maxCommentsPerVideo,
             @RequestParam(value = "maxVideos", defaultValue = "20") Integer maxVideos,
             @RequestParam(value = "categoryTypeId", defaultValue = "12") short categoryTypeId) {
-        return youtubeCrawlingService.getChannelFullDataAndSave(externalAccountId, maxCommentsPerVideo, maxVideos, categoryTypeId);
+        return youtubeCrawlingService.getNewChannelFullDataAndSave(externalAccountId, maxCommentsPerVideo, maxVideos, categoryTypeId);
+    }
+
+    /**
+     * platformAccount에 저장된 Youtube 채널들의 모든 데이터 조회 및 S3 저장 (일괄 크롤링)
+     * 백그라운드에서 비동기 처리하고 즉시 응답 반환
+     */
+    @PostMapping("/channel/full-crawl")
+    public Map<String, Object> getAllChannelFullDataAndSave(
+            @RequestParam(value = "maxCommentsPerVideo", defaultValue = "20") Integer maxCommentsPerVideo,
+            @RequestParam(value = "maxVideos", defaultValue = "20") Integer maxVideos) {
+
+        // 백그라운드에서 비동기 실행
+        executeBackgroundCrawling(maxCommentsPerVideo, maxVideos);
+
+        // 즉시 응답 반환
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", "crawling started in background");
+        result.put("message", "크롤링이 백그라운드에서 시작되었습니다. 진행 상황은 로그를 확인해주세요.");
+        result.put("timestamp", java.time.LocalDateTime.now());
+        return result;
+    }
+
+    /**
+     * 백그라운드에서 실제 크롤링 실행
+     */
+    @Async
+    public void executeBackgroundCrawling(Integer maxCommentsPerVideo, Integer maxVideos) {
+        youtubeCrawlingService.getAllChannelFullDataAndSave(maxCommentsPerVideo, maxVideos)
+                .doOnSuccess(v -> log.info("백그라운드 크롤링 작업 완료"))
+                .doOnError(e -> log.error("백그라운드 크롤링 작업 실패", e))
+                .subscribe();
     }
 
     /**
