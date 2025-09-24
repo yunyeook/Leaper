@@ -35,15 +35,52 @@ public class YoutubeApiService {
     private final java.util.Map<String, String> channelIdToNameMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
+     * API 키 전환을 포함한 재시도 로직
+     */
+    private <T> Mono<T> executeWithRetry(java.util.function.Supplier<Mono<T>> apiCall, String operationName) {
+        return executeWithRetry(apiCall, operationName, 0);
+    }
+
+    private <T> Mono<T> executeWithRetry(java.util.function.Supplier<Mono<T>> apiCall, String operationName, int attempt) {
+        if (attempt >= config.getKeyCount()) {
+            return Mono.error(new RuntimeException("모든 YouTube API 키에서 실패: " + operationName));
+        }
+
+        return apiCall.get()
+                .onErrorResume(throwable -> {
+                    String errorMessage = throwable.getMessage();
+                    boolean isQuotaError = errorMessage != null && (
+                        errorMessage.contains("quotaExceeded") ||
+                        errorMessage.contains("dailyLimitExceeded") ||
+                        errorMessage.contains("403") ||
+                        errorMessage.contains("429")
+                    );
+
+                    if (isQuotaError && attempt < config.getKeyCount() - 1) {
+                        log.warn("YouTube API 할당량 초과 감지 ({}회차 시도), 다음 키로 전환: {}",
+                                attempt + 1, operationName);
+
+                        // 다음 키로 전환
+                        config.switchToNextKey();
+
+                        // 재시도
+                        return executeWithRetry(apiCall, operationName, attempt + 1);
+                    }
+
+                    return Mono.error(throwable);
+                });
+    }
+
+    /**
      * 채널 정보 조회 (구독자 수, 비디오 수 등 통계 포함)
      */
     public Mono<YoutubeChannelInfo> getChannelInfo(String channelId) {
-        return youtubeWebClient.get()
+        return executeWithRetry(() -> youtubeWebClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/channels")
                         .queryParam("part", "snippet,statistics,brandingSettings")
                         .queryParam("id", channelId)
-                        .queryParam("key", config.getKey())
+                        .queryParam("key", config.getCurrentKey())
                         .build())
                 .retrieve()
                 .onStatus(
@@ -89,7 +126,9 @@ public class YoutubeApiService {
                     }
                     throw new RuntimeException("채널을 찾을 수 없습니다: " + channelId);
                 })
-                .doOnNext(channelInfo -> log.info("채널 정보: {}", channelInfo));
+                .doOnNext(channelInfo -> log.info("채널 정보: {}", channelInfo)),
+                "getChannelInfo(" + channelId + ")"
+        );
     }
 
     /**
@@ -101,7 +140,7 @@ public class YoutubeApiService {
                         .path("/channels")
                         .queryParam("part", "contentDetails")
                         .queryParam("id", channelId)
-                        .queryParam("key", config.getKey())
+                        .queryParam("key", config.getCurrentKey())
                         .build())
                 .retrieve()
                 .bodyToMono(RawYoutubeChannelResponse.class)
@@ -125,6 +164,12 @@ public class YoutubeApiService {
                 .flatMapIterable(RawYoutubeVideoListResponse::getItems);
     }
 
+    private Flux<YoutubeVideo> getAllVideosFromPlaylist(String playlistId, int limit) {
+        return getVideosFromPlaylist(playlistId, null)
+                .flatMapIterable(RawYoutubeVideoListResponse::getItems)
+                .take(limit);
+    }
+
     /**
      * 특정 페이지의 비디오들을 가져옴
      */
@@ -135,7 +180,7 @@ public class YoutubeApiService {
                             .path("/playlistItems")
                             .queryParam("part", "snippet")
                             .queryParam("playlistId", playlistId)
-                            .queryParam("key", config.getKey())
+                            .queryParam("key", config.getCurrentKey())
                             .queryParam("maxResults", 50); // 최대 50개씩
 
                     if (pageToken != null) {
@@ -180,7 +225,7 @@ public class YoutubeApiService {
                             .path("/commentThreads")
                             .queryParam("part", "snippet")
                             .queryParam("videoId", videoId)
-                            .queryParam("key", config.getKey())
+                            .queryParam("key", config.getCurrentKey())
                             .queryParam("maxResults", Math.min(maxResults, 100)) // 최대 100개
                             .queryParam("order", "relevance"); // 관련성순 정렬
 
@@ -247,7 +292,7 @@ public class YoutubeApiService {
                         .path("/videos")
                         .queryParam("part", "snippet,statistics,contentDetails")
                         .queryParam("id", videoId)
-                        .queryParam("key", config.getKey())
+                        .queryParam("key", config.getCurrentKey())
                         .build())
                 .retrieve()
                 .bodyToMono(RawYoutubeVideoListResponse.class)
@@ -265,7 +310,7 @@ public class YoutubeApiService {
      * 플레이리스트의 모든 비디오와 댓글을 함께 가져옴
      */
     public Flux<YoutubeVideoWithComments> getAllVideosWithCommentsFromPlaylist(String playlistId, Integer maxCommentsPerVideo, String contentType) {
-        return getAllVideosFromPlaylist(playlistId)
+        return getAllVideosFromPlaylist(playlistId, 20)
                 .flatMap(video -> {
                     final String videoId;
                     if (video.getSnippet().getResourceId() != null) {
@@ -429,7 +474,7 @@ public class YoutubeApiService {
                         .path("/channels")
                         .queryParam("part", "snippet")
                         .queryParam("id", channelId)
-                        .queryParam("key", config.getKey())
+                        .queryParam("key", config.getCurrentKey())
                         .build())
                 .retrieve()
                 .bodyToMono(RawYoutubeChannelResponse.class)
@@ -533,37 +578,39 @@ public class YoutubeApiService {
     public Mono<ChannelWithVideosResponse> getChannelWithVideosResponse(String externalAccountId, Integer maxCommentsPerVideo, Integer maxVideos, Short categoryTypeId) {
         Mono<ChannelInfoResponse> channelInfo = getChannelInfoResponse(externalAccountId, categoryTypeId);
 
-        // 긴 영상과 짧은 영상을 각각 maxVideos만큼 가져온 후, 총합으로 제한
-        // 각각 충분히 가져와서 부족한 경우를 방지
+        // 채널 핸들을 먼저 조회해서 재사용
+        return channelInfo.flatMap(channelInfoResponse -> {
+            String accountNickname = channelInfoResponse.getAccountNickname();
 
-        Mono<List<VideoInfoWithCommentsResponse>> longVideos = getChannelLongVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo)
-                .take(maxVideos)
-                .collectList();
-        Mono<List<VideoInfoWithCommentsResponse>> shortVideos = getChannelShortVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo)
-                .take(maxVideos)
-                .collectList();
+            // 긴 영상과 짧은 영상을 각각 20개씩 가져온 후, 총합으로 제한
+            Mono<List<VideoInfoWithCommentsResponse>> longVideos = getChannelLongVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo, accountNickname)
+                    .take(maxVideos)
+                    .collectList();
+            Mono<List<VideoInfoWithCommentsResponse>> shortVideos = getChannelShortVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo, accountNickname)
+                    .take(maxVideos)
+                    .collectList();
 
-        return Mono.zip(channelInfo, longVideos, shortVideos)
-                .map(tuple -> {
-                    ChannelInfoResponse channel = tuple.getT1();
-                    List<VideoInfoWithCommentsResponse> longVids = tuple.getT2();
-                    List<VideoInfoWithCommentsResponse> shortVids = tuple.getT3();
+            return Mono.zip(longVideos, shortVideos)
+                    .map(tuple -> {
+                        List<VideoInfoWithCommentsResponse> longVids = tuple.getT1();
+                        List<VideoInfoWithCommentsResponse> shortVids = tuple.getT2();
 
-                    // 긴 영상과 짧은 영상을 합쳐서 하나의 리스트로 만들기
-                    List<VideoInfoWithCommentsResponse> allVideos = new ArrayList<>();
-                    allVideos.addAll(longVids);
-                    allVideos.addAll(shortVids);
+                        // 긴 영상과 짧은 영상을 합쳐서 하나의 리스트로 만들기
+                        List<VideoInfoWithCommentsResponse> allVideos = new ArrayList<>();
+                        allVideos.addAll(longVids);
+                        allVideos.addAll(shortVids);
 
-                    // 게시물 수를 maxVideos로 제한
-                    if (allVideos.size() > maxVideos) {
-                        allVideos = allVideos.subList(0, maxVideos);
-                    }
+                        // 게시물 수를 maxVideos로 제한
+                        if (allVideos.size() > maxVideos) {
+                            allVideos = allVideos.subList(0, maxVideos);
+                        }
 
-                    log.info("채널 {} - 긴 영상: {}개, 짧은 영상: {}개, 총 {}개 ({}개로 제한)",
-                            externalAccountId, longVids.size(), shortVids.size(), allVideos.size(), maxVideos);
+                        log.info("채널 {} - 긴 영상: {}개, 짧은 영상: {}개, 총 {}개 ({}개로 제한)",
+                                externalAccountId, longVids.size(), shortVids.size(), allVideos.size(), maxVideos);
 
-                    return new ChannelWithVideosResponse(channel, allVideos);
-                });
+                        return new ChannelWithVideosResponse(channelInfoResponse, allVideos);
+                    });
+        });
     }
 
     /**
@@ -652,29 +699,19 @@ public class YoutubeApiService {
     /**
      * 채널의 긴 영상 + 댓글 조회 (플레이리스트 기반)
      */
-    public Flux<VideoInfoWithCommentsResponse> getChannelLongVideosWithCommentsAndHandle(String externalAccountId, Integer maxCommentsPerVideo) {
+    public Flux<VideoInfoWithCommentsResponse> getChannelLongVideosWithCommentsAndHandle(String externalAccountId, Integer maxCommentsPerVideo, String accountNickname) {
         String longVideosPlaylistId = getChannelLongVideosPlaylistId(externalAccountId);
         return getAllVideosWithCommentsFromPlaylist(longVideosPlaylistId, maxCommentsPerVideo, "VIDEO_LONG")
-                .flatMap(video -> {
-                    return getChannelHandleWithCache(video.getChannelId())
-                            .map(accountNickname ->
-                                convertToVideoInfoWithCommentsResponse(video, accountNickname, "VIDEO_LONG")
-                            );
-                });
+                .map(video -> convertToVideoInfoWithCommentsResponse(video, accountNickname, "VIDEO_LONG"));
     }
 
     /**
      * 채널의 짧은 영상 + 댓글 조회 (플레이리스트 기반)
      */
-    public Flux<VideoInfoWithCommentsResponse> getChannelShortVideosWithCommentsAndHandle(String externalAccountId, Integer maxCommentsPerVideo) {
+    public Flux<VideoInfoWithCommentsResponse> getChannelShortVideosWithCommentsAndHandle(String externalAccountId, Integer maxCommentsPerVideo, String accountNickname) {
         String shortVideosPlaylistId = getChannelShortVideosPlaylistId(externalAccountId);
         return getAllVideosWithCommentsFromPlaylist(shortVideosPlaylistId, maxCommentsPerVideo, "VIDEO_SHORT")
-                .flatMap(video -> {
-                    return getChannelHandleWithCache(video.getChannelId())
-                            .map(accountNickname ->
-                                convertToVideoInfoWithCommentsResponse(video, accountNickname, "VIDEO_SHORT")
-                            );
-                })
+                .map(video -> convertToVideoInfoWithCommentsResponse(video, accountNickname, "VIDEO_SHORT"))
                 .onErrorResume(throwable -> {
                     if (throwable.getMessage() != null && (throwable.getMessage().contains("404") || throwable.getMessage().contains("playlistNotFound"))) {
                         log.info("채널 {}에 숏폼 플레이리스트가 존재하지 않음 (UUPS 플레이리스트 없음)", externalAccountId);
@@ -809,7 +846,7 @@ public class YoutubeApiService {
                         .path("/channels")
                         .queryParam("part", "snippet,statistics")
                         .queryParam("forHandle", searchHandle)
-                        .queryParam("key", config.getKey())
+                        .queryParam("key", config.getCurrentKey())
                         .build())
                 .retrieve()
                 .bodyToMono(RawYoutubeChannelResponse.class)

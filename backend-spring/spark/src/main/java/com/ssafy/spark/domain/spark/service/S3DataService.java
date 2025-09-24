@@ -169,14 +169,14 @@ public class S3DataService {
    * YouTube 댓글 정보 저장 (날짜별 경로)
    * 경로: raw_data/youtube/comment/yyyy/MM/dd/
    */
-  public String saveYouTubeComments(String videoId, String jsonData) {
+  public String saveYouTubeComments(String videoId, String jsonData, Integer contentId) {
     try {
       LocalDateTime now = LocalDateTime.now();
       String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String timestamp = now.format(DateTimeFormatter.ofPattern("yyMMdd_HH_mm_ss_SSS"));
+      String timestamp = String.valueOf(now.toEpochSecond(java.time.ZoneOffset.UTC) * 1000 + now.getNano() / 1000000);
 
       String folderPath = String.format("raw_data/youtube/comment/%s", datePath);
-      String fileName = String.format("%s_%s.json", videoId, timestamp);
+      String fileName = String.format("content_%s_%s.json", contentId, timestamp);
       String accessKey = String.format("%s/%s", folderPath, fileName);
 
       uploadFile(accessKey, jsonData.getBytes(), "application/json");

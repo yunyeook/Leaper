@@ -141,8 +141,11 @@ public class YoutubeS3StorageService {
                     // 댓글이 있으면 새로운 형태로 저장
                     if (video.getComments() != null && !video.getComments().isEmpty()) {
                         String commentsJson = createCommentsJsonFormat(video);
-                        s3DataService.saveYouTubeComments(video.getExternalContentId(), commentsJson);
-                        savedComments++;
+                        Optional<Content> content = contentService.findEntityByExternalContentIdAndPlatformType(video.getExternalContentId(), video.getPlatformType());
+                        if (content.isPresent()) {
+                            s3DataService.saveYouTubeComments(video.getExternalContentId(), commentsJson, content.get().getId());
+                            savedComments++;
+                        }
                     }
                 }
 

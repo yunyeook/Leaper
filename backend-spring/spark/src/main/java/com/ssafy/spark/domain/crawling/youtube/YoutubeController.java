@@ -32,7 +32,7 @@ public class YoutubeController {
             @PathVariable("externalAccountId") String externalAccountId,
             @RequestParam(value = "maxCommentsPerVideo", defaultValue = "20") Integer maxCommentsPerVideo,
             @RequestParam(value = "maxVideos", defaultValue = "20") Integer maxVideos,
-            @RequestParam(value = "categoryTypeId", defaultValue = "1") short categoryTypeId) {
+            @RequestParam(value = "categoryTypeId", defaultValue = "12") short categoryTypeId) {
         return youtubeCrawlingService.getChannelFullDataAndSave(externalAccountId, maxCommentsPerVideo, maxVideos, categoryTypeId);
     }
 
