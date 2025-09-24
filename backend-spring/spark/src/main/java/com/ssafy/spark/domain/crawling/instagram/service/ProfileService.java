@@ -208,7 +208,7 @@ public class ProfileService extends BaseApifyService {
         .accountProfileImageId(profileImageFile != null ? profileImageFile.getId() : null)
         .categoryTypeId(categoryTypeId)
         .isDeleted(false)
-        .deletedAt(LocalDateTime.now())
+        .deletedAt(null)
         .build();
   }
 
@@ -257,7 +257,7 @@ public class ProfileService extends BaseApifyService {
           .accountUrl(accountUrl)
           .followersCount(followersCount)
           .postsCount(postsCount)
-          .crawledAt(Instant.now().toString())
+          .crawledAt(Instant.now().toString()) //TODO : 날짜  utc
           .build();
 
       // Pretty-print JSON으로 저장

@@ -156,7 +156,7 @@ public class InsightController implements BaseController {
 
     @Operation(
         summary = "특정 계정의 인기 콘텐츠 조회",
-        description = "해당 플랫폼 계정 ID 기준으로 오늘 날짜 인기 콘텐츠 TOP10을 조회합니다."
+        description = "해당 플랫폼 계정 ID 기준으로 오늘 날짜 인기 콘텐츠 TOP3을 조회합니다."
     )
     @GetMapping("/dailyMyPopularContent/platformAccount/{platformAccountId}")
     public ResponseEntity<ApiResponse<DailyMyPopularContentResponse>> getMyPopularContents(
