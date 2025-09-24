@@ -1,5 +1,6 @@
 package com.ssafy.leaper.domain.platformAccount.service;
 
+import com.ssafy.leaper.domain.crawling.dto.request.CrawlingRequest;
 import com.ssafy.leaper.domain.file.entity.File;
 import com.ssafy.leaper.domain.file.service.S3FileService;
 import com.ssafy.leaper.domain.file.service.S3PresignedUrlService;
@@ -17,12 +18,19 @@ import com.ssafy.leaper.global.error.ErrorCode;
 import com.ssafy.leaper.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.web.client.RestTemplate;
 
 @Slf4j
 @Service
@@ -36,6 +44,17 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
     private final CategoryTypeRepository categoryTypeRepository;
     private final S3FileService s3FileService;
     private final S3PresignedUrlService s3PresignedUrlService;
+    private final RestTemplate restTemplate;
+
+    @Value("${spark.server.host}")
+    private String sparkServerHost;
+
+    @Value("${spark.server.port}")
+    private String sparkServerPort;
+
+    @Value("${spark.api.key}")
+    private String sparkApiKey;
+
 
     @Override
     public void createPlatformAccounts(Integer influencerId, List<PlatformAccountCreateRequest> requests) {
@@ -106,11 +125,48 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
 
             platformAccountRepository.save(platformAccount);
 
+            // 계정 연결시 Spark 서버에서 해당 계정 크롤링 및 S3와 DB 저장 로직 추가
+            //TODO : 활성화 하기
+//            triggerCrawlingAsync(platformAccount);
+
             log.info("플랫폼 계정 등록 완료 - 플랫폼: {}, 계정: {}",
                     request.getPlatformTypeId(), request.getAccountNickname());
         }
 
         log.info("모든 플랫폼 계정 등록 완료 - 인플루언서 ID: {}", influencerId);
+    }
+
+    /**
+     * Spark 서버에 비동기로 크롤링 요청
+     */
+    @Async("taskExecutor")
+    public void triggerCrawlingAsync(PlatformAccount platformAccount) {
+        try {
+            String sparkUrl = "http://" + sparkServerHost + ":" + sparkServerPort;
+
+            // 크롤링 요청 DTO
+            CrawlingRequest crawlingRequest = CrawlingRequest.from(platformAccount);
+
+            // HTTP 헤더 설정
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON); // 보내는 데이터는 JSON 형태
+            headers.set("X-API-Key", sparkApiKey); // 아무나 Spark 서버에 크롤링 요청을 보낼 수 없게 막는 용도
+
+            HttpEntity<CrawlingRequest> entity = new HttpEntity<>(crawlingRequest, headers);
+
+            // Spark 서버에 POST 요청
+            ResponseEntity<Boolean> response = restTemplate.postForEntity(
+                sparkUrl + "/api/v1/crawling/start",
+                entity,
+                Boolean.class  // Boolean으로 변경
+            );
+
+            log.info("Spark 서버로 크롤링 요청 전송 완료 - 계정 ID: {}, 응답 상태: {}, 성공 여부: {}",
+                platformAccount.getId(), response.getStatusCode(), response.getBody());
+
+        } catch (Exception e) {
+            log.error("Spark 서버로 크롤링 요청 전송 실패 - 계정 ID: {}", platformAccount.getId(), e);
+        }
     }
 
     @Override
@@ -180,11 +236,19 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
         String profileImageUrl = "";
         if (platformAccount.getAccountProfileImage() != null) {
             try {
-                profileImageUrl = s3PresignedUrlService.generatePresignedDownloadUrl(
+                String accessKey = platformAccount.getAccountProfileImage().getAccessKey();
+
+                if (accessKey != null && accessKey.startsWith("raw_data")) {
+                    // raw_data로 시작하면 presigned URL 생성
+                    profileImageUrl = s3PresignedUrlService.generatePresignedDownloadUrl(
                         platformAccount.getAccountProfileImage().getId()
-                );
+                    );
+                } else {
+                    // raw_data로 시작하지 않으면 accessKey 그대로 사용
+                    profileImageUrl = accessKey;
+                }
             } catch (Exception e) {
-                log.warn("프로필 이미지 presigned URL 생성 실패 - 계정 ID: {}", platformAccount.getId(), e);
+                log.warn("프로필 이미지 URL 처리 실패 - 계정 ID: {}", platformAccount.getId(), e);
             }
         }
 

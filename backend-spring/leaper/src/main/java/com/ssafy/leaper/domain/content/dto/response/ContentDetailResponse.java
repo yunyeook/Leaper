@@ -30,12 +30,20 @@ public record ContentDetailResponse(
     String thumbnailUrl = null;
     if (content.getThumbnail() != null) {
       try {
-        thumbnailUrl = s3PresignedUrlService.generatePresignedDownloadUrl(
-            content.getThumbnail().getId()
-        );
+        String accessKey = content.getThumbnail().getAccessKey();
+
+        if (accessKey != null && accessKey.startsWith("raw_data")) {
+          // raw_data로 시작하면 presigned URL 생성
+          thumbnailUrl = s3PresignedUrlService.generatePresignedDownloadUrl(
+              content.getThumbnail().getId()
+          );
+        } else {
+          // raw_data로 시작하지 않으면 accessKey 그대로 사용
+          thumbnailUrl = accessKey;
+        }
       } catch (Exception e) {
         // 실패하면 null로 두고 로그만 출력
-        System.out.println("썸네일 presigned URL 생성 실패: " + e.getMessage());
+        System.out.println("썸네일 URL 처리 실패: " + e.getMessage());
       }
     }
 
