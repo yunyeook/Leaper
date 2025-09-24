@@ -66,14 +66,13 @@ public class DailyPopularInsightService {
   }
 
   /**
-   * 해당 계정의 인기 콘텐츠 조회 (오늘 기준, TOP10)
+   * 해당 계정의 인기 콘텐츠 조회
    */
   public ServiceResult<DailyMyPopularContentResponse> getMyPopularContents(Long platformAccountId) {
-    LocalDate today = LocalDate.now();
 
     List<DailyMyPopularContent> entities =
-        dailyMyPopularContentRepository.findByPlatformAccountIdAndSnapshotDateOrderByContentRankAsc(
-            platformAccountId, today
+        dailyMyPopularContentRepository.findTop3ByLatestSnapshotDate(
+            platformAccountId
         );
 
     List<MyPopularContentResponse> responses = entities.stream()

@@ -164,6 +164,10 @@ public class ContentService extends BaseApifyService {
       if (viewsCount == 0) {
         viewsCount = contentNode.path("videoPlayCount").asLong(0);
       }
+// 음수 값 보정
+      if (likesCount < 0) likesCount = 0L;
+      if (commentsCount < 0) commentsCount = 0L;
+      if (viewsCount < 0) viewsCount = 0L;
 
       content.setTotalViews(viewsCount);
       content.setTotalLikes(likesCount);
