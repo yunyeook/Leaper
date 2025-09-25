@@ -54,6 +54,9 @@ public class PlatformAccount {
   @JoinColumn(name = "category_type_id")
   private CategoryType categoryType;
 
+  @Column(nullable = true)
+  private String summaryText;
+
   @Column(nullable = false)
   private Boolean isDeleted;
 

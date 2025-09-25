@@ -14,6 +14,7 @@ public class PlatformAccountResponse {
     private String accountUrl;
     private String accountProfileImageUrl;
     private Short categoryTypeId;
+    private String summaryText;
 
     public static PlatformAccountResponse of(
             Integer platformAccountId,
@@ -22,7 +23,8 @@ public class PlatformAccountResponse {
             String accountNickname,
             String accountUrl,
             String accountProfileImageUrl,
-            Short categoryTypeId) {
+            Short categoryTypeId,
+            String summaryText) {
 
         return PlatformAccountResponse.builder()
                 .platformAccountId(platformAccountId)
@@ -32,6 +34,7 @@ public class PlatformAccountResponse {
                 .accountUrl(accountUrl)
                 .accountProfileImageUrl(accountProfileImageUrl)
                 .categoryTypeId(categoryTypeId)
+                .summaryText(summaryText)
                 .build();
     }
 }

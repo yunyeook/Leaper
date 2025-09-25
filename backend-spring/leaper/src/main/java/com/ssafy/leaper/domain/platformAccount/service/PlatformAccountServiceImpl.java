@@ -209,7 +209,8 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
                             account.getAccountNickname(),
                             account.getAccountUrl(),
                             profileImageUrl,
-                            categoryTypeId
+                            categoryTypeId,
+                            account.getSummaryText()
                     );
                 })
                 .collect(Collectors.toList());
@@ -265,7 +266,8 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
                 platformAccount.getAccountNickname(),
                 platformAccount.getAccountUrl(),
                 profileImageUrl,
-                categoryTypeId
+                categoryTypeId,
+                platformAccount.getSummaryText()
         );
 
         log.info("개별 플랫폼 계정 조회 완료 - 계정 ID: {}", platformAccountId);
