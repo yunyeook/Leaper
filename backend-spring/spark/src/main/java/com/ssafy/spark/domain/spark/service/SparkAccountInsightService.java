@@ -173,16 +173,15 @@ public class SparkAccountInsightService extends SparkBaseService {
   private Double calculateLikeScore(BigInteger totalViews, BigInteger totalLikes, BigInteger totalComments) {
     if (totalViews.equals(BigInteger.ZERO)) return 0.0;
 
-    // BigInteger를 double로 변환해서 계산
     double views = totalViews.doubleValue();
     double likes = totalLikes.doubleValue();
     double comments = totalComments.doubleValue();
 
-    //TODO: 호감도 점수 계산 수정하기
-    // 일단 단순계산으로 구현함
-
+    // 참여율 계산 (0~100%)
     double engagementRate = (likes + comments) / views * 100;
-    double score = Math.min(100.0, Math.max(-100.0, engagementRate * 10 - 50));
+
+    // 0~100점 범위로 제한
+    double score = Math.min(100.0, Math.max(0.0, engagementRate * 10));
 
     return Math.round(score * 100.0) / 100.0;
   }

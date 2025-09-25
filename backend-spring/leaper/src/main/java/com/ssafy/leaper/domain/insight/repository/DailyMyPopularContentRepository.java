@@ -16,7 +16,6 @@ public interface DailyMyPopularContentRepository extends JpaRepository<DailyMyPo
   );
   @Query("SELECT d FROM DailyMyPopularContent d " +
       "JOIN FETCH d.platformAccount " +
-      "JOIN FETCH d.content " +
       "WHERE d.platformAccount.id = :platformAccountId " +
       "AND d.snapshotDate = (SELECT MAX(d2.snapshotDate) FROM DailyMyPopularContent d2 " +
       "WHERE d2.platformAccount.id = :platformAccountId) " +
