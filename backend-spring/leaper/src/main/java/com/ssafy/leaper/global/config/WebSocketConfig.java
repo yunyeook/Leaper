@@ -22,7 +22,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
                         "http://localhost:3000",
                         "http://localhost:5173",
                         "http://j13a302.p.ssafy.io",
-                        "https://j13a302.p.ssafy.io"
+                        "https://j13a302.p.ssafy.io",
+                        "https://leaperforinfluencer.shop"
                 ); // CORS 설정
     }
 }
