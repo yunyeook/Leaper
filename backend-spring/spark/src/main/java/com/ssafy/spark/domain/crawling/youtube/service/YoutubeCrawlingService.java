@@ -3,7 +3,6 @@ package com.ssafy.spark.domain.crawling.youtube.service;
 import com.ssafy.spark.domain.business.content.service.ContentUpsertService;
 import com.ssafy.spark.domain.business.influencer.service.InfluencerService;
 import com.ssafy.spark.domain.business.platformAccount.service.PlatformAccountService;
-import com.ssafy.spark.domain.business.platformAccount.entity.PlatformAccount;
 import com.ssafy.spark.domain.business.platformAccount.repository.PlatformAccountRepository;
 import com.ssafy.spark.domain.crawling.youtube.dto.response.*;
 import lombok.RequiredArgsConstructor;
@@ -11,12 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * YouTube 크롤링과 S3 저장을 조합하는 통합 서비스
@@ -59,21 +55,8 @@ public class YoutubeCrawlingService {
                                 return influencer;
                             })
                             .doOnError(e -> log.error("인플루언서 또는 PlatformAccount 생성 실패", e))
-                            // 2. Content 테이블에 Upsert (PlatformAccount 생성 후 실행)
-                            .then(Mono.fromCallable(() ->
-                                    contentUpsertService.upsertContentsFromYouTubeVideos(channelData.getVideos(), externalAccountId)
-                            ))
-                            .doOnSuccess(contents -> log.info("Content Upsert 완료: {} 개", contents.size()))
-                            .doOnError(e -> log.error("Content Upsert 실패", e))
-                            // 3. S3 저장
-                            .then(youtubeS3StorageService.saveChannelFullData(channelData))
-                            .then(Mono.fromCallable(() -> {
-                                // 4. 썸네일 ID 업데이트 (S3 저장 후)
-                                contentUpsertService.updateContentThumbnailIds(channelData.getVideos(), externalAccountId);
-                                return channelData;
-                            }))
-                            .doOnSuccess(v -> log.info("썸네일 ID 업데이트 완료"))
-                            .doOnError(e -> log.error("썸네일 ID 업데이트 실패", e));
+                            // 2. 데이터 Upsert 공통 로직 실행 (PlatformAccount 생성 후 실행)
+                            .then(upsertData(channelData, externalAccountId));
                 });
     }
 
@@ -102,25 +85,8 @@ public class YoutubeCrawlingService {
                     // 2. 각 계정별로 채널 데이터 조회 및 저장
                     return youtubeApiService.getChannelWithVideosResponse(externalAccountId, maxCommentsPerVideo, maxVideos, categoryTypeId)
                             .flatMap(channelData -> {
-                                return Mono.fromCallable(() -> {
-                                            // Content 테이블에 Upsert
-                                            return contentUpsertService.upsertContentsFromYouTubeVideos(channelData.getVideos(), externalAccountId);
-                                        })
-                                        .doOnSuccess(contents -> log.info("Content Upsert 완료 - 계정: {}, {} 개",
-                                                externalAccountId, contents.size()))
-                                        .doOnError(e -> log.error("Content Upsert 실패 - 계정: {}", externalAccountId, e))
-                                        // S3 저장
-                                        .then(youtubeS3StorageService.saveChannelFullData(channelData))
-                                        .doOnSuccess(v -> log.info("S3 저장 완료 - 계정: {}", externalAccountId))
-                                        .doOnError(e -> log.error("S3 저장 실패 - 계정: {}", externalAccountId, e))
-                                        .then(Mono.fromCallable(() -> {
-                                            // 썸네일 ID 업데이트 (S3 저장 후)
-                                            contentUpsertService.updateContentThumbnailIds(channelData.getVideos(), externalAccountId);
-                                            return null;
-                                        }))
-                                        .doOnSuccess(v -> log.info("썸네일 ID 업데이트 완료 - 계정: {}", externalAccountId))
-                                        .doOnError(e -> log.error("썸네일 ID 업데이트 실패 - 계정: {}", externalAccountId, e))
-                                        .then();
+                                // 데이터 Upsert 공통 로직 실행
+                                return upsertData(channelData, externalAccountId).then();
                             })
                             .doOnSuccess(v -> {
                                 synchronized (successAccounts) {
@@ -170,23 +136,37 @@ public class YoutubeCrawlingService {
                 .flatMap(platformAccount ->
                     youtubeApiService.getChannelWithVideosResponse(platformAccount.getExternalAccountId(), maxCommentsPerVideo, maxVideos, platformAccount.getCategoryType().getId())
                         .flatMap(channelData -> {
-                            // 2. Content 테이블에 Upsert
-                            return Mono.fromCallable(() ->
-                                            contentUpsertService.upsertContentsFromYouTubeVideos(channelData.getVideos(), platformAccount.getExternalAccountId())
-                                    )
-                                    .doOnSuccess(contents -> log.info("Content Upsert 완료: {} 개", contents.size()))
-                                    .doOnError(e -> log.error("Content Upsert 실패", e))
-                                    // 3. S3 저장
-                                    .flatMap(contents -> youtubeS3StorageService.saveChannelFullData(channelData)
-                                            .then(Mono.fromCallable(() -> {
-                                                // 4. 썸네일 ID 업데이트 (S3 저장 후)
-                                                contentUpsertService.updateContentThumbnailIds(channelData.getVideos(), platformAccount.getExternalAccountId());
-                                                return channelData;
-                                            }))
-                                            .doOnSuccess(v -> log.info("썸네일 ID 업데이트 완료"))
-                                            .doOnError(e -> log.error("썸네일 ID 업데이트 실패", e)));
+                            // 2. 데이터 Upsert 공통 로직 실행
+                            return upsertData(channelData, platformAccount.getExternalAccountId());
                         })
                 );
+    }
+
+    /**
+     * 유튜브 채널 데이터 Upsert 공통 로직 (Content → S3 → 썸네일 → 인사이트)
+     */
+    private Mono<ChannelWithVideosResponse> upsertData(ChannelWithVideosResponse channelData, String externalAccountId) {
+        log.info("YouTube 데이터 Upsert 시작 - 계정: {}", externalAccountId);
+
+        return Mono.fromCallable(() -> {
+                    // 1. Content 테이블에 Upsert
+                    return contentUpsertService.upsertContentsFromYouTubeVideos(channelData.getVideos(), externalAccountId);
+                })
+                .doOnSuccess(contents -> log.info("Content Upsert 완료 - 계정: {}, {} 개",
+                        externalAccountId, contents.size()))
+                .doOnError(e -> log.error("Content Upsert 실패 - 계정: {}", externalAccountId, e))
+                // 2. S3 저장
+                .then(youtubeS3StorageService.saveChannelFullData(channelData))
+                .doOnSuccess(v -> log.info("S3 저장 완료 - 계정: {}", externalAccountId))
+                .doOnError(e -> log.error("S3 저장 실패 - 계정: {}", externalAccountId, e))
+                .flatMap(updatedChannelData -> Mono.fromCallable(() -> {
+                    // 3. 썸네일 ID 업데이트 (S3 저장 후, 업데이트된 데이터 사용)
+                    log.info("S3 저장 후 업데이트된 데이터로 썸네일 ID 업데이트 시작 - 계정: {}", externalAccountId);
+                    contentUpsertService.updateContentThumbnailIdAndDescription(updatedChannelData.getVideos(), externalAccountId);
+                    return updatedChannelData;
+                }))
+                .doOnSuccess(v -> log.info("썸네일 ID 업데이트 완료 - 계정: {}", externalAccountId))
+                .doOnError(e -> log.error("썸네일 ID 업데이트 실패 - 계정: {}", externalAccountId, e));
     }
 
 

@@ -161,11 +161,9 @@ public class YoutubeS3StorageService {
                         channelS3Url, savedVideos, savedComments);
 
                 // 업데이트된 데이터로 응답 생성
-//                ChannelWithVideosResponse updatedResponse = new ChannelWithVideosResponse();
-//                updatedResponse.setChannelInfo(processedChannelInfo);
-//                updatedResponse.setVideos(updatedVideos);
-//
-                return null;
+                ChannelWithVideosResponse updatedResponse = new ChannelWithVideosResponse(processedChannelInfo, updatedVideos);
+
+                return updatedResponse;
             } catch (Exception e) {
                 log.error("채널 전체 데이터 S3 저장 실패: {}",
                         channelData.getChannelInfo().getExternalAccountId(), e);
@@ -175,7 +173,52 @@ public class YoutubeS3StorageService {
     }
 
     private VideoInfoWithCommentsResponse processVideoWithThumbnail(VideoInfoWithCommentsResponse video) {
-        return new VideoInfoWithCommentsResponse();
+        // 원본 비디오 정보 복사
+        VideoInfoWithCommentsResponse copy = new VideoInfoWithCommentsResponse();
+        copy.setAccountNickname(video.getAccountNickname());
+        copy.setExternalContentId(video.getExternalContentId());
+        copy.setPlatformType(video.getPlatformType());
+        copy.setContentType(video.getContentType());
+        copy.setTitle(video.getTitle());
+        copy.setDescription(video.getDescription());
+        copy.setDurationSeconds(video.getDurationSeconds());
+        copy.setContentUrl(video.getContentUrl());
+        copy.setPublishedAt(video.getPublishedAt());
+        copy.setTags(video.getTags());
+        copy.setViewsCount(video.getViewsCount());
+        copy.setLikesCount(video.getLikesCount());
+        copy.setCommentsCount(video.getCommentsCount());
+        copy.setComments(video.getComments()); // 댓글 정보도 복사
+
+        // 썸네일 처리: URL에서 다운로드하여 S3에 저장
+        if (video.getThumbnailInfo() != null && video.getThumbnailInfo().getAccessKey() != null) {
+            try {
+                String thumbnailUrl = video.getThumbnailInfo().getAccessKey(); // 기존에는 YouTube URL
+                String username = video.getAccountNickname(); // 채널명 사용
+                String externalContentId = video.getExternalContentId();
+
+                // S3에 썸네일 저장하고 새로운 accessKey 받기
+                String s3AccessKey = s3DataService.saveYouTubeThumbnailFromUrl(username, externalContentId, thumbnailUrl);
+
+                // 새로운 ThumbnailInfo 생성
+                VideoInfoResponse.ThumbnailInfo newThumbnailInfo = new VideoInfoResponse.ThumbnailInfo();
+                newThumbnailInfo.setAccessKey(s3AccessKey);
+                newThumbnailInfo.setContentType("image/jpeg");
+
+                copy.setThumbnailInfo(newThumbnailInfo);
+
+                log.info("비디오 썸네일 S3 저장 완료: {} -> {}", thumbnailUrl, s3AccessKey);
+
+            } catch (Exception e) {
+                log.error("비디오 썸네일 S3 저장 실패: {}", video.getExternalContentId(), e);
+                // 실패시 원본 thumbnailInfo 사용
+                copy.setThumbnailInfo(video.getThumbnailInfo());
+            }
+        } else {
+            copy.setThumbnailInfo(video.getThumbnailInfo());
+        }
+
+        return copy;
     }
 
     /**

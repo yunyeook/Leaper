@@ -225,7 +225,7 @@ public class ContentUpsertService {
     /**
      * S3 저장 후 Content의 썸네일 ID 업데이트
      */
-    public void updateContentThumbnailIds(List<VideoInfoWithCommentsResponse> videos, String externalAccountId) {
+    public void updateContentThumbnailIdAndDescription(List<VideoInfoWithCommentsResponse> videos, String externalAccountId) {
         if (videos == null || videos.isEmpty()) {
             log.info("업데이트할 비디오가 없습니다");
             return;
@@ -250,27 +250,52 @@ public class ContentUpsertService {
             for (VideoInfoWithCommentsResponse video : videos) {
                 Content content = existingContents.get(video.getExternalContentId());
                 if (content != null) {
+                    boolean updated = false;
+
+                    // 썸네일 ID 업데이트 체크
                     Integer thumbnailId = getThumbnailIdFromVideo(video);
                     if (thumbnailId != null && !thumbnailId.equals(content.getThumbnailId())) {
+                        log.info("썸네일 ID 업데이트 - videoId: {}, 기존: {}, 새로운: {}",
+                                video.getExternalContentId(), content.getThumbnailId(), thumbnailId);
                         content.setThumbnailId(thumbnailId);
+                        updated = true;
+                    }
+
+                    // Description 업데이트 체크 (항상 확인)
+                    String newDescription = video.getDescription();
+                    String currentDescription = content.getDescription();
+                    if (!java.util.Objects.equals(newDescription, currentDescription)) {
+                        log.info("Description 업데이트 - videoId: {}, 길이: {} -> {}",
+                                video.getExternalContentId(),
+                                currentDescription != null ? currentDescription.length() : 0,
+                                newDescription != null ? newDescription.length() : 0);
+                        content.setDescription(newDescription);
+                        updated = true;
+                    }
+
+                    if (updated) {
                         content.setUpdatedAt(LocalDateTime.now());
                         updatedCount++;
-                        log.debug("썸네일 ID 업데이트 - videoId: {}, thumbnailId: {}",
-                                video.getExternalContentId(), thumbnailId);
+                        log.info("Content 업데이트 완료 - videoId: {}, thumbnailId: {}, description: {}글자",
+                                video.getExternalContentId(),
+                                content.getThumbnailId(),
+                                newDescription != null ? newDescription.length() : 0);
+                    } else {
+                        log.debug("Content 변경 없음 - videoId: {}", video.getExternalContentId());
                     }
                 }
             }
 
             if (updatedCount > 0) {
                 contentRepository.saveAll(existingContents.values());
-                log.info("Content 썸네일 ID 업데이트 완료 - {} 개", updatedCount);
+                log.info("Content 썸네일/내용 업데이트 완료 - {} 개", updatedCount);
             } else {
-                log.info("업데이트된 썸네일 ID 없음");
+                log.info("업데이트된 썸네일/내용 없음");
             }
 
         } catch (Exception e) {
-            log.error("Content 썸네일 ID 업데이트 실패: externalAccountId={}", externalAccountId, e);
-            throw new RuntimeException("Content 썸네일 ID 업데이트 실패", e);
+            log.error("Content 썸네일/내용 업데이트 실패: externalAccountId={}", externalAccountId, e);
+            throw new RuntimeException("Content 썸네일/내용 업데이트 실패", e);
         }
     }
 

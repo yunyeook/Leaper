@@ -51,4 +51,16 @@ public interface ContentRepository extends JpaRepository<Content, Integer> {
         @Param("externalContentIds") List<String> externalContentIds,
         @Param("platformTypeId") String platformTypeId
     );
+
+    /**
+     * 특정 플랫폼 계정의 누적 통계 조회 (totalViews, totalLikes, totalComments, totalContents)
+     */
+    @Query("SELECT " +
+           "COALESCE(SUM(c.totalViews), 0), " +
+           "COALESCE(SUM(c.totalLikes), 0), " +
+           "COALESCE(SUM(c.totalComments), 0), " +
+           "COUNT(c) " +
+           "FROM Content c " +
+           "WHERE c.platformAccount.id = :platformAccountId")
+    Object[] findAccountStats(@Param("platformAccountId") Integer platformAccountId);
 }
