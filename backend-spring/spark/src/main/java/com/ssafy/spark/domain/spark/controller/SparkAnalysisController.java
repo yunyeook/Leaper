@@ -44,7 +44,7 @@ public class SparkAnalysisController {
     if (targetDate == null) {
 //      targetDate = LocalDate.now();
 //
-      targetDate= LocalDate.of(2025, 9, 23);
+      targetDate= LocalDate.of(2025, 9, 24);
     }
 
     sparkAccountInsightService.generateDailyAccountInsight(platformType, targetDate);
