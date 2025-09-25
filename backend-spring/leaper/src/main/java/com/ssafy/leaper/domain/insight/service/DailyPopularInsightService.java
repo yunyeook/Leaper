@@ -1,5 +1,6 @@
 package com.ssafy.leaper.domain.insight.service;
 
+import com.ssafy.leaper.domain.file.service.S3PresignedUrlService;
 import com.ssafy.leaper.domain.insight.dto.response.dailyPopularInsight.*;
 import com.ssafy.leaper.domain.insight.entity.DailyMyPopularContent;
 import com.ssafy.leaper.domain.insight.entity.DailyPopularContent;
@@ -26,6 +27,8 @@ public class DailyPopularInsightService {
   private final DailyPopularInfluencerRepository dailyPopularInfluencerRepository;
   private final DailyAccountInsightRepository dailyAccountInsightRepository;
   private final DailyMyPopularContentRepository dailyMyPopularContentRepository;
+  private final S3PresignedUrlService s3PresignedUrlService;
+
 
   /**
    * 플랫폼/카테고리별 인기 콘텐츠 조회 (최신 기준, TOP10)
@@ -73,9 +76,8 @@ public class DailyPopularInsightService {
         dailyMyPopularContentRepository.findTop3ByLatestSnapshotDate(
             platformAccountId
         );
-
     List<MyPopularContentResponse> responses = entities.stream()
-        .map(MyPopularContentResponse::of)
+        .map(entity -> MyPopularContentResponse.of(entity, s3PresignedUrlService))
         .toList();
 
     return ServiceResult.ok(DailyMyPopularContentResponse.from(responses));
