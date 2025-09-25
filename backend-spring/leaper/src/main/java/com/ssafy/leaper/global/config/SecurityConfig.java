@@ -119,16 +119,16 @@ public class SecurityConfig {
 
 //     security 꺼놓기
 //     꺼놓으면 Authentication 등록이 안되어서 토큰에서 id를 못꺼내옴.
-    @Bean
-    @Order(0)
-    public SecurityFilterChain testSecurity(HttpSecurity http) throws Exception {
-        http.csrf(c -> c.disable());
-
-        http.securityMatcher("/api/**")
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
-
-        return http.build();
-    }
+//    @Bean
+//    @Order(0)
+//    public SecurityFilterChain testSecurity(HttpSecurity http) throws Exception {
+//        http.csrf(c -> c.disable());
+//
+//        http.securityMatcher("/api/**")
+//            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+//
+//        return http.build();
+//    }
 
 
     @Bean
