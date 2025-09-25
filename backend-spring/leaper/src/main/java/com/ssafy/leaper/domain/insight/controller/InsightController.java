@@ -146,7 +146,7 @@ public class InsightController implements BaseController {
         summary = "일별 인기 인플루언서 조회",
         description = "특정 플랫폼, 카테고리에서 가장 인기 있는 인플루언서 10명을 조회합니다."
     )
-    @GetMapping("/dailyPopularContent/influencer")
+    @GetMapping("/dailyPopularInfluencer/influencer")
     public ResponseEntity<ApiResponse<DailyPopularInfluencerResponse>> getPopularInfluencers(
         @RequestParam String platformType,
         @RequestParam Long categoryType
@@ -156,7 +156,7 @@ public class InsightController implements BaseController {
 
     @Operation(
         summary = "특정 계정의 인기 콘텐츠 조회",
-        description = "해당 플랫폼 계정 ID 기준으로 오늘 날짜 인기 콘텐츠 TOP3을 조회합니다."
+        description = "해당 플랫폼 계정 ID 기준으로 최신 날짜 인기 콘텐츠 TOP3을 조회합니다."
     )
     @GetMapping("/dailyMyPopularContent/platformAccount/{platformAccountId}")
     public ResponseEntity<ApiResponse<DailyMyPopularContentResponse>> getMyPopularContents(
@@ -181,7 +181,7 @@ public class InsightController implements BaseController {
         summary = "일별 급상승 인플루언서 조회",
         description = "특정 플랫폼, 카테고리에서 급상승하는 인플루언서 10명을 조회합니다."
     )
-    @GetMapping("/dailyTrendingContent/influencer")
+    @GetMapping("/dailyTrendingInfluencer/influencer")
     public ResponseEntity<ApiResponse<DailyTrendingInfluencerResponse>> getTrendingInfluencers(
         @RequestParam String platformType,
         @RequestParam Long categoryType
