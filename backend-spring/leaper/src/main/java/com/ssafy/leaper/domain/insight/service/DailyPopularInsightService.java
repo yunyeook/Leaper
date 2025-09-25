@@ -28,13 +28,13 @@ public class DailyPopularInsightService {
   private final DailyMyPopularContentRepository dailyMyPopularContentRepository;
 
   /**
-   * 플랫폼/카테고리별 인기 콘텐츠 조회 (오늘 기준, TOP10)
+   * 플랫폼/카테고리별 인기 콘텐츠 조회 (최신 기준, TOP10)
    */
   public ServiceResult<DailyPopularContentResponse> getPopularContents(String platformTypeId, Long categoryTypeId) {
-    LocalDate today = LocalDate.now();
+
 
     List<DailyPopularContent> contents = dailyPopularContentRepository
-        .findTop10ByPlatformAndCategoryAndDate(platformTypeId, categoryTypeId, today);
+        .findTop10ByPlatformAndCategoryAndDate(platformTypeId, categoryTypeId);
 
     List<PopularContentResponse> responses = contents.stream()
         .map(PopularContentResponse::from)
@@ -47,10 +47,9 @@ public class DailyPopularInsightService {
    * 플랫폼/카테고리별 인기 인플루언서 조회 (오늘 기준, TOP10)
    */
   public ServiceResult<DailyPopularInfluencerResponse> getPopularInfluencers(String platformTypeId, Long categoryTypeId) {
-    LocalDate today = LocalDate.now();
 
     List<DailyPopularInfluencer> influencers = dailyPopularInfluencerRepository
-        .findTop10ByPlatformAndCategoryAndDate(platformTypeId, categoryTypeId, today);
+        .findTop10ByPlatformAndCategoryAndDate(platformTypeId, categoryTypeId);
 
     List<PopularInfluencerResponse> responses = influencers.stream()
         .map(dpi -> {

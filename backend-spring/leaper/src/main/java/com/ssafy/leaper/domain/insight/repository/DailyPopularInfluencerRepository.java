@@ -22,4 +22,20 @@ public interface DailyPopularInfluencerRepository extends JpaRepository<DailyPop
       @Param("categoryTypeId") Long categoryTypeId,
       @Param("snapshotDate") LocalDate snapshotDate
   );
+  @Query("""
+      SELECT dpi FROM DailyPopularInfluencer dpi
+      WHERE dpi.platformType.id = :platformTypeId
+        AND dpi.categoryType.id = :categoryTypeId
+        AND dpi.snapshotDate = (
+            SELECT MAX(dpi2.snapshotDate) 
+            FROM DailyPopularInfluencer dpi2 
+            WHERE dpi2.platformType.id = :platformTypeId 
+              AND dpi2.categoryType.id = :categoryTypeId
+        )
+      ORDER BY dpi.influencerRank ASC
+      """)
+  List<DailyPopularInfluencer> findTop10ByPlatformAndCategoryAndDate(
+      @Param("platformTypeId") String platformTypeId,
+      @Param("categoryTypeId") Long categoryTypeId
+  );
 }
