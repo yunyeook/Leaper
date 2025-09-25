@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -118,7 +120,7 @@ public class YoutubeS3StorageService {
     /**
      * 채널의 전체 데이터를 S3에 저장
      */
-    public Mono<String> saveChannelFullData(ChannelWithVideosResponse channelData) {
+    public Mono<ChannelWithVideosResponse> saveChannelFullData(ChannelWithVideosResponse channelData) {
         return Mono.fromCallable(() -> {
             try {
                 // 1. 채널 정보 처리 및 저장 (프로필 이미지 포함)
@@ -127,23 +129,28 @@ public class YoutubeS3StorageService {
                 String channelJson = objectMapper.writeValueAsString(processedChannelInfo);
                 String channelS3Url = s3DataService.saveYouTubeChannelInfo(processedChannelInfo.getExternalAccountId(), channelJson);
 
-                // 2. 각 비디오 정보 저장
+                // 2. 각 비디오 정보 저장 및 썸네일 업데이트
                 int savedVideos = 0;
                 int savedComments = 0;
+                List<VideoInfoWithCommentsResponse> updatedVideos = new ArrayList<>();
 
                 for (VideoInfoWithCommentsResponse video : channelData.getVideos()) {
+                    // 비디오 썸네일 처리
+                    VideoInfoWithCommentsResponse updatedVideo = processVideoWithThumbnail(video);
+                    updatedVideos.add(updatedVideo);
+
                     // 비디오 정보 저장 (comments 제거)
-                    VideoInfoResponse videoWithoutComments = createVideoWithoutComments(video);
+                    VideoInfoResponse videoWithoutComments = createVideoWithoutComments(updatedVideo);
                     String videoJson = objectMapper.writeValueAsString(videoWithoutComments);
-                    s3DataService.saveYouTubeVideoInfo(video.getExternalContentId(), videoJson);
+                    s3DataService.saveYouTubeVideoInfo(updatedVideo.getExternalContentId(), videoJson);
                     savedVideos++;
 
                     // 댓글이 있으면 새로운 형태로 저장
-                    if (video.getComments() != null && !video.getComments().isEmpty()) {
-                        String commentsJson = createCommentsJsonFormat(video);
-                        Optional<Content> content = contentService.findEntityByExternalContentIdAndPlatformType(video.getExternalContentId(), video.getPlatformType());
+                    if (updatedVideo.getComments() != null && !updatedVideo.getComments().isEmpty()) {
+                        String commentsJson = createCommentsJsonFormat(updatedVideo);
+                        Optional<Content> content = contentService.findEntityByExternalContentIdAndPlatformType(updatedVideo.getExternalContentId(), updatedVideo.getPlatformType());
                         if (content.isPresent()) {
-                            s3DataService.saveYouTubeComments(video.getExternalContentId(), commentsJson, content.get().getId());
+                            s3DataService.saveYouTubeComments(updatedVideo.getExternalContentId(), commentsJson, content.get().getId());
                             savedComments++;
                         }
                     }
@@ -153,13 +160,22 @@ public class YoutubeS3StorageService {
                         processedChannelInfo.getExternalAccountId(),
                         channelS3Url, savedVideos, savedComments);
 
-                return channelS3Url;
+                // 업데이트된 데이터로 응답 생성
+//                ChannelWithVideosResponse updatedResponse = new ChannelWithVideosResponse();
+//                updatedResponse.setChannelInfo(processedChannelInfo);
+//                updatedResponse.setVideos(updatedVideos);
+//
+                return null;
             } catch (Exception e) {
                 log.error("채널 전체 데이터 S3 저장 실패: {}",
                         channelData.getChannelInfo().getExternalAccountId(), e);
                 throw new RuntimeException("채널 전체 데이터 S3 저장 실패", e);
             }
         });
+    }
+
+    private VideoInfoWithCommentsResponse processVideoWithThumbnail(VideoInfoWithCommentsResponse video) {
+        return new VideoInfoWithCommentsResponse();
     }
 
     /**

@@ -60,6 +60,17 @@ public class YoutubeController {
     }
 
     /**
+     * 기존 PlatformAccount ID 기반 채널의 모든 데이터 조회 및 S3 저장 (Upsert 크롤링)
+     */
+    @PostMapping("/exist-channel/{platformAccountId}/full-crawl")
+    public Mono<ChannelWithVideosResponse> getChannelFullDataAndSave(
+            @PathVariable("platformAccountId") Integer platformAccountId,
+            @RequestParam(value = "maxCommentsPerVideo", defaultValue = "20") Integer maxCommentsPerVideo,
+            @RequestParam(value = "maxVideos", defaultValue = "20") Integer maxVideos) {
+        return youtubeCrawlingService.getChannelFullDataAndSave(platformAccountId, maxCommentsPerVideo, maxVideos);
+    }
+
+    /**
      * 백그라운드에서 실제 크롤링 실행
      */
     @Async

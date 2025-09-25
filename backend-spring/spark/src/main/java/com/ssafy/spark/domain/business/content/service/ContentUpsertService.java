@@ -8,6 +8,8 @@ import com.ssafy.spark.domain.business.type.entity.ContentType;
 import com.ssafy.spark.domain.business.type.entity.PlatformType;
 import com.ssafy.spark.domain.business.type.service.ContentTypeService;
 import com.ssafy.spark.domain.business.type.service.PlatformTypeService;
+import com.ssafy.spark.domain.business.file.service.FileService;
+import com.ssafy.spark.domain.business.file.entity.File;
 import com.ssafy.spark.domain.crawling.youtube.dto.response.VideoInfoWithCommentsResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,7 @@ public class ContentUpsertService {
     private final PlatformAccountService platformAccountService;
     private final PlatformTypeService platformTypeService;
     private final ContentTypeService contentTypeService;
+    private final FileService fileService;
 
     /**
      * YouTube 크롤링 데이터로부터 Content 엔티티 배치 Upsert
@@ -120,6 +123,14 @@ public class ContentUpsertService {
     private Content createContentFromVideo(VideoInfoWithCommentsResponse video,
                                          PlatformAccount platformAccount,
                                          PlatformType platformType) {
+        // Thumbnail ID 조회
+        Integer thumbnailId = getThumbnailIdFromVideo(video);
+        log.info("=== Content 생성 디버그 - videoId: {} ===", video.getExternalContentId());
+        log.info("Description: {}", video.getDescription() != null ?
+                video.getDescription().substring(0, Math.min(100, video.getDescription().length())) + "..." : "NULL");
+        log.info("ThumbnailId: {}", thumbnailId);
+        log.info("Title: {}", video.getTitle());
+
         return Content.builder()
                 .platformAccount(platformAccount)
                 .platformType(platformType)
@@ -127,6 +138,7 @@ public class ContentUpsertService {
                 .externalContentId(video.getExternalContentId())
                 .title(video.getTitle())
                 .description(video.getDescription())
+                .thumbnailId(thumbnailId) // Thumbnail ID 설정
                 .durationSeconds(video.getDurationSeconds())
                 .contentUrl(video.getContentUrl())
                 .publishedAt(parsePublishedAt(video.getPublishedAt()))
@@ -148,6 +160,13 @@ public class ContentUpsertService {
         // 변경 가능한 필드들만 업데이트
         content.setTitle(video.getTitle());
         content.setDescription(video.getDescription());
+
+        // Thumbnail ID 업데이트
+        Integer thumbnailId = getThumbnailIdFromVideo(video);
+        if (thumbnailId != null) {
+            content.setThumbnailId(thumbnailId);
+        }
+
         content.setTagsJson(video.getTags());
         content.setTotalViews(BigInteger.valueOf(video.getViewsCount() != null ? video.getViewsCount() : 0));
         content.setTotalLikes(BigInteger.valueOf(video.getLikesCount() != null ? video.getLikesCount() : 0));
@@ -162,6 +181,97 @@ public class ContentUpsertService {
     private ContentType getContentTypeByVideoType(String contentType) {
         return contentTypeService.findEntityByContentTypeId(contentType)
                 .orElseThrow(() -> new IllegalArgumentException("ContentType을 찾을 수 없습니다: " + contentType));
+    }
+
+    /**
+     * 비디오에서 썸네일 파일 ID 조회
+     */
+    private Integer getThumbnailIdFromVideo(VideoInfoWithCommentsResponse video) {
+        log.info("=== 썸네일 ID 조회 디버그 - videoId: {} ===", video.getExternalContentId());
+
+        if (video.getThumbnailInfo() == null) {
+            log.error("ThumbnailInfo가 null입니다 - videoId: {}", video.getExternalContentId());
+            return null;
+        }
+
+        log.info("ThumbnailInfo 존재함 - videoId: {}", video.getExternalContentId());
+
+        if (video.getThumbnailInfo().getAccessKey() == null) {
+            log.error("ThumbnailInfo.accessKey가 null입니다 - videoId: {}", video.getExternalContentId());
+            return null;
+        }
+
+        String accessKey = video.getThumbnailInfo().getAccessKey();
+        log.info("AccessKey 조회됨 - videoId: {}, accessKey: {}", video.getExternalContentId(), accessKey);
+
+        try {
+            Optional<File> file = fileService.findEntityByAccessKey(accessKey);
+            if (file.isPresent()) {
+                log.info("SUCCESS: 썸네일 파일 조회 성공 - videoId: {}, fileId: {}",
+                         video.getExternalContentId(), file.get().getId());
+                return file.get().getId();
+            } else {
+                log.error("FAIL: 썸네일 파일을 찾을 수 없습니다 - videoId: {}, accessKey: {}",
+                        video.getExternalContentId(), accessKey);
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("ERROR: 썸네일 파일 조회 실패 - videoId: {}, accessKey: {}",
+                     video.getExternalContentId(), accessKey, e);
+            return null;
+        }
+    }
+
+    /**
+     * S3 저장 후 Content의 썸네일 ID 업데이트
+     */
+    public void updateContentThumbnailIds(List<VideoInfoWithCommentsResponse> videos, String externalAccountId) {
+        if (videos == null || videos.isEmpty()) {
+            log.info("업데이트할 비디오가 없습니다");
+            return;
+        }
+
+        try {
+            log.info("Content 썸네일 ID 업데이트 시작 - externalAccountId: {}, videos: {} 개",
+                    externalAccountId, videos.size());
+
+            String platformTypeId = "YOUTUBE";
+            List<String> externalContentIds = videos.stream()
+                    .map(VideoInfoWithCommentsResponse::getExternalContentId)
+                    .collect(Collectors.toList());
+
+            // 기존 Content 조회
+            Map<String, Content> existingContents = contentRepository
+                    .findByExternalContentIdInAndPlatformTypeId(externalContentIds, platformTypeId)
+                    .stream()
+                    .collect(Collectors.toMap(Content::getExternalContentId, Function.identity()));
+
+            int updatedCount = 0;
+            for (VideoInfoWithCommentsResponse video : videos) {
+                Content content = existingContents.get(video.getExternalContentId());
+                if (content != null) {
+                    Integer thumbnailId = getThumbnailIdFromVideo(video);
+                    if (thumbnailId != null && !thumbnailId.equals(content.getThumbnailId())) {
+                        content.setThumbnailId(thumbnailId);
+                        content.setUpdatedAt(LocalDateTime.now());
+                        updatedCount++;
+                        log.debug("썸네일 ID 업데이트 - videoId: {}, thumbnailId: {}",
+                                video.getExternalContentId(), thumbnailId);
+                    }
+                }
+            }
+
+            if (updatedCount > 0) {
+                contentRepository.saveAll(existingContents.values());
+                log.info("Content 썸네일 ID 업데이트 완료 - {} 개", updatedCount);
+            } else {
+                log.info("업데이트된 썸네일 ID 없음");
+            }
+
+        } catch (Exception e) {
+            log.error("Content 썸네일 ID 업데이트 실패: externalAccountId={}", externalAccountId, e);
+            throw new RuntimeException("Content 썸네일 ID 업데이트 실패", e);
+        }
     }
 
     /**

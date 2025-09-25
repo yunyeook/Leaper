@@ -113,10 +113,15 @@ public class YoutubeApiService {
                             }
                             channelInfo.setAccountNickname(accountNickname);
 
-                            // 프로필 이미지 URL 설정
-                            if (channel.getSnippet().getThumbnails() != null &&
-                                channel.getSnippet().getThumbnails().getDefault() != null) {
-                                channelInfo.setProfileImageUrl(channel.getSnippet().getThumbnails().getDefault().getUrl());
+                            // 프로필 이미지 URL 설정 (High 해상도 800x800 사용)
+                            if (channel.getSnippet().getThumbnails() != null) {
+                                if (channel.getSnippet().getThumbnails().getHigh() != null) {
+                                    channelInfo.setProfileImageUrl(channel.getSnippet().getThumbnails().getHigh().getUrl());
+                                } else if (channel.getSnippet().getThumbnails().getMedium() != null) {
+                                    channelInfo.setProfileImageUrl(channel.getSnippet().getThumbnails().getMedium().getUrl());
+                                } else if (channel.getSnippet().getThumbnails().getDefault() != null) {
+                                    channelInfo.setProfileImageUrl(channel.getSnippet().getThumbnails().getDefault().getUrl());
+                                }
                             }
                         }
 
@@ -598,10 +603,12 @@ public class YoutubeApiService {
             // 긴 영상과 짧은 영상을 각각 20개씩 가져온 후, 총합으로 제한
             Mono<List<VideoInfoWithCommentsResponse>> longVideos = getChannelLongVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo, accountNickname)
                     .take(maxVideos)
-                    .collectList();
+                    .collectList()
+                    .onErrorReturn(new ArrayList<>()); // 에러 발생 시 빈 리스트 반환
             Mono<List<VideoInfoWithCommentsResponse>> shortVideos = getChannelShortVideosWithCommentsAndHandle(externalAccountId, maxCommentsPerVideo, accountNickname)
                     .take(maxVideos)
-                    .collectList();
+                    .collectList()
+                    .onErrorReturn(new ArrayList<>()); // 에러 발생 시 빈 리스트 반환
 
             return Mono.zip(longVideos, shortVideos)
                     .map(tuple -> {
@@ -883,13 +890,21 @@ public class YoutubeApiService {
                     response.setPostsCount(Long.parseLong(channel.getStatistics().getVideoCount()));
                     response.setCrawledAt(java.time.LocalDateTime.now().toString());
 
-                    // 프로필 이미지 정보 설정 (YouTube API에서 직접 가져오기)
-                    if (channel.getSnippet().getThumbnails() != null &&
-                        channel.getSnippet().getThumbnails().getDefault() != null) {
+                    // 프로필 이미지 정보 설정 (High 해상도 800x800 우선 사용)
+                    if (channel.getSnippet().getThumbnails() != null) {
                         ChannelInfoResponse.ProfileImageInfo profileImageInfo = new ChannelInfoResponse.ProfileImageInfo();
-                        profileImageInfo.setAccessKey(channel.getSnippet().getThumbnails().getDefault().getUrl());
-                        profileImageInfo.setContentType("image/jpeg");
-                        response.setProfileImageInfo(profileImageInfo);
+                        if (channel.getSnippet().getThumbnails().getHigh() != null) {
+                            profileImageInfo.setAccessKey(channel.getSnippet().getThumbnails().getHigh().getUrl());
+                        } else if (channel.getSnippet().getThumbnails().getMedium() != null) {
+                            profileImageInfo.setAccessKey(channel.getSnippet().getThumbnails().getMedium().getUrl());
+                        } else if (channel.getSnippet().getThumbnails().getDefault() != null) {
+                            profileImageInfo.setAccessKey(channel.getSnippet().getThumbnails().getDefault().getUrl());
+                        }
+
+                        if (profileImageInfo.getAccessKey() != null) {
+                            profileImageInfo.setContentType("image/jpeg");
+                            response.setProfileImageInfo(profileImageInfo);
+                        }
                     }
 
                     return Mono.just(response);
