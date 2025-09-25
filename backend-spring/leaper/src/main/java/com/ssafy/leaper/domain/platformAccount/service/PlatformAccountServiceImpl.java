@@ -1,5 +1,6 @@
 package com.ssafy.leaper.domain.platformAccount.service;
 
+import com.ssafy.leaper.domain.crawling.dto.request.CrawlingRequest;
 import com.ssafy.leaper.domain.file.entity.File;
 import com.ssafy.leaper.domain.file.service.S3FileService;
 import com.ssafy.leaper.domain.file.service.S3PresignedUrlService;
@@ -17,12 +18,19 @@ import com.ssafy.leaper.global.error.ErrorCode;
 import com.ssafy.leaper.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.web.client.RestTemplate;
 
 @Slf4j
 @Service
@@ -36,6 +44,17 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
     private final CategoryTypeRepository categoryTypeRepository;
     private final S3FileService s3FileService;
     private final S3PresignedUrlService s3PresignedUrlService;
+    private final RestTemplate restTemplate;
+
+//    @Value("${spark.server.host}")
+//    private String sparkServerHost;
+//
+//    @Value("${spark.server.port}")
+//    private String sparkServerPort;
+//
+//    @Value("${spark.api.key}")
+//    private String sparkApiKey;
+
 
     @Override
     public void createPlatformAccounts(Integer influencerId, List<PlatformAccountCreateRequest> requests) {
@@ -46,6 +65,27 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.INFLUENCER_NOT_FOUND));
 
         for (PlatformAccountCreateRequest request : requests) {
+            // 중복 체크: 이미 활성 계정이 있는지 확인
+            if (platformAccountRepository.existsByInfluencerAndExternalAccountIdAndIsDeletedFalse(
+                    influencer, request.getExternalAccountId())) {
+                log.warn("이미 등록된 활성 계정입니다 - 외부 계정 ID: {}", request.getExternalAccountId());
+                continue; // 또는 예외 처리
+            }
+
+            // 소프트삭제된 계정이 있는지 확인
+            var deletedAccountOpt = platformAccountRepository.findByInfluencerAndExternalAccountIdAndIsDeletedTrue(
+                    influencer, request.getExternalAccountId());
+
+            if (deletedAccountOpt.isPresent()) {
+                // 소프트삭제된 계정 복원
+                PlatformAccount deletedAccount = deletedAccountOpt.get();
+                log.info("소프트삭제된 계정 복원 - 계정 ID: {}, 외부 계정 ID: {}",
+                        deletedAccount.getId(), request.getExternalAccountId());
+
+                restoreDeletedPlatformAccount(deletedAccount, request);
+                continue;
+            }
+
             // 플랫폼 타입 조회
             PlatformType platformType = platformTypeRepository.findById(request.getPlatformTypeId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.PLATFORM_TYPE_NOT_FOUND));
@@ -62,8 +102,11 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
                             request.getAccountProfileImageUrl(),
                             "platformAccount/profileImage"
                     );
+                    log.info("프로필 이미지 업로드 성공 - 계정: {}", request.getAccountNickname());
                 } catch (Exception e) {
-                    log.warn("프로필 이미지 처리 실패: {}", request.getAccountProfileImageUrl(), e);
+                    log.warn("프로필 이미지 업로드 실패 - 계정: {}, URL: {}, 에러: {}",
+                            request.getAccountNickname(), request.getAccountProfileImageUrl(), e.getMessage());
+                    // 이미지 업로드 실패해도 계정 등록은 계속 진행 (profileImageFile = null)
                 }
             }
 
@@ -77,10 +120,14 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
                     .accountUrl(request.getAccountUrl() != null ? request.getAccountUrl() : "")
                     .accountProfileImage(profileImageFile)
                     .isDeleted(false)
-                    .deletedAt(LocalDateTime.now()) // 기본값 설정
+                    .deletedAt(null) // 새 계정은 삭제 이력이 없음
                     .build();
 
             platformAccountRepository.save(platformAccount);
+
+            // 계정 연결시 Spark 서버에서 해당 계정 크롤링 및 S3와 DB 저장 로직 추가
+            //TODO : 활성화 하기
+//            triggerCrawlingAsync(platformAccount);
 
             log.info("플랫폼 계정 등록 완료 - 플랫폼: {}, 계정: {}",
                     request.getPlatformTypeId(), request.getAccountNickname());
@@ -88,6 +135,39 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
 
         log.info("모든 플랫폼 계정 등록 완료 - 인플루언서 ID: {}", influencerId);
     }
+
+//    /**
+//     * Spark 서버에 비동기로 크롤링 요청
+//     */
+//    @Async("taskExecutor")
+//    public void triggerCrawlingAsync(PlatformAccount platformAccount) {
+//        try {
+//            String sparkUrl = "http://" + sparkServerHost + ":" + sparkServerPort;
+//
+//            // 크롤링 요청 DTO
+//            CrawlingRequest crawlingRequest = CrawlingRequest.from(platformAccount);
+//
+//            // HTTP 헤더 설정
+//            HttpHeaders headers = new HttpHeaders();
+//            headers.setContentType(MediaType.APPLICATION_JSON); // 보내는 데이터는 JSON 형태
+//            headers.set("X-API-Key", sparkApiKey); // 아무나 Spark 서버에 크롤링 요청을 보낼 수 없게 막는 용도
+//
+//            HttpEntity<CrawlingRequest> entity = new HttpEntity<>(crawlingRequest, headers);
+//
+//            // Spark 서버에 POST 요청
+//            ResponseEntity<Boolean> response = restTemplate.postForEntity(
+//                sparkUrl + "/api/v1/crawling/start",
+//                entity,
+//                Boolean.class  // Boolean으로 변경
+//            );
+//
+//            log.info("Spark 서버로 크롤링 요청 전송 완료 - 계정 ID: {}, 응답 상태: {}, 성공 여부: {}",
+//                platformAccount.getId(), response.getStatusCode(), response.getBody());
+//
+//        } catch (Exception e) {
+//            log.error("Spark 서버로 크롤링 요청 전송 실패 - 계정 ID: {}", platformAccount.getId(), e);
+//        }
+//    }
 
     @Override
     @Transactional(readOnly = true)
@@ -156,11 +236,19 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
         String profileImageUrl = "";
         if (platformAccount.getAccountProfileImage() != null) {
             try {
-                profileImageUrl = s3PresignedUrlService.generatePresignedDownloadUrl(
+                String accessKey = platformAccount.getAccountProfileImage().getAccessKey();
+
+                if (accessKey != null && accessKey.startsWith("raw_data")) {
+                    // raw_data로 시작하면 presigned URL 생성
+                    profileImageUrl = s3PresignedUrlService.generatePresignedDownloadUrl(
                         platformAccount.getAccountProfileImage().getId()
-                );
+                    );
+                } else {
+                    // raw_data로 시작하지 않으면 accessKey 그대로 사용
+                    profileImageUrl = accessKey;
+                }
             } catch (Exception e) {
-                log.warn("프로필 이미지 presigned URL 생성 실패 - 계정 ID: {}", platformAccount.getId(), e);
+                log.warn("프로필 이미지 URL 처리 실패 - 계정 ID: {}", platformAccount.getId(), e);
             }
         }
 
@@ -221,5 +309,59 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
         platformAccountRepository.save(platformAccount);
 
         log.info("플랫폼 계정 삭제 완료 - 계정 ID: {}", platformAccountId);
+    }
+
+    /**
+     * 소프트삭제된 플랫폼 계정을 복원하는 메소드
+     */
+    private void restoreDeletedPlatformAccount(PlatformAccount deletedAccount, PlatformAccountCreateRequest request) {
+        log.info("플랫폼 계정 복원 시작 - 계정 ID: {}", deletedAccount.getId());
+
+        // 플랫폼 타입 조회 (새로운 요청의 플랫폼 타입으로 업데이트)
+        PlatformType platformType = platformTypeRepository.findById(request.getPlatformTypeId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PLATFORM_TYPE_NOT_FOUND));
+
+        // 카테고리 타입 조회 (새로운 요청의 카테고리 타입으로 업데이트)
+        CategoryType categoryType = categoryTypeRepository.findById(request.getCategoryTypeId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_TYPE_NOT_FOUND));
+
+        // 프로필 이미지 파일 처리 (새로운 이미지로 업데이트)
+        File profileImageFile = null;
+        if (request.getAccountProfileImageUrl() != null && !request.getAccountProfileImageUrl().trim().isEmpty()) {
+            try {
+                profileImageFile = s3FileService.uploadFileFromUrl(
+                        request.getAccountProfileImageUrl(),
+                        "platformAccount/profileImage"
+                );
+            } catch (Exception e) {
+                log.warn("프로필 이미지 처리 실패: {}", request.getAccountProfileImageUrl(), e);
+                // 기존 프로필 이미지 유지
+                profileImageFile = deletedAccount.getAccountProfileImage();
+            }
+        } else {
+            // 새로운 이미지가 없으면 기존 이미지 유지
+            profileImageFile = deletedAccount.getAccountProfileImage();
+        }
+
+        // 계정 정보 업데이트 및 복원
+        PlatformAccount restoredAccount = PlatformAccount.builder()
+                .id(deletedAccount.getId())
+                .influencer(deletedAccount.getInfluencer())
+                .platformType(platformType)
+                .categoryType(categoryType)
+                .externalAccountId(request.getExternalAccountId()) // 동일해야 함
+                .accountNickname(request.getAccountNickname())     // 새로운 닉네임으로 업데이트
+                .accountUrl(request.getAccountUrl() != null ? request.getAccountUrl() : "")
+                .accountProfileImage(profileImageFile)
+                .createdAt(deletedAccount.getCreatedAt())         // 원래 생성 시간 유지
+                .updatedAt(LocalDateTime.now())                   // 업데이트 시간 갱신
+                .isDeleted(false)                                 // 복원
+                .deletedAt(deletedAccount.getDeletedAt())         // 마지막 삭제 시간 유지
+                .build();
+
+        platformAccountRepository.save(restoredAccount);
+
+        log.info("플랫폼 계정 복원 완료 - 계정 ID: {}, 닉네임: {}",
+                deletedAccount.getId(), request.getAccountNickname());
     }
 }

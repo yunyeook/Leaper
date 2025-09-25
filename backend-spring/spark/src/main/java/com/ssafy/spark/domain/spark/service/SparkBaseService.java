@@ -6,11 +6,15 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import lombok.NoArgsConstructor;
@@ -43,6 +47,45 @@ public class SparkBaseService {
   @Value("${cloud.aws.s3.bucket}")
   protected String bucketName;
 
+  /**
+   * S3에서 JSON 파일들 읽기 - 공통 메소드
+   */
+  protected List<JsonNode> readS3JsonFiles(String prefix) {
+    List<JsonNode> jsonList = new ArrayList<>();
+
+    try {
+      var objectListing = amazonS3Client.listObjects(bucketName, prefix);
+      log.info("S3에서 찾은 파일 개수: {}", objectListing.getObjectSummaries().size());
+
+      for (var summary : objectListing.getObjectSummaries()) {
+        if (summary.getKey().endsWith(".json")) {
+          try (var s3Object = amazonS3Client.getObject(bucketName, summary.getKey());
+              var inputStream = s3Object.getObjectContent()) {
+
+            // 전체 파일 내용을 한 번에 읽기
+            String content = new String(inputStream.readAllBytes());
+
+            if (!content.trim().isEmpty()) {
+              try {
+                JsonNode jsonNode = objectMapper.readTree(content);
+                jsonList.add(jsonNode);
+                log.debug("파일 파싱 성공: {}", summary.getKey());
+              } catch (Exception parseEx) {
+                log.warn("JSON 파싱 실패, 파일: {}, 내용 미리보기: {}",
+                    summary.getKey(),
+                    content.length() > 100 ? content.substring(0, 100) : content);
+              }
+            }
+          }
+        }
+      }
+    } catch (Exception e) {
+      log.error("S3 JSON 파일 읽기 실패: {}", prefix, e);
+    }
+
+    log.info("최종 파싱된 JSON 개수: {}", jsonList.size());
+    return jsonList;
+  }
 
   /**
    * 특정 날짜의 콘텐츠 데이터 읽기 : 주로 오늘 크롤링 한 데이터를 읽음.

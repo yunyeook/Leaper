@@ -2,6 +2,7 @@ package com.ssafy.spark.domain.spark.controller;
 
 import com.ssafy.spark.domain.spark.service.SparkAccountInsightService;
 import com.ssafy.spark.domain.spark.service.SparkAccountPopularContentService;
+import com.ssafy.spark.domain.spark.service.SparkDummyDataGeneratorService;
 import com.ssafy.spark.domain.spark.service.SparkKeywordTrendService;
 import com.ssafy.spark.domain.spark.service.SparkPopularContentService;
 import com.ssafy.spark.domain.spark.service.SparkPopularInfluencerService;
@@ -29,9 +30,11 @@ public class SparkAnalysisController {
   private final SparkAccountPopularContentService sparkAccountPopularContentService;
   private final SparkTrendingInfluencerService sparkTrendingInfluencerService;
   private final SparkTrendingContentService sparkTrendingContentService;
-  private final  SparkKeywordTrendService sparkKeywordTrendService;
+  private final SparkKeywordTrendService sparkKeywordTrendService;
+  private final SparkDummyDataGeneratorService sparkDummyDataGeneratorService;
 
-  @GetMapping("/testTotal")
+  //TODO : 지금 인스타그램으로 고정되어있기 때문에 유튜브도 확인하기!!
+  @GetMapping("/testTotal")  // TODO : 날짜 잘 확인하기!! snapshot이랑 s3 저장 경로에 영향을 주고 있음.
   public ResponseEntity<String> totalInsights(
       @RequestParam(defaultValue = "instagram") String platformType,
       @RequestParam(required = false)
@@ -40,7 +43,8 @@ public class SparkAnalysisController {
     // targetDate가 null이면 오늘 날짜 사용
     if (targetDate == null) {
 //      targetDate = LocalDate.now();
-      targetDate= LocalDate.of(2025, 9, 22);
+//
+      targetDate= LocalDate.of(2025, 9, 23);
     }
 
     sparkAccountInsightService.generateDailyAccountInsight(platformType, targetDate);
@@ -168,6 +172,24 @@ public class SparkAnalysisController {
     }
 
     sparkAccountPopularContentService.generateAccountPopularContent(platformType, targetDate);
+
+    return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
+  }
+
+  /**
+   * 365일전까지 더미데이터 생성
+   */
+  @GetMapping("/dummy")
+  public ResponseEntity<String> dummy365(
+      @RequestParam(defaultValue = "instagram") String platformType,
+      @RequestParam(required = false)
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
+  ) {
+    // targetDate가 null이면 오늘 날짜 사용
+    if (targetDate == null) {
+      targetDate= LocalDate.of(2025, 9, 22); //TODO :  더비 시작날짜로 날짜 수정하기
+     }
+    sparkDummyDataGeneratorService.generateAllDummyData(platformType,targetDate);
 
     return ResponseEntity.ok("통계 생성 완료: " + platformType + ", " + targetDate);
   }

@@ -80,6 +80,21 @@ for(String username:usernames){
     }
   }
   /**
+   * 1-3. DB에 저장된 모든 Instagram 계정의 프로필 정보 일괄 업데이트(s3에만 저장)
+   */
+  @PostMapping("/profile/update/all")
+  public String updateAllProfiles() {
+    try {
+      log.info("전체 Instagram 계정 프로필 일괄 업데이트 요청");
+      profileService.updateAllRegisteredUsersProfiles();
+      log.info("전체 Instagram 계정 프로필 일괄 업데이트 완료");
+      return "{\"message\": \"전체 계정 프로필 업데이트가 완료되었습니다.\", \"status\": \"success\"}";
+    } catch (Exception e) {
+      log.error("전체 프로필 업데이트 실패: ", e);
+      return "{\"error\": \"전체 프로필 업데이트 실패: " + e.getMessage() + "\", \"status\": \"failed\"}";
+    }
+  }
+  /**
    * 2. 특정 사용자의 콘텐츠 수집
    */
   @GetMapping("/content/{username}")
@@ -129,6 +144,7 @@ for(String username:usernames){
       return "{\"error\": \"" + e.getMessage() + "\"}";
     }
   }
+
   /**
    * 전체 콘텐츠 댓글 배치 수집 (기존 API 활용)
    */

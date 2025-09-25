@@ -50,7 +50,7 @@ public class ContentService extends BaseApifyService {
         String actorId = "apify~instagram-post-scraper";
 
         Map<String, Object> input = new HashMap<>();
-        input.put("resultsLimit", 30); // TODO : 총 몇개의 컨텐츠를 가져올건지
+        input.put("resultsLimit", 10); // TODO : 총 몇개의 컨텐츠를 가져올건지
         input.put("skipPinnedPosts", false);
         input.put("username", new String[]{username});
 
@@ -164,6 +164,10 @@ public class ContentService extends BaseApifyService {
       if (viewsCount == 0) {
         viewsCount = contentNode.path("videoPlayCount").asLong(0);
       }
+// 음수 값 보정
+      if (likesCount < 0) likesCount = 0L;
+      if (commentsCount < 0) commentsCount = 0L;
+      if (viewsCount < 0) viewsCount = 0L;
 
       content.setTotalViews(viewsCount);
       content.setTotalLikes(likesCount);
@@ -367,19 +371,20 @@ public class ContentService extends BaseApifyService {
 //        .collect(Collectors.toList());
 //  }
   /**
-   * Instagram 콘텐츠 ID만 조회
+   * Instagram 특정 계정의 콘텐츠 ID만 조회
    */
-//  public List<Integer> getInstagramContentIds() {
-//    return contentRepository.findByPlatformTypeId("INSTAGRAM").stream()
-//        .map(Content::getId)
-//        .collect(Collectors.toList());
-//  }
+  public List<Integer> getInstagramPlaformAccountContentIds(Integer platformAccountId) {
+    return contentRepository.findByPlatformTypeId("INSTAGRAM").stream()
+        .filter(content -> content.getPlatformAccountId() >= platformAccountId)
+        .map(Content::getId)
+        .collect(Collectors.toList());
+  }
   /**
-   * Instagram 콘텐츠 ID만 조회 (215번부터)
+   * Instagram 콘텐츠 ID만 조회
    */
   public List<Integer> getInstagramContentIds() {
     return contentRepository.findByPlatformTypeId("INSTAGRAM").stream()
-        .filter(content -> content.getId() >= 239)
+//        .filter(content -> content.getId() >= 239)
         .map(Content::getId)
         .collect(Collectors.toList());
   }

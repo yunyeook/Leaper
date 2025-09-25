@@ -6,6 +6,7 @@ import com.ssafy.leaper.domain.content.dto.response.ContentResponse;
 import com.ssafy.leaper.domain.content.dto.response.SimilarContentListResponse;
 import com.ssafy.leaper.domain.content.entity.Content;
 import com.ssafy.leaper.domain.content.repository.ContentRepository;
+import com.ssafy.leaper.domain.file.service.S3PresignedUrlService;
 import com.ssafy.leaper.domain.platformAccount.repository.PlatformAccountRepository;
 import com.ssafy.leaper.global.common.response.ServiceResult;
 import com.ssafy.leaper.global.error.ErrorCode;
@@ -24,6 +25,8 @@ public class ContentServiceImpl implements ContentService {
 
   private final ContentRepository contentRepository;
   private final PlatformAccountRepository platformAccountRepository;
+  private final S3PresignedUrlService s3PresignedUrlService;
+
 
   @Override
   public ServiceResult<ContentListResponse> getContentsByPlatformAccountId(Long platformAccountId) {
@@ -34,7 +37,7 @@ public class ContentServiceImpl implements ContentService {
     List<Content> contents = contentRepository.findByPlatformAccountIdWithContentType(platformAccountId);
 
     List<ContentResponse> contentDtos = contents.stream()
-        .map(ContentResponse::from)
+        .map(content -> ContentResponse.from(content, s3PresignedUrlService))
         .toList();
 
     ContentListResponse response = ContentListResponse.from(contentDtos);
@@ -51,7 +54,7 @@ public class ContentServiceImpl implements ContentService {
 
     Integer contentRank = contentRepository.findContentRankByContentId(contentId).orElse(null);
 
-    ContentDetailResponse response = ContentDetailResponse.from(content, contentRank);
+    ContentDetailResponse response = ContentDetailResponse.from(content, contentRank,s3PresignedUrlService);
     return ServiceResult.ok(response);
   }
   @Override
@@ -74,7 +77,7 @@ public class ContentServiceImpl implements ContentService {
         contentId, platformTypeId, contentTypeId, categoryTypeId, baseDuration);
 
     List<ContentDetailResponse> responses = similars.stream()
-        .map(c -> ContentDetailResponse.from(c, null))
+        .map(c -> ContentDetailResponse.from(c, null,s3PresignedUrlService))
         .toList();
 
     return ServiceResult.ok(SimilarContentListResponse.from(responses));
