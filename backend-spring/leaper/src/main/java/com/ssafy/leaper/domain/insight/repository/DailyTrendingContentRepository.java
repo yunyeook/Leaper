@@ -24,4 +24,20 @@ public interface DailyTrendingContentRepository extends JpaRepository<DailyTrend
       @Param("categoryTypeId") Long categoryTypeId,
       @Param("snapshotDate") LocalDate snapshotDate
   );
+  @Query("""
+      SELECT dtc FROM DailyTrendingContent dtc
+      WHERE dtc.platformType.id = :platformTypeId
+        AND dtc.categoryType.id = :categoryTypeId
+        AND dtc.snapshotDate = (
+            SELECT MAX(dtc2.snapshotDate) 
+            FROM DailyTrendingContent dtc2 
+            WHERE dtc2.platformType.id = :platformTypeId 
+              AND dtc2.categoryType.id = :categoryTypeId
+        )
+      ORDER BY dtc.contentRank ASC
+      """)
+  List<DailyTrendingContent> findTop10ByPlatformAndCategoryAndDate(
+      @Param("platformTypeId") String platformTypeId,
+      @Param("categoryTypeId") Long categoryTypeId
+  );
 }

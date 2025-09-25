@@ -22,4 +22,20 @@ public interface DailyPopularContentRepository extends JpaRepository<DailyPopula
       @Param("categoryTypeId") Long categoryTypeId,
       @Param("snapshotDate") LocalDate snapshotDate
   );
+  @Query("""
+      SELECT dpc FROM DailyPopularContent dpc
+      WHERE dpc.platformType.id = :platformTypeId
+        AND dpc.categoryType.id = :categoryTypeId
+        AND dpc.snapshotDate = (
+            SELECT MAX(dpc2.snapshotDate) 
+            FROM DailyPopularContent dpc2 
+            WHERE dpc2.platformType.id = :platformTypeId 
+              AND dpc2.categoryType.id = :categoryTypeId
+        )
+      ORDER BY dpc.contentRank ASC
+      """)
+  List<DailyPopularContent> findTop10ByPlatformAndCategoryAndDate(
+      @Param("platformTypeId") String platformTypeId,
+      @Param("categoryTypeId") Long categoryTypeId
+  );
 }

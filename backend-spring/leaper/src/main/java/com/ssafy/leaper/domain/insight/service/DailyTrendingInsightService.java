@@ -25,13 +25,12 @@ public class DailyTrendingInsightService {
   private final DailyAccountInsightRepository dailyAccountInsightRepository;
 
   /**
-   * 플랫폼/카테고리별 급상승 콘텐츠 조회 (오늘 기준, TOP10)
+   * 플랫폼/카테고리별 급상승 콘텐츠 조회 (최신 기준, TOP10)
    */
   public ServiceResult<DailyTrendingContentResponse> getTrendingContents(String platformTypeId, Long categoryTypeId) {
-    LocalDate today = LocalDate.now();
 
     List<DailyTrendingContent> contents = dailyTrendingContentRepository
-        .findTop10ByPlatformAndCategoryAndDate(platformTypeId, categoryTypeId, today);
+        .findTop10ByPlatformAndCategoryAndDate(platformTypeId, categoryTypeId);
 
     List<TrendingContentResponse> responses = contents.stream()
         .map(TrendingContentResponse::from)
@@ -41,13 +40,13 @@ public class DailyTrendingInsightService {
   }
 
   /**
-   * 플랫폼/카테고리별 급상승 인플루언서 조회 (오늘 기준, TOP10)
+   * 플랫폼/카테고리별 급상승 인플루언서 조회 (최신 기준, TOP10)
    */
   public ServiceResult<DailyTrendingInfluencerResponse> getTrendingInfluencers(String platformTypeId, Long categoryTypeId) {
-    LocalDate today = LocalDate.now();
+
 
     List<DailyTrendingInfluencer> influencers = dailyTrendingInfluencerRepository
-        .findTop10ByPlatformAndCategoryAndDate(platformTypeId, categoryTypeId, today);
+        .findTop10ByPlatformAndCategoryAndDate(platformTypeId, categoryTypeId);
 
     List<TrendingInfluencerResponse> responses = influencers.stream()
         .map(dpi -> {

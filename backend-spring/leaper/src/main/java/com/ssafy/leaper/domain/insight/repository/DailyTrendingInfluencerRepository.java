@@ -24,4 +24,20 @@ public interface DailyTrendingInfluencerRepository extends JpaRepository<DailyTr
       @Param("categoryTypeId") Long categoryTypeId,
       @Param("snapshotDate") LocalDate snapshotDate
   );
+  @Query("""
+      SELECT dti FROM DailyTrendingInfluencer dti
+      WHERE dti.platformType.id = :platformTypeId
+        AND dti.categoryType.id = :categoryTypeId
+        AND dti.snapshotDate = (
+            SELECT MAX(dti2.snapshotDate) 
+            FROM DailyTrendingInfluencer dti2 
+            WHERE dti2.platformType.id = :platformTypeId 
+              AND dti2.categoryType.id = :categoryTypeId
+        )
+      ORDER BY dti.influencerRank ASC
+      """)
+  List<DailyTrendingInfluencer> findTop10ByPlatformAndCategoryAndDate(
+      @Param("platformTypeId") String platformTypeId,
+      @Param("categoryTypeId") Long categoryTypeId
+  );
 }
