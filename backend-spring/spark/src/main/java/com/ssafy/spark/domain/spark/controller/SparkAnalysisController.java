@@ -36,7 +36,7 @@ public class SparkAnalysisController {
   //TODO : 지금 인스타그램으로 고정되어있기 때문에 유튜브도 확인하기!!
   @GetMapping("/testTotal")  // TODO : 날짜 잘 확인하기!! snapshot이랑 s3 저장 경로에 영향을 주고 있음.
   public ResponseEntity<String> totalInsights(
-      @RequestParam(defaultValue = "instagram") String platformType,
+      @RequestParam(defaultValue = "youtube") String platformType,
       @RequestParam(required = false)
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
   ) {
@@ -44,7 +44,7 @@ public class SparkAnalysisController {
     if (targetDate == null) {
 //      targetDate = LocalDate.now();
 //
-      targetDate= LocalDate.of(2025, 9, 24);
+      targetDate= LocalDate.of(2025, 9, 25);
     }
 
     sparkAccountInsightService.generateDailyAccountInsight(platformType, targetDate);
