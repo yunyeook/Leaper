@@ -25,11 +25,11 @@ public class SearchRepositoryImpl implements SearchRepository {
         // 1. 조건에 맞는 플랫폼 계정과 인플루언서 정보를 한 번에 조회
         StringBuilder jpql = new StringBuilder();
         jpql.append("SELECT i.id, ")
-            .append("CASE WHEN inf.accessKey IS NOT NULL THEN inf.accessKey ELSE '' END, ") // 인플루언서 프로필 이미지 URL
+            .append("inf.id, ") // 인플루언서 프로필 이미지 File ID
             .append("i.nickname, ") // 인플루언서 닉네임
             .append("pa.id, ") // 플랫폼 계정 ID
             .append("pt.id, ") // 플랫폼 타입 ID
-            .append("CASE WHEN paf.accessKey IS NOT NULL THEN paf.accessKey ELSE '' END, ") // 계정 프로필 이미지 URL
+            .append("paf.id, ") // 계정 프로필 이미지 File ID
             .append("pa.accountNickname, ") // 계정 닉네임
             .append("pa.accountUrl, ") // 계정 URL
             .append("COALESCE(dai.totalFollowers, 0), ") // 팔로워 수
@@ -102,11 +102,11 @@ public class SearchRepositoryImpl implements SearchRepository {
 
         for (Object[] row : results) {
             Integer influencerId = (Integer) row[0];
-            String influencerProfileImageUrl = (String) row[1];
+            Integer influencerProfileImageId = (Integer) row[1];
             String influencerNickname = (String) row[2];
             Integer platformAccountId = (Integer) row[3];
             String platformTypeId = (String) row[4];
-            String accountProfileImageUrl = (String) row[5];
+            Integer accountProfileImageId = (Integer) row[5];
             String accountNickname = (String) row[6];
             String accountURL = (String) row[7];
             Integer totalFollowers = (Integer) row[8];
@@ -114,14 +114,14 @@ public class SearchRepositoryImpl implements SearchRepository {
 
             // 인플루언서 정보가 맵에 없으면 새로 생성
             influencerMap.computeIfAbsent(influencerId, k ->
-                new InfluencerData(influencerId, influencerProfileImageUrl, influencerNickname, new ArrayList<>())
+                new InfluencerData(influencerId, influencerProfileImageId, influencerNickname, new ArrayList<>())
             );
 
             // 플랫폼 계정 정보 추가
             InfluencerSearchResponse.PlatformAccountInfo accountInfo = InfluencerSearchResponse.PlatformAccountInfo.of(
                 platformAccountId,
                 platformTypeId,
-                accountProfileImageUrl,
+                accountProfileImageId != null ? accountProfileImageId.toString() : null, // File ID를 String으로 변환
                 accountNickname,
                 accountURL,
                 totalFollowers,
@@ -136,7 +136,7 @@ public class SearchRepositoryImpl implements SearchRepository {
         for (InfluencerData data : influencerMap.values()) {
             InfluencerSearchResponse.InfluencerInfo influencerInfo = InfluencerSearchResponse.InfluencerInfo.of(
                 data.influencerId,
-                data.profileImageUrl,
+                data.profileImageId != null ? data.profileImageId.toString() : null, // File ID를 String으로 변환
                 data.nickname,
                 data.platformAccounts
             );
@@ -150,14 +150,14 @@ public class SearchRepositoryImpl implements SearchRepository {
     // 내부 데이터 클래스
     private static class InfluencerData {
         final Integer influencerId;
-        final String profileImageUrl;
+        final Integer profileImageId;
         final String nickname;
         final List<InfluencerSearchResponse.PlatformAccountInfo> platformAccounts;
 
-        InfluencerData(Integer influencerId, String profileImageUrl, String nickname,
+        InfluencerData(Integer influencerId, Integer profileImageId, String nickname,
                       List<InfluencerSearchResponse.PlatformAccountInfo> platformAccounts) {
             this.influencerId = influencerId;
-            this.profileImageUrl = profileImageUrl;
+            this.profileImageId = profileImageId;
             this.nickname = nickname;
             this.platformAccounts = platformAccounts;
         }
