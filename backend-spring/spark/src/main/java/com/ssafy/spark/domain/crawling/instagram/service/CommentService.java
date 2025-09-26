@@ -1,9 +1,9 @@
 package com.ssafy.spark.domain.crawling.instagram.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.ssafy.spark.domain.business.content.entity.Content;
+import com.ssafy.spark.domain.business.content.repository.ContentRepository;
 import com.ssafy.spark.domain.crawling.instagram.dto.CommentRawData;
-import com.ssafy.spark.domain.crawling.instagram.entity.Content;
-import com.ssafy.spark.domain.crawling.instagram.repository.ContentRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -159,7 +159,7 @@ public class CommentService extends BaseApifyService {
 
       CommentRawData commentRawData = CommentRawData.builder()
           .contentId(content.getId())
-          .platformAccountId(content.getPlatformAccountId())
+          .platformAccountId(content.getPlatformAccount().getId())
           .contentUrl(content.getContentUrl())
           .commentsCount(commentItems.size())
           .comments(commentItems)

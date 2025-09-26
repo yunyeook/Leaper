@@ -1,7 +1,8 @@
 package com.ssafy.spark.domain.crawling.instagram.service;
 
-import com.ssafy.spark.domain.crawling.instagram.entity.File;
-import com.ssafy.spark.domain.crawling.instagram.repository.FileRepository;
+
+import com.ssafy.spark.domain.business.file.entity.File;
+import com.ssafy.spark.domain.business.file.repository.FileRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -44,10 +45,7 @@ public class ImageService {
         return fileRepository.save(File.builder()
             .accessKey(uploadedKey) // S3 키
             .contentType(contentType)
-            .fileSize((long) imageBytes.length)
-            .originalName(username + "_profile" + fileExtension)
             .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
             .build());
       }
 
@@ -59,10 +57,7 @@ public class ImageService {
     return fileRepository.save(File.builder()
         .accessKey(imageUrl) // 원본 URL 직접 저장
         .contentType("image/jpeg") // 기본값
-        .fileSize(0L)
-        .originalName("external_image")
         .createdAt(LocalDateTime.now())
-        .updatedAt(LocalDateTime.now())
         .build());
   }
   public File downloadAndSaveThumbnailImage(String imageUrl, String username, String contentId) {
@@ -87,10 +82,7 @@ public class ImageService {
         return fileRepository.save(File.builder()
             .accessKey(uploadedKey)
             .contentType(contentType)
-            .fileSize((long) imageBytes.length)
-            .originalName(contentId + "_thumbnail" + fileExtension)
             .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
             .build());
       }
 
@@ -102,10 +94,7 @@ public class ImageService {
     return fileRepository.save(File.builder()
         .accessKey(imageUrl)
         .contentType("image/jpeg")
-        .fileSize(0L)
-        .originalName("external_thumbnail")
         .createdAt(LocalDateTime.now())
-        .updatedAt(LocalDateTime.now())
         .build());
   }
 

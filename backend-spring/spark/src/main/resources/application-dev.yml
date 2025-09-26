@@ -71,3 +71,11 @@ apify:
 
 api:
   key: ${API_KEY:your-secret-key}  # Leaper와 같은 키
+
+
+youtube:
+  api:
+    key1: ${YOUTUBE_API_V3_KEY_1}
+    key2: ${YOUTUBE_API_V3_KEY_2}
+    key3: ${YOUTUBE_API_V3_KEY_3}
+    base-url: https://www.googleapis.com/youtube/v3

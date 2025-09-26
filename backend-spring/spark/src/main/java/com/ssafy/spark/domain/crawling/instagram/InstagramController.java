@@ -1,7 +1,7 @@
 package com.ssafy.spark.domain.crawling.instagram;
 
 import com.ssafy.spark.domain.crawling.instagram.service.CommentService;
-import com.ssafy.spark.domain.crawling.instagram.service.ContentService;
+import com.ssafy.spark.domain.crawling.instagram.service.InstagramContentService;
 import com.ssafy.spark.domain.crawling.instagram.service.ProfileService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ public class InstagramController {
 
 //  private final BaseApifyService apifyService;
   private  final ProfileService profileService;
-  private final ContentService contentService;
+  private final InstagramContentService contentService;
   private final CommentService commentService;
 
   /**
@@ -69,8 +69,7 @@ for(String username:usernames){
     try {
       log.info("기존 인플루언서에 연결 요청 - Influencer ID: {}, Username: {}, Category: {}",
           existingInfluencerId, username, categoryTypeId);
-      CompletableFuture<String> future = profileService.linkPlatformAccountToExistingInfluencer(
-          username, existingInfluencerId, categoryTypeId);
+      CompletableFuture<String> future = profileService.linkPlatformAccountToExistingInfluencer( username, existingInfluencerId, categoryTypeId);
       String result = future.get();
       log.info("기존 인플루언서 연결 완료 - Influencer ID: {}", existingInfluencerId);
       return result;
