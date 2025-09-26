@@ -87,8 +87,6 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
 
         switch (provider.toLowerCase()) {
             case "google" -> {
-                extractedData.put("externalAccountId", attributes.get("email"));
-
                 // YouTube 데이터를 단일 객체로 변환
                 if (attributes.containsKey("youtube_channels")) {
                     @SuppressWarnings("unchecked")
@@ -98,13 +96,19 @@ public class OAuth2AccountConnectSuccessHandler implements AuthenticationSuccess
                     if (!channels.isEmpty()) {
                         Map<String, Object> channel = channels.get(0);
 
+                        // 채널 ID를 externalAccountId로 사용
+                        String channelId = (String) channel.get("id");
+                        extractedData.put("externalAccountId", channelId);
+
                         @SuppressWarnings("unchecked")
                         Map<String, Object> snippet = (Map<String, Object>) channel.get("snippet");
                         if (snippet != null) {
-                            extractedData.put("accountNickname", snippet.get("title"));
+                            // customUrl을 accountNickname으로 사용
+                            String customUrl = (String) snippet.get("customUrl");
+                            log.info("Debug - customUrl: '{}', title: '{}', customUrl is null: {}", customUrl, snippet.get("title"), customUrl == null);
+                            extractedData.put("accountNickname", customUrl != null ? customUrl : snippet.get("title"));
 
                             // 채널 URL 생성
-                            String channelId = (String) channel.get("id");
                             String channelUrl = channelId != null ? "https://www.youtube.com/channel/" + channelId : "";
                             extractedData.put("accountUrl", channelUrl);
 
