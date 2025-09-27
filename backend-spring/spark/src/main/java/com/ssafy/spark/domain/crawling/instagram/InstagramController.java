@@ -145,7 +145,7 @@ for(String username:usernames){
   }
 
   /**
-   * 전체 콘텐츠 댓글 배치 수집 (기존 API 활용)
+   * 전체 콘텐츠 댓글 수집 (기존 API 활용)
    */
   @PostMapping("/comment/collect-all-batch-safe")
   public String collectAllCommentsBatchSafe(@RequestParam(defaultValue = "5") int batchSize) {
