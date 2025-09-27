@@ -230,7 +230,7 @@ public class CommentService extends BaseApifyService {
 
         // 배치 내 개별 처리
         for (Integer contentId : batchIds) {
-          if(contentId<252) continue;
+//          if(contentId<252) continue;
 
           try {
             log.info("개별 댓글 수집 시작 - Content ID: {}", contentId);
