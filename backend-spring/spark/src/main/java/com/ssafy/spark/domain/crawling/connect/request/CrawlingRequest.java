@@ -10,6 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CrawlingRequest {
+  private Integer influencerId;
   private Integer platformAccountId;
   private String platformTypeId;      // instagram, youtube 등
   private String accountUrl;

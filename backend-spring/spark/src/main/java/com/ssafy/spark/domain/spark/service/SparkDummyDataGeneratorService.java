@@ -3,6 +3,7 @@ package com.ssafy.spark.domain.spark.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.LocalTime;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -120,7 +121,7 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
         log.info("계정 ID {}, 컨텐츠 타입 {} 처리 시작", platformAccountId, contentType);
 
         // 2. 365일 역순으로 데이터 생성
-        for (int i = 1; i <= 365; i++) {
+        for (int i = 1; i <= 1; i++) {
           LocalDate targetDate = baseDate.minusDays(i);
 
           // 3. today 값들을 현재 total의 합리적 범위 내에서 생성
@@ -374,15 +375,179 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
   private Double calculateLikeScore(BigInteger totalViews, BigInteger totalLikes, BigInteger totalComments) {
     if (totalViews.equals(BigInteger.ZERO)) return 0.0;
 
-    // BigInteger를 double로 변환해서 계산
     double views = totalViews.doubleValue();
     double likes = totalLikes.doubleValue();
     double comments = totalComments.doubleValue();
 
-    // 간단한 호감도 점수 계산
+    // 참여율 계산
     double engagementRate = (likes + comments) / views * 100;
-    double score = Math.min(100.0, Math.max(-100.0, engagementRate * 10 - 50));
+
+    // 점수 계산: engagementRate를 그대로 쓰되, 0~95 사이로 클램프
+    double score = Math.min(95.0, Math.max(0.0, engagementRate));
 
     return Math.round(score * 100.0) / 100.0;
   }
+
+  /**
+   * 특정 계정에 대해서만 365일 더미데이터 생성
+   * @param platformType 플랫폼 타입 (예: "instagram")
+   * @param baseDate 기준 날짜 (예: LocalDate.of(2025, 9, 25))
+   * @param targetAccountId 생성할 대상 계정 ID
+   */
+  public void generateDummyAccountInsightForOne(String platformType, LocalDate baseDate, Long targetAccountId) {
+    try {
+      log.info("특정 계정 더미데이터 생성 시작 - Platform: {}, BaseDate: {}, AccountId: {}",
+          platformType, baseDate, targetAccountId);
+
+      // 1. 기준일 데이터 읽기
+      List<JsonNode> baseDataList = readAccountInsightFromS3(platformType, baseDate);
+
+      // 2. 해당 계정만 필터링
+      JsonNode baseData = baseDataList.stream()
+          .filter(node -> node.get("platformAccountId").asLong() == targetAccountId)
+          .findFirst()
+          .orElseThrow(() -> new RuntimeException("기준일 데이터 없음: accountId=" + targetAccountId));
+
+      BigInteger currentTotalViews = new BigInteger(baseData.get("totalViews").asText());
+      int currentTotalFollowers = baseData.get("totalFollowers").asInt();
+      int currentTotalContents = baseData.get("totalContents").asInt();
+      BigInteger currentTotalLikes = new BigInteger(baseData.get("totalLikes").asText());
+      BigInteger currentTotalComments = new BigInteger(baseData.get("totalComments").asText());
+
+      // 3. 365일 역순 생성
+      for (int i = 1; i <= 1; i++) {
+        LocalDate targetDate = baseDate.minusDays(i);
+
+        // 랜덤 감소
+        double viewsDecreaseRate = random.nextDouble() * 0.1;
+        BigInteger totalViews = currentTotalViews.subtract(
+            currentTotalViews.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
+                .divide(BigInteger.valueOf(100))
+        );
+
+        int totalFollowers = Math.max(0, currentTotalFollowers - (random.nextDouble() < 0.9 ? 0 : 1));
+        int totalContents = Math.max(0, currentTotalContents - (random.nextDouble() < 0.9 ? 0 : 1));
+
+        BigInteger totalLikes = currentTotalLikes.subtract(
+            currentTotalLikes.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
+                .divide(BigInteger.valueOf(100))
+        );
+        BigInteger totalComments = currentTotalComments.subtract(
+            currentTotalComments.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
+                .divide(BigInteger.valueOf(100))
+        );
+
+        // 4. S3 저장
+        saveAccountInsightToS3(platformType, targetDate, targetAccountId,
+            totalViews, totalFollowers, totalContents, totalLikes, totalComments);
+
+        // 5. DB 저장
+        saveAccountInsightToDB(targetAccountId, totalViews, totalFollowers,
+            totalContents, totalLikes, totalComments, targetDate);
+
+        // 6. 업데이트
+        currentTotalViews = totalViews;
+        currentTotalFollowers = totalFollowers;
+        currentTotalContents = totalContents;
+        currentTotalLikes = totalLikes;
+        currentTotalComments = totalComments;
+      }
+
+      log.info("특정 계정 더미데이터 생성 완료 - AccountId: {}", targetAccountId);
+
+    } catch (Exception e) {
+      log.error("특정 계정 더미데이터 생성 실패 - AccountId: {}", targetAccountId, e);
+      throw new RuntimeException("특정 계정 더미데이터 생성 실패", e);
+    }
+  }
+  /**
+   * 특정 계정에 대해서 daily_account_insight + daily_type_insight 더미데이터 365일치 생성
+   */
+  public void generateDummyForOneAccountAll(String platformType, LocalDate baseDate, Long targetAccountId) {
+    log.info("특정 계정 전체 더미데이터 생성 시작 - Platform: {}, BaseDate: {}, AccountId: {}",
+        platformType, baseDate, targetAccountId);
+
+    // 1. Account Insight 더미 생성
+    generateDummyAccountInsightForOne(platformType, baseDate, targetAccountId);
+
+    // 2. Type Insight 더미 생성
+    generateDummyTypeInsightForOne(platformType, baseDate, targetAccountId);
+
+    log.info("특정 계정 전체 더미데이터 생성 완료 - AccountId: {}", targetAccountId);
+  }
+
+  /**
+   * 특정 계정의 daily_type_insight 더미데이터 365일치 생성
+   */
+  public void generateDummyTypeInsightForOne(String platformType, LocalDate baseDate, Long targetAccountId) {
+    try {
+      log.info("특정 계정 Type Insight 더미 생성 시작 - Platform: {}, BaseDate: {}, AccountId: {}",
+          platformType, baseDate, targetAccountId);
+
+      // 1. 기준일 데이터 읽기
+      List<JsonNode> baseDataList = readTypeInsightFromS3(platformType, baseDate);
+
+      // 2. 해당 계정만 필터링
+      List<JsonNode> filtered = baseDataList.stream()
+          .filter(node -> node.get("platformAccountId").asLong() == targetAccountId)
+          .collect(Collectors.toList());
+
+      if (filtered.isEmpty()) {
+        throw new RuntimeException("기준일 TypeInsight 데이터 없음: accountId=" + targetAccountId);
+      }
+
+      for (JsonNode baseData : filtered) {
+        String contentType = baseData.get("contentType").asText();
+        BigInteger currentTotalViews = new BigInteger(baseData.get("totalViews").asText());
+        int currentTotalContents = baseData.get("totalContents").asInt();
+        BigInteger currentTotalLikes = new BigInteger(baseData.get("totalLikes").asText());
+
+        // 365일 역순 생성
+        for (int i = 1; i <= 1; i++) {
+          LocalDate targetDate = baseDate.minusDays(i);
+
+          // today 값 생성
+          int todayViews = Math.min(30, Math.max(1, currentTotalViews.intValue() / 1000));
+          int todayContents = Math.min(30, Math.max(0, currentTotalContents / 100));
+          int todayLikes = Math.min(30, Math.max(1, currentTotalLikes.intValue() / 1000));
+
+          // total 갱신
+          BigInteger totalViews = currentTotalViews.subtract(BigInteger.valueOf(todayViews));
+          if (totalViews.compareTo(BigInteger.ZERO) < 0) totalViews = BigInteger.ZERO;
+
+          int totalContents = Math.max(0, currentTotalContents - todayContents);
+
+          BigInteger totalLikes = currentTotalLikes.subtract(BigInteger.valueOf(todayLikes));
+          if (totalLikes.compareTo(BigInteger.ZERO) < 0) totalLikes = BigInteger.ZERO;
+
+          // month 값 생성
+          long monthViews = todayViews * (20L + random.nextInt(11));
+          int monthContents = todayContents * (20 + random.nextInt(11));
+          long monthLikes = todayLikes * (20L + random.nextInt(11));
+
+          // S3 저장
+          saveTypeInsightToS3(platformType, targetDate, targetAccountId, contentType,
+              todayViews, todayContents, todayLikes, monthViews, monthContents, monthLikes,
+              totalViews, totalContents, totalLikes);
+
+          // DB 저장
+          saveTypeInsightToDB(targetAccountId, contentType, todayViews, todayContents, todayLikes,
+              monthViews, monthContents, monthLikes, totalViews, totalContents, totalLikes, targetDate);
+
+          // update
+          currentTotalViews = totalViews;
+          currentTotalContents = totalContents;
+          currentTotalLikes = totalLikes;
+        }
+      }
+
+      log.info("특정 계정 Type Insight 더미 생성 완료 - AccountId: {}", targetAccountId);
+
+    } catch (Exception e) {
+      log.error("특정 계정 Type Insight 더미 생성 실패 - AccountId: {}", targetAccountId, e);
+      throw new RuntimeException("특정 계정 Type Insight 더미 생성 실패", e);
+    }
+  }
+
+
 }

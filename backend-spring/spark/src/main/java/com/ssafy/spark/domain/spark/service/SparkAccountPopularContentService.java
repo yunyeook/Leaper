@@ -122,5 +122,64 @@ public class SparkAccountPopularContentService extends SparkBaseService{
       log.error("계정별 인기콘텐츠 저장 실패", e);
     }
   }
+  /**
+   * 특정 계정의 인기 콘텐츠 Top 3 생성 (오버로드)
+   * @param platformType 플랫폼 타입
+   * @param targetDate 통계를 생성할 기준 날짜
+   * @param specificPlatformAccountId 특정 계정 ID
+   */
+  public void generateAccountPopularContent(String platformType, LocalDate targetDate, Integer specificPlatformAccountId) {
+    try {
+      // 특정 계정의 닉네임 조회
+      String specificAccountNickname = getAccountNickname(specificPlatformAccountId);
+      if (specificAccountNickname == null) {
+        log.warn("계정을 찾을 수 없음: platformAccountId={}", specificPlatformAccountId);
+        return;
+      }
+
+      // 1. 해당 계정의 콘텐츠만 필터링해서 읽기
+      Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate)
+          .filter(col("accountNickname").equalTo(specificAccountNickname))
+          .cache();
+
+      // 2. 해당 계정의 조회수 기준 Top 3 추출
+      Dataset<Row> accountTop3 = contentData
+          .withColumn("contentRank", row_number().over(
+              org.apache.spark.sql.expressions.Window
+                  .partitionBy("accountNickname")
+                  .orderBy(col("viewsCount").desc())
+          ))
+          .filter(col("contentRank").leq(3));
+
+      // 3. 결과 저장
+      List<Row> results = accountTop3.collectAsList();
+
+      if (results.isEmpty()) {
+        log.warn("해당 계정의 콘텐츠를 찾을 수 없음: {}", specificAccountNickname);
+        return;
+      }
+
+      log.info("특정 계정 인기 콘텐츠 개수: {}", results.size());
+
+      for (Row row : results) {
+        String externalContentId = row.getAs("externalContentId");
+        Integer contentId = getContentId(platformType.toUpperCase(), externalContentId);
+        Integer contentRank = row.getAs("contentRank");
+
+        // 1) MySQL에 저장
+        saveAccountPopularContent(targetDate, contentId, contentRank, specificPlatformAccountId);
+
+        // 2) S3에도 저장
+        saveAccountPopularContentToS3(platformType, row, targetDate, contentId, contentRank,
+            externalContentId, specificPlatformAccountId, specificAccountNickname);
+      }
+
+      log.info("특정 계정 인기 콘텐츠 생성 완료: accountId={}", specificPlatformAccountId);
+
+    } catch (Exception e) {
+      log.error("특정 계정 인기 콘텐츠 생성 실패: accountId={}", specificPlatformAccountId, e);
+      throw new RuntimeException("특정 계정 인기 콘텐츠 생성 실패", e);
+    }
+  }
 
 }

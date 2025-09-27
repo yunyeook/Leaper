@@ -1,7 +1,7 @@
 package com.ssafy.spark.domain.crawling.connect.controller;
 
 import com.ssafy.spark.domain.crawling.connect.request.CrawlingRequest;
-import com.ssafy.spark.domain.crawling.service.CrawlingService;
+import com.ssafy.spark.domain.crawling.connect.service.CrawlingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,16 +19,15 @@ public class CrawlingController{
 
   @Autowired
   private CrawlingService crawlingService;
-
   /**
-   * 계정 연결 시 크롤링 시작하는 메서드
+   * 계정 연결 시 크롤링 & 인사이트 저장 시작하는 메서드
    */
-  @Value("${api.key}")
-  private String expectedApiKey;
+  @Value("${spark.api.key}")
+  private String expectedApiKey; //leaper와 소통하는 key
 
   @PostMapping("/start")
   public ResponseEntity<Boolean> startCrawling(
-      @RequestBody CrawlingRequest request,
+      @RequestBody CrawlingRequest crawlingRequest,
       @RequestHeader("X-API-Key") String apiKey) {
 
     try {
@@ -39,10 +38,10 @@ public class CrawlingController{
       }
 
       log.info("크롤링 요청 수신 - 계정 ID: {}, 플랫폼: {}",
-          request.getPlatformAccountId(), request.getPlatformTypeId());
+          crawlingRequest.getPlatformAccountId(), crawlingRequest.getPlatformTypeId());
 
       // 크롤링 서비스 호출
-      crawlingService.startCrawlingAsync(request);
+      crawlingService.startCrawlingAsync(crawlingRequest);
 
       return ResponseEntity.ok(true);
 

@@ -1,6 +1,7 @@
 package com.ssafy.spark.domain.business.platformAccount.repository;
 
 import com.ssafy.spark.domain.business.platformAccount.entity.PlatformAccount;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -50,5 +51,6 @@ public interface PlatformAccountRepository extends JpaRepository<PlatformAccount
 
     Optional<PlatformAccount> findByAccountNickname(String username);
     List<PlatformAccount> findByPlatformTypeIdAndIsDeleted(String platformTypeId, Boolean isDeleted);
-
+    @EntityGraph(attributePaths = {"categoryType", "platformType", "influencer"})
+    Optional<PlatformAccount> findWithAllRelationsById(Integer id);
 }

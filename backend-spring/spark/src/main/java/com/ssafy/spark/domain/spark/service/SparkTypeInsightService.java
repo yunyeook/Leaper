@@ -205,6 +205,9 @@ public class SparkTypeInsightService extends SparkBaseService {
   /**
    * DB에서 특정 일자의 스냅샷 불러오기
    */
+  /**
+   * DB에서 특정 일자의 스냅샷 불러오기
+   */
   private Map<String, SnapshotRow> loadSnapshotFromDB( LocalDate date) {
     String sql = "SELECT da.content_type_id, da.platform_account_id, da.total_views, da.total_likes, da.total_contents, pa.external_account_id " +
         "FROM daily_type_insight da " +
@@ -226,6 +229,71 @@ public class SparkTypeInsightService extends SparkBaseService {
       return map;
     });
   }
+
+  /**
+   * 특정 계정에 대한 DailyTypeInsight 생성 (오버로드)
+   */
+  public void generateDailyTypeInsight(String platformType, LocalDate targetDate, Integer specificPlatformAccountId) {
+    try {
+      // 특정 계정의 닉네임 조회
+      String specificAccountNickname = getAccountNickname(specificPlatformAccountId);
+      if (specificAccountNickname == null) {
+        log.warn("계정을 찾을 수 없음: platformAccountId={}", specificPlatformAccountId);
+        return;
+      }
+
+      // 1. 콘텐츠 데이터 읽기 (특정 계정만 필터링)
+      Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate)
+          .filter(col("accountNickname").equalTo(specificAccountNickname))
+          .cache();
+
+      // 2. 콘텐츠 타입별 통계 집계
+      Dataset<Row> typeStatistics = contentData
+          .filter(col("accountNickname").isNotNull())
+          .filter(col("contentType").isNotNull())
+          .groupBy("accountNickname", "contentType")
+          .agg(
+              sum(when(col("viewsCount").isNotNull(), col("viewsCount")).otherwise(0)).alias("totalViews"),
+              sum(when(col("likesCount").isNotNull(), col("likesCount")).otherwise(0)).alias("totalLikes"),
+              sum(when(col("commentsCount").isNotNull(), col("commentsCount")).otherwise(0)).alias("totalComments"),
+              count("*").alias("totalContents")
+          );
+
+      // 3. 결과 수집
+      List<Row> results = typeStatistics.collectAsList();
+      if (results.isEmpty()) {
+        log.warn("해당 계정의 데이터를 찾을 수 없음: {}", specificAccountNickname);
+        return;
+      }
+
+      // 4. DB에서 "어제", "전달 말일" 스냅샷 불러오기
+      LocalDate yesterday = targetDate.minusDays(1);
+      LocalDate lastMonthEnd = targetDate.withDayOfMonth(1).minusDays(1);
+
+      Map<String, SnapshotRow> yesterdaySnapshot = loadSnapshotFromDB(yesterday);
+      Map<String, SnapshotRow> lastMonthSnapshot = loadSnapshotFromDB(lastMonthEnd);
+
+      // 5. 결과 저장
+      for (Row row : results) {
+        String accountNickname = row.getAs("accountNickname");
+        String contentType = row.getAs("contentType");
+
+        saveDailyTypeInsight(row, targetDate, yesterdaySnapshot, lastMonthSnapshot,
+            specificPlatformAccountId, accountNickname, contentType);
+
+        saveTypeStatisticsToS3(platformType, row, targetDate, yesterdaySnapshot, lastMonthSnapshot,
+            specificPlatformAccountId, accountNickname, contentType);
+      }
+
+      log.info("특정 계정 DailyTypeInsight 생성 완료: accountId={}, nickname={}",
+          specificPlatformAccountId, specificAccountNickname);
+
+    } catch (Exception e) {
+      log.error("특정 계정 DailyTypeInsight 생성 실패: accountId={}", specificPlatformAccountId, e);
+      throw new RuntimeException("특정 계정 DailyTypeInsight 생성 실패", e);
+    }
+  }
+
 
   /**
    * 스냅샷 값 담는 DTO

@@ -290,4 +290,15 @@ public class SparkBaseService {
       return null;
     }
   }
+
+  // 계정 ID로 닉네임 조회하는 헬퍼 메서드 추가 필요
+  protected String getAccountNickname(Integer platformAccountId) {
+    try {
+      String sql = "SELECT account_nickname FROM platform_account WHERE platform_account_id = ?";
+      return jdbcTemplate.queryForObject(sql, String.class, platformAccountId);
+    } catch (Exception e) {
+      log.error("계정 닉네임 조회 실패: platformAccountId={}", platformAccountId, e);
+      return null;
+    }
+  }
 }

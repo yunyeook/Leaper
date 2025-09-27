@@ -16,6 +16,7 @@ import com.ssafy.leaper.domain.type.repository.CategoryTypeRepository;
 import com.ssafy.leaper.domain.type.repository.PlatformTypeRepository;
 import com.ssafy.leaper.global.error.ErrorCode;
 import com.ssafy.leaper.global.error.exception.BusinessException;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,14 +47,65 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
     private final S3PresignedUrlService s3PresignedUrlService;
     private final RestTemplate restTemplate;
 
-//    @Value("${spark.server.host}")
-//    private String sparkServerHost;
-//
-//    @Value("${spark.server.port}")
-//    private String sparkServerPort;
-//
-//    @Value("${spark.api.key}")
-//    private String sparkApiKey;
+    @Value("${spark.server.host}")
+    private String sparkServerHost;
+
+    @Value("${spark.server.port}")
+    private String sparkServerPort;
+
+    @Value("${spark.api.key}")
+    private String sparkApiKey;
+
+    @Override
+    public void connect() {
+        try {
+            Optional<PlatformAccount> accountOpt = platformAccountRepository.findById(372L);
+            if (accountOpt.isPresent()) {
+                triggerCrawlingAsync(accountOpt.get());
+                log.info("triggerCrawlingAsync 호출 완료");
+            } else {
+                log.warn("테스트용 PlatformAccount를 찾을 수 없음");
+            }
+        } catch (Exception e) {
+            log.error("connect 테스트 실패", e);
+        }
+    }
+
+    /**
+     * Spark 서버에 비동기로 크롤링 요청
+     */
+    @Async("taskExecutor")
+    public void triggerCrawlingAsync(PlatformAccount platformAccount) {
+        try {
+            //TODO : 운영시 https로 변경하기
+            String sparkUrl = "http://" + sparkServerHost + ":" + sparkServerPort;
+
+            // 크롤링 요청 DTO
+            CrawlingRequest crawlingRequest = CrawlingRequest.from(platformAccount);
+
+            // HTTP 헤더 설정
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON); // 보내는 데이터는 JSON 형태
+            headers.set("X-API-Key", sparkApiKey); // 아무나 Spark 서버에 크롤링 요청을 보낼 수 없게 막는 용도
+
+            HttpEntity<CrawlingRequest> entity = new HttpEntity<>(crawlingRequest, headers);
+
+            // Spark 서버에 POST 요청
+            ResponseEntity<Boolean> response = restTemplate.postForEntity(
+                sparkUrl + "/api/v1/crawling/start",
+                entity,
+                Boolean.class  // 요청 갔는지 확인
+            );
+
+            log.info("Spark 서버로 크롤링 요청 전송 완료 - 계정 ID: {}, 응답 상태: {}, 성공 여부: {}",
+                platformAccount.getId(), response.getStatusCode(), response.getBody());
+
+        } catch (Exception e) {
+            log.error("Spark 서버로 크롤링 요청 전송 실패 - 계정 ID: {}", platformAccount.getId(), e);
+        }
+    }
+
+//    =====================================================
 
 
     @Override
@@ -126,8 +178,7 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
             platformAccountRepository.save(platformAccount);
 
             // 계정 연결시 Spark 서버에서 해당 계정 크롤링 및 S3와 DB 저장 로직 추가
-            //TODO : 활성화 하기
-//            triggerCrawlingAsync(platformAccount);
+            triggerCrawlingAsync(platformAccount);
 
             log.info("플랫폼 계정 등록 완료 - 플랫폼: {}, 계정: {}",
                     request.getPlatformTypeId(), request.getAccountNickname());
@@ -136,38 +187,6 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
         log.info("모든 플랫폼 계정 등록 완료 - 인플루언서 ID: {}", influencerId);
     }
 
-//    /**
-//     * Spark 서버에 비동기로 크롤링 요청
-//     */
-//    @Async("taskExecutor")
-//    public void triggerCrawlingAsync(PlatformAccount platformAccount) {
-//        try {
-//            String sparkUrl = "http://" + sparkServerHost + ":" + sparkServerPort;
-//
-//            // 크롤링 요청 DTO
-//            CrawlingRequest crawlingRequest = CrawlingRequest.from(platformAccount);
-//
-//            // HTTP 헤더 설정
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.setContentType(MediaType.APPLICATION_JSON); // 보내는 데이터는 JSON 형태
-//            headers.set("X-API-Key", sparkApiKey); // 아무나 Spark 서버에 크롤링 요청을 보낼 수 없게 막는 용도
-//
-//            HttpEntity<CrawlingRequest> entity = new HttpEntity<>(crawlingRequest, headers);
-//
-//            // Spark 서버에 POST 요청
-//            ResponseEntity<Boolean> response = restTemplate.postForEntity(
-//                sparkUrl + "/api/v1/crawling/start",
-//                entity,
-//                Boolean.class  // Boolean으로 변경
-//            );
-//
-//            log.info("Spark 서버로 크롤링 요청 전송 완료 - 계정 ID: {}, 응답 상태: {}, 성공 여부: {}",
-//                platformAccount.getId(), response.getStatusCode(), response.getBody());
-//
-//        } catch (Exception e) {
-//            log.error("Spark 서버로 크롤링 요청 전송 실패 - 계정 ID: {}", platformAccount.getId(), e);
-//        }
-//    }
 
     @Override
     @Transactional(readOnly = true)

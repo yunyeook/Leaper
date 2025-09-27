@@ -70,7 +70,7 @@ apify:
   base-url: https://api.apify.com/v2
 
 api:
-  key: ${API_KEY:your-secret-key}  # Leaper와 같은 키
+  key: ${API_KEY}  # Leaper와 같은 키
 
 
 youtube:
@@ -79,3 +79,13 @@ youtube:
     key2: ${YOUTUBE_API_V3_KEY_2}
     key3: ${YOUTUBE_API_V3_KEY_3}
     base-url: https://www.googleapis.com/youtube/v3
+
+spark:
+  server:
+    host: ${SPARK_SERVER_HOST}  # 또는 실제 Spark 서버 주소
+    port: ${SPARK_SERVER_PORT}      # Spark 서버 포트
+  api:
+    key: ${SPARK_API_KEY}
+
+server:
+  port: 8081

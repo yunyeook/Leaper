@@ -385,20 +385,12 @@ public class InstagramContentService extends BaseApifyService {
     return firstLine.isEmpty() ? "Instagram 게시물" : firstLine;
   }
 
-//  /**
-//   * 모든 콘텐츠 ID 조회
-//   */
-//  public List<Integer> getAllContentIds() {
-//    return contentRepository.findAll().stream()
-//        .map(Content::getId)
-//        .collect(Collectors.toList());
-//  }
   /**
    * Instagram 특정 계정의 콘텐츠 ID만 조회
    */
   public List<Integer> getInstagramPlaformAccountContentIds(Integer platformAccountId) {
     return contentRepository.findByPlatformTypeId("INSTAGRAM").stream()
-        .filter(content -> content.getPlatformAccount().getId() >= platformAccountId)
+        .filter(content -> content.getPlatformAccount().getId() == platformAccountId)
         .map(Content::getId)
         .collect(Collectors.toList());
   }
@@ -407,7 +399,6 @@ public class InstagramContentService extends BaseApifyService {
    */
   public List<Integer> getInstagramContentIds() {
     return contentRepository.findByPlatformTypeId("INSTAGRAM").stream()
-//        .filter(content -> content.getId() >= 239)
         .map(Content::getId)
         .collect(Collectors.toList());
   }

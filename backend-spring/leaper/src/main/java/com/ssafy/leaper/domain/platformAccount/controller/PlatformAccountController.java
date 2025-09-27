@@ -8,6 +8,7 @@ import com.ssafy.leaper.global.common.response.ResponseStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.objectweb.asm.Handle;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -23,6 +24,14 @@ import java.util.Map;
 public class PlatformAccountController {
 
     private final PlatformAccountService platformAccountService;
+    //TODO : 삭제 예정 =>요청 테스트
+    @GetMapping("/connect/test")
+    public ResponseEntity<String> connectSuccess(){
+        platformAccountService.connect();
+        return ResponseEntity.ok("connectOk");
+    }
+
+
 
     @PostMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> createPlatformAccounts(
