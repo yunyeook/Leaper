@@ -82,7 +82,7 @@ public class CommentService extends BaseApifyService {
           return "{\"error\": \"댓글 수집 실패: " + status + "\"}";
         }
 
-        Thread.sleep(10000);
+        Thread.sleep(5000);
       }
 
       if (isCompleted) {
@@ -230,6 +230,8 @@ public class CommentService extends BaseApifyService {
 
         // 배치 내 개별 처리
         for (Integer contentId : batchIds) {
+          if(contentId<252) continue;
+
           try {
             log.info("개별 댓글 수집 시작 - Content ID: {}", contentId);
 
@@ -247,10 +249,10 @@ public class CommentService extends BaseApifyService {
           }
         }
 
-        // 배치 간 대기 (API 제한 방지)
+        // 배치 간 대기 (API 제한 방지) 시스템 과부하 안되도록
         if (endIndex < contentIds.size()) {
-          Thread.sleep(10000); // 10초 대기
-          log.info("다음 배치까지 10초 대기...");
+          Thread.sleep(5000); // 5초 대기
+          log.info("다음 배치까지 5초 대기...");
         }
       }
 
