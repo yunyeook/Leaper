@@ -1,10 +1,9 @@
 package com.ssafy.spark.domain.crawling.service;
 
-import com.ssafy.spark.domain.crawling.dto.request.CrawlingRequest;
+import com.ssafy.spark.domain.crawling.connect.request.CrawlingRequest;
 import com.ssafy.spark.domain.crawling.instagram.service.CommentService;
-import com.ssafy.spark.domain.crawling.instagram.service.ContentService;
+import com.ssafy.spark.domain.crawling.instagram.service.InstagramContentService;
 import com.ssafy.spark.domain.crawling.instagram.service.ProfileService;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -18,7 +17,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CrawlingService {
   private final ProfileService profileService;
-  private final ContentService contentService;
+  private final InstagramContentService contentService;
   private final CommentService commentService;
 
   @Async

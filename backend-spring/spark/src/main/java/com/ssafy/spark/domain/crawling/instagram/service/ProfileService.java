@@ -1,12 +1,18 @@
 package com.ssafy.spark.domain.crawling.instagram.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.ssafy.spark.domain.business.file.entity.File;
+import com.ssafy.spark.domain.business.influencer.entity.Influencer;
+import com.ssafy.spark.domain.business.influencer.repository.InfluencerRepository;
+import com.ssafy.spark.domain.business.platformAccount.entity.PlatformAccount;
+import com.ssafy.spark.domain.business.platformAccount.repository.PlatformAccountRepository;
+import com.ssafy.spark.domain.business.type.entity.CategoryType;
+import com.ssafy.spark.domain.business.type.entity.PlatformType;
+import com.ssafy.spark.domain.business.type.entity.ProviderType;
+import com.ssafy.spark.domain.business.type.repository.CategoryTypeRepository;
+import com.ssafy.spark.domain.business.type.repository.PlatformTypeRepository;
+import com.ssafy.spark.domain.business.type.repository.ProviderTypeRepository;
 import com.ssafy.spark.domain.crawling.instagram.dto.ProfileRawData;
-import com.ssafy.spark.domain.crawling.instagram.entity.File;
-import com.ssafy.spark.domain.crawling.instagram.entity.Influencer;
-import com.ssafy.spark.domain.crawling.instagram.entity.PlatformAccount;
-import com.ssafy.spark.domain.crawling.instagram.repository.InfluencerRepository;
-import com.ssafy.spark.domain.crawling.instagram.repository.PlatformAccountRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,9 +36,12 @@ public class ProfileService extends BaseApifyService {
 
   private final InfluencerRepository influencerRepository;
   private final PlatformAccountRepository platformAccountRepository;
+  private final ProviderTypeRepository providerTypeRepository;
+  private final PlatformTypeRepository platformTypeRepository;
+  private final CategoryTypeRepository categoryTypeRepository;
   private final S3Service s3Service;
   private final ImageService imageService;
-  private final JdbcTemplate jdbcTemplate; // ← 이 줄 추가
+  private final JdbcTemplate jdbcTemplate;
 
   /**
    * 프로필 정보 수집
@@ -179,34 +188,40 @@ public class ProfileService extends BaseApifyService {
     String username = profile.path("username").asText();
     String fullName = profile.path("fullName").asText();
     String biography = profile.path("biography").asText();
-
+    ProviderType googleType = providerTypeRepository.findById("GOOGLE")
+        .orElseThrow(() -> new IllegalArgumentException("ProviderType GOOGLE not found"));
     return Influencer.builder()
-        .providerTypeId("GOOGLE")
+        .providerType(googleType)
         .providerMemberId(username!=null?username:LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")))
         .nickname(fullName.isEmpty() ? username : fullName)
         .gender(true)
         .birthday(LocalDate.now().minusYears(25))
         .email(username + "@instagram.com")
         .bio(biography.length() > 401 ? biography.substring(0, 401) : biography)
-        .influencerProfileImageId(profileImageFile != null ? profileImageFile.getId() : null)
+        .profileImageId(profileImageFile != null ? profileImageFile.getId() : null)
         .isDeleted(false)
         .build();
   }
 
-  private PlatformAccount createPlatformAccountFromProfile(JsonNode profile, Integer influencerId, Integer categoryTypeId, File profileImageFile) {
+  private PlatformAccount createPlatformAccountFromProfile(
+      JsonNode profile,
+      Influencer influencer,            // ✅ 엔티티 직접 받기
+      PlatformType platformType,        // ✅ 엔티티 직접 받기
+      CategoryType categoryType,        // ✅ 엔티티 직접 받기
+      File profileImageFile
+  ) {
     String username = profile.path("username").asText();
     String fullName = profile.path("fullName").asText();
     String url = profile.path("url").asText();
 
-
     return PlatformAccount.builder()
-        .influencerId(influencerId)
-        .platformTypeId("INSTAGRAM")
+        .influencer(influencer)               // ✅ Influencer 엔티티
+        .platformType(platformType)           // ✅ PlatformType 엔티티
         .externalAccountId(profile.path("id").asText())
         .accountNickname(username)
         .accountUrl(url)
         .accountProfileImageId(profileImageFile != null ? profileImageFile.getId() : null)
-        .categoryTypeId(categoryTypeId)
+        .categoryType(categoryType)           // ✅ CategoryType 엔티티
         .isDeleted(false)
         .deletedAt(null)
         .build();
@@ -228,7 +243,16 @@ public class ProfileService extends BaseApifyService {
       Influencer influencer = createInfluencerFromProfile(profile, profileImageFile);
       Influencer savedInfluencer = influencerRepository.save(influencer);
 
-      PlatformAccount platformAccount = createPlatformAccountFromProfile(profile, savedInfluencer.getId(), categoryTypeId, profileImageFile);
+// 1. 필요한 엔티티들 조회
+      PlatformType platformType = platformTypeRepository.findById("INSTAGRAM")
+          .orElseThrow(() -> new IllegalArgumentException("INSTAGRAM 플랫폼 타입을 찾을 수 없습니다"));
+
+      CategoryType categoryType = categoryTypeRepository.findById((short)categoryTypeId.intValue())
+          .orElseThrow(() -> new IllegalArgumentException("카테고리 타입을 찾을 수 없습니다: " + categoryTypeId));
+
+// 2. 엔티티 객체들을 전달
+      PlatformAccount platformAccount = createPlatformAccountFromProfile(profile, savedInfluencer, platformType, categoryType, profileImageFile);
+
       platformAccountRepository.save(platformAccount);
 
       saveProfileToS3(profile, categoryTypeId);
@@ -257,7 +281,7 @@ public class ProfileService extends BaseApifyService {
           .accountUrl(accountUrl)
           .followersCount(followersCount)
           .postsCount(postsCount)
-          .crawledAt(Instant.now().toString()) //TODO : 날짜  utc
+          .crawledAt(Instant.now().toString()) //TODO : 날짜  utc인데.. 아시아서울하려면 localdate?
           .build();
 
       // Pretty-print JSON으로 저장
@@ -353,7 +377,15 @@ public class ProfileService extends BaseApifyService {
         profileImageFile = imageService.downloadAndSaveProfileImage(profilePicUrl, username);
       }
 
-      PlatformAccount platformAccount = createPlatformAccountFromProfile(profile, existingInfluencerId, categoryTypeId, profileImageFile);
+      PlatformType platformType = platformTypeRepository.findById("INSTAGRAM")
+          .orElseThrow(() -> new IllegalArgumentException("INSTAGRAM 플랫폼 타입을 찾을 수 없습니다"));
+
+      CategoryType categoryType = categoryTypeRepository.findById((short)categoryTypeId.intValue())
+          .orElseThrow(() -> new IllegalArgumentException("카테고리 타입을 찾을 수 없습니다: " + categoryTypeId));
+
+      // 2. 엔티티 객체들을 전달
+      PlatformAccount platformAccount = createPlatformAccountFromProfile(profile, existingInfluencer, platformType, categoryType, profileImageFile);
+
       platformAccountRepository.save(platformAccount);
 
       saveProfileToS3(profile, categoryTypeId);
@@ -521,8 +553,7 @@ public class ProfileService extends BaseApifyService {
       String username = platformAccount.getAccountNickname();
 
       // S3에 업데이트된 프로필 정보 저장
-      saveProfileToS3(profile, platformAccount.getCategoryTypeId());
-
+      saveProfileToS3(profile, platformAccount.getCategoryType().getId().intValue());
       log.info("프로필 정보 S3 업데이트 완료 - 계정: {}", username);
 
     } catch (Exception e) {
