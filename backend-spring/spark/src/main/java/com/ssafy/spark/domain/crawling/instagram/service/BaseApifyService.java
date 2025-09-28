@@ -225,6 +225,8 @@ public class BaseApifyService {
         lowerMessage.contains("limit") ||
         lowerMessage.contains("credit") ||
         lowerMessage.contains("usage") ||
+        lowerMessage.contains("monthly usage hard limit exceeded") ||
+        lowerMessage.contains("platform-feature-disabled")||
         lowerMessage.contains("exceeded");
   }
 
