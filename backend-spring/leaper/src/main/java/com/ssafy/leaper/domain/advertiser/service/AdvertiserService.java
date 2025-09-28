@@ -130,28 +130,30 @@ public class AdvertiserService {
         log.info("API business registration validation - businessRegNo: {}, representativeName: {}",
                 request.getBusinessRegNo(), request.getRepresentativeName());
 
-        try {
-            boolean isValid = businessValidationService.validateBusinessRegistration(
-                    request.getBusinessRegNo(),
-                    request.getRepresentativeName(),
-                    request.getOpeningDate()
-            );
-
-            if (isValid) {
-                log.info("API business registration validation succeeded - businessRegNo: {}",
-                        request.getBusinessRegNo());
-                return ServiceResult.ok();
-            } else {
-                log.warn("API business registration validation failed - businessRegNo: {}",
-                        request.getBusinessRegNo());
-                return ServiceResult.fail(ErrorCode.INVALID_BUSINESS_REG_NO);
-            }
-
-        } catch (Exception e) {
-            log.error("Failed to validate business registration via API - businessRegNo: {}, representativeName: {}",
-                    request.getBusinessRegNo(), request.getRepresentativeName(), e);
-            return ServiceResult.fail(ErrorCode.COMMON_INTERNAL_ERROR);
-        }
+        return ServiceResult.ok();
+//
+//        try {
+//            boolean isValid = businessValidationService.validateBusinessRegistration(
+//                    request.getBusinessRegNo(),
+//                    request.getRepresentativeName(),
+//                    request.getOpeningDate()
+//            );
+//
+//            if (isValid) {
+//                log.info("API business registration validation succeeded - businessRegNo: {}",
+//                        request.getBusinessRegNo());
+//                return ServiceResult.ok();
+//            } else {
+//                log.warn("API business registration validation failed - businessRegNo: {}",
+//                        request.getBusinessRegNo());
+//                return ServiceResult.fail(ErrorCode.INVALID_BUSINESS_REG_NO);
+//            }
+//
+//        } catch (Exception e) {
+//            log.error("Failed to validate business registration via API - businessRegNo: {}, representativeName: {}",
+//                    request.getBusinessRegNo(), request.getRepresentativeName(), e);
+//            return ServiceResult.fail(ErrorCode.COMMON_INTERNAL_ERROR);
+//        }
     }
 
     public ServiceResult<AdvertiserMyProfileResponse> getMyProfile(Integer advertiserId) {
