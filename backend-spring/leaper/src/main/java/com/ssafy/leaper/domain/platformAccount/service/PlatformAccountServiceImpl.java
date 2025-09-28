@@ -47,6 +47,9 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
     private final S3PresignedUrlService s3PresignedUrlService;
     private final RestTemplate restTemplate;
 
+    @Value("${spark.server.protocol}")
+    private String sparkServerProtocol;
+
     @Value("${spark.server.host}")
     private String sparkServerHost;
 
@@ -78,7 +81,7 @@ public class PlatformAccountServiceImpl implements PlatformAccountService {
     public void triggerCrawlingAsync(PlatformAccount platformAccount) {
         try {
             //TODO : 운영시 https로 변경하기
-            String sparkUrl = "http://" + sparkServerHost + ":" + sparkServerPort;
+            String sparkUrl = sparkServerProtocol + sparkServerHost + ":" + sparkServerPort;
 
             // 크롤링 요청 DTO
             CrawlingRequest crawlingRequest = CrawlingRequest.from(platformAccount);

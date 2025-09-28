@@ -66,7 +66,19 @@ logging:
     
 # Apify API 설정 : 인스타그램 설정
 apify:
-  api-key: ${APIFY_KEY}
+  api:
+    key1: ${APIFY_API_KEY_1}
+    key2: ${APIFY_API_KEY_2}
+    key3: ${APIFY_API_KEY_3}
+    key4: ${APIFY_API_KEY_4}
+    key5: ${APIFY_API_KEY_5}
+    key6: ${APIFY_API_KEY_6}
+    key7: ${APIFY_API_KEY_7}
+    key8: ${APIFY_API_KEY_8}
+    key9: ${APIFY_API_KEY_9}
+    key10: ${APIFY_API_KEY_10}
+    key11: ${APIFY_API_KEY_11}
+    key12: ${APIFY_API_KEY_12}
   base-url: https://api.apify.com/v2
 
 api:
@@ -82,10 +94,11 @@ youtube:
 
 spark:
   server:
+    protocol: ${SPARK_SERVER_PROTOCOL}
     host: ${SPARK_SERVER_HOST}  # 또는 실제 Spark 서버 주소
     port: ${SPARK_SERVER_PORT}      # Spark 서버 포트
   api:
     key: ${SPARK_API_KEY}
 
 server:
-  port: 8081
+  port: 8080

@@ -179,8 +179,9 @@ server:
 # Spark 서버 정보
 spark:
   server:
-    host: ${SPARK_SERVER_HOST}
-    port: ${SPARK_SERVER_PORT}
+    protocol: ${SPARK_SERVER_PROTOCOL}
+    host: ${SPARK_SERVER_HOST}  # 또는 실제 Spark 서버 주소
+    port: ${SPARK_SERVER_PORT}      # Spark 서버 포트
   api:
     key: ${SPARK_API_KEY}
 
