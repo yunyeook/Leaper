@@ -7,6 +7,7 @@ import com.ssafy.spark.domain.business.platformAccount.repository.PlatformAccoun
 import com.ssafy.spark.domain.crawling.connect.request.CrawlingRequest;
 import com.ssafy.spark.domain.crawling.instagram.dto.ProfileRawData;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -149,7 +150,7 @@ public class ProfileService extends BaseApifyService {
           .accountUrl(accountUrl)
           .followersCount(followersCount)
           .postsCount(postsCount)
-          .crawledAt(Instant.now().toString()) //TODO : 날짜  utc인데.. 아시아서울하려면 localdate?
+          .crawledAt(LocalDateTime.now().toString())
           .build();
 
       // Pretty-print JSON으로 저장
