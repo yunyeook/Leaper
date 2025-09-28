@@ -82,7 +82,7 @@ public class SearchRepositoryImpl implements SearchRepository {
             parameters.put("maxFollowers", request.getMaxFollowers());
         }
 
-        jpql.append("ORDER BY i.id DESC, pa.id ASC"); // 인플루언서별로 정렬, 계정별로 정렬
+        jpql.append("ORDER BY dai.totalFollowers DESC NULLS LAST, i.id DESC, pa.id ASC"); // 팔로워 수 내림차순, 인플루언서별로 정렬, 계정별로 정렬
 
         // 3. 쿼리 실행
         log.info("실행할 JPQL: {}", jpql.toString());
