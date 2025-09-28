@@ -45,20 +45,20 @@ public class AdvertiserService {
             }
 
             // 2. 중복 검증 - 사업자등록번호
-            if (advertiserRepository.existsByBusinessRegNo(request.getBusinessRegNo())) {
-                log.warn("Advertiser signup failed - duplicate businessRegNo: {}", request.getBusinessRegNo());
-                return ServiceResult.fail(ErrorCode.DUPLICATE_BUSINESS_REG_NO);
-            }
+//            if (advertiserRepository.existsByBusinessRegNo(request.getBusinessRegNo())) {
+//                log.warn("Advertiser signup failed - duplicate businessRegNo: {}", request.getBusinessRegNo());
+//                return ServiceResult.fail(ErrorCode.DUPLICATE_BUSINESS_REG_NO);
+//            }
 
             // 3. 실제 사업자등록번호 검증 (국세청 API)
-            if (!businessValidationService.validateBusinessRegistration(
-                    request.getBusinessRegNo(),
-                    request.getRepresentativeName(),
-                    request.getOpeningDate())) {
-                log.warn("Advertiser signup failed - invalid business registration: businessRegNo: {}, representativeName: {}",
-                        request.getBusinessRegNo(), request.getRepresentativeName());
-                return ServiceResult.fail(ErrorCode.INVALID_BUSINESS_REG_NO);
-            }
+//            if (!businessValidationService.validateBusinessRegistration(
+//                    request.getBusinessRegNo(),
+//                    request.getRepresentativeName(),
+//                    request.getOpeningDate())) {
+//                log.warn("Advertiser signup failed - invalid business registration: businessRegNo: {}, representativeName: {}",
+//                        request.getBusinessRegNo(), request.getRepresentativeName());
+//                return ServiceResult.fail(ErrorCode.INVALID_BUSINESS_REG_NO);
+//            }
 
             // 3. 프로필 이미지 업로드 처리
             com.ssafy.leaper.domain.file.entity.File companyProfileImage = handleProfileImageUpload(request.getCompanyProfileImage());
