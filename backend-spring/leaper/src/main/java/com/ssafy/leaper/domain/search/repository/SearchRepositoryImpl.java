@@ -94,6 +94,9 @@ public class SearchRepositoryImpl implements SearchRepository {
             query.setParameter(param.getKey(), param.getValue());
         }
 
+        // TODO : 결과를 50개로 제한 -> 페이지네이션으로 구현할 것
+        query.setMaxResults(50);
+
         List<Object[]> results = query.getResultList();
         log.info("쿼리 결과 개수: {}", results.size());
 
