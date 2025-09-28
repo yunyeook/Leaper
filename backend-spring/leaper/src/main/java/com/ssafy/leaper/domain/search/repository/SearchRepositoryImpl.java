@@ -40,7 +40,7 @@ public class SearchRepositoryImpl implements SearchRepository {
             .append("JOIN pa.platformType pt ") // 플랫폼 타입
             .append("LEFT JOIN pa.accountProfileImage paf ") // 계정 프로필 이미지
             .append("LEFT JOIN pa.categoryType ct ") // 카테고리
-            .append("LEFT JOIN DailyAccountInsight dai ON dai.platformAccount.id = pa.id ") // 인사이트
+            .append("LEFT JOIN DailyAccountInsight dai ON dai.platformAccount.id = pa.id AND dai.snapshotDate = CURRENT_DATE - 1 DAY ") // 어제 인사이트만
             .append("WHERE i.isDeleted = false "); // 삭제되지 않은 인플루언서만
 
         Map<String, Object> parameters = new HashMap<>();
@@ -94,7 +94,7 @@ public class SearchRepositoryImpl implements SearchRepository {
             query.setParameter(param.getKey(), param.getValue());
         }
 
-        // TODO : 결과를 50개로 제한 -> 페이지네이션으로 구현할 것
+        // TODO : 결과를 150개로 제한 -> 페이지네이션으로 구현할 것
         query.setMaxResults(50);
 
         List<Object[]> results = query.getResultList();
