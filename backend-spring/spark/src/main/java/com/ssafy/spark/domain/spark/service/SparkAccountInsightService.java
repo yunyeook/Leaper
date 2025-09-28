@@ -135,7 +135,7 @@ public class SparkAccountInsightService extends SparkBaseService {
       Integer totalContents = getIntegerValue(row, "totalContents");
 
       // 3. like_score 계산
-      Double likeScore = calculateLikeScore(totalViews, totalLikes, totalComments);
+      Double likeScore = calculateLikeScore(totalViews, totalLikes, totalComments,totalFollowers);
 
       // 4. MySQL INSERT/UPDATE 쿼리
       String sql = "INSERT INTO daily_account_insight " +
@@ -170,19 +170,94 @@ public class SparkAccountInsightService extends SparkBaseService {
     }
   }
 
-  private Double calculateLikeScore(BigInteger totalViews, BigInteger totalLikes, BigInteger totalComments) {
+  private Double calculateLikeScore(BigInteger totalViews, BigInteger totalLikes, BigInteger totalComments,Integer totalFollowers) {
     if (totalViews.equals(BigInteger.ZERO)) return 0.0;
 
     double views = totalViews.doubleValue();
     double likes = totalLikes.doubleValue();
     double comments = totalComments.doubleValue();
+    double followers = totalFollowers.doubleValue();
 
     // 참여율 계산 (0~100%)
-    double engagementRate = (likes + comments) / views * 100;
+    double denominator = views!=0.0?views:followers;
+    double engagementRate = (likes + comments) / denominator * 100;
 
     // 0~100점 범위로 제한
     double score = Math.min(100.0, Math.max(0.0, engagementRate * 10));
 
     return Math.round(score * 100.0) / 100.0;
   }
+  /**
+   * 특정 계정에 대한 DailyAccountInsight 생성 (오버로드)
+   * @param platformType 플랫폼 타입
+   * @param targetDate 통계를 생성할 기준 날짜
+   * @param specificPlatformAccountId 특정 계정 ID
+   */
+  public void generateDailyAccountInsight(String platformType, LocalDate targetDate, Integer specificPlatformAccountId) {
+    try {
+      // 특정 계정의 닉네임 조회
+      String specificAccountNickname = getAccountNickname(specificPlatformAccountId);
+      if (specificAccountNickname == null) {
+        log.warn("계정을 찾을 수 없음: platformAccountId={}", specificPlatformAccountId);
+        return;
+      }
+
+      // 1. 콘텐츠 데이터 읽기 (특정 계정만 필터링)
+      Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate)
+          .filter(col("accountNickname").equalTo(specificAccountNickname))
+          .cache();
+
+      // 2. 계정 프로필 데이터 읽기 (특정 계정만 필터링)
+      Dataset<Row> accountData = readS3AccountData(platformType, targetDate)
+          .filter(col("accountNickname").equalTo(specificAccountNickname))
+          .cache();
+
+      // 3. 콘텐츠별 통계 집계
+      Dataset<Row> contentStatistics = contentData
+          .filter(col("accountNickname").isNotNull())
+          .groupBy("accountNickname")
+          .agg(
+              sum(when(col("viewsCount").isNotNull(), col("viewsCount")).otherwise(0)).alias("totalViews"),
+              sum(when(col("likesCount").isNotNull(), col("likesCount")).otherwise(0)).alias("totalLikes"),
+              sum(when(col("commentsCount").isNotNull(), col("commentsCount")).otherwise(0)).alias("totalComments"),
+              count("*").alias("totalContents")
+          );
+
+      // 4. 계정 프로필 정보에서 팔로워 수 추출
+      Dataset<Row> accountFollowers = accountData
+          .filter(col("accountNickname").isNotNull())
+          .select("accountNickname", "followersCount")
+          .withColumnRenamed("followersCount", "totalFollowers");
+
+      // 5. 콘텐츠 통계 + 계정 정보 조인
+      Dataset<Row> joinedData = contentStatistics
+          .join(accountFollowers, "accountNickname")
+          .select("accountNickname", "totalViews", "totalLikes",
+              "totalComments", "totalContents", "totalFollowers");
+
+      // 6. 결과 저장 (1개 계정만)
+      List<Row> results = joinedData.collectAsList();
+
+      if (results.isEmpty()) {
+        log.warn("해당 계정의 데이터를 찾을 수 없음: {}", specificAccountNickname);
+        return;
+      }
+
+      Row row = results.get(0);
+
+      // 1) MySQL에 저장
+      saveDailyAccountInsight(platformType, row, targetDate, specificPlatformAccountId, specificAccountNickname);
+
+      // 2) S3에도 저장
+      saveStatisticsToS3(platformType, row, targetDate, specificPlatformAccountId, specificAccountNickname);
+
+      log.info("특정 계정 인사이트 생성 완료: accountId={}, nickname={}", specificPlatformAccountId, specificAccountNickname);
+
+    } catch (Exception e) {
+      log.error("특정 계정 DailyAccountInsight 생성 실패: accountId={}", specificPlatformAccountId, e);
+      throw new RuntimeException("특정 계정 DailyAccountInsight 생성 실패", e);
+    }
+  }
+
+
 }

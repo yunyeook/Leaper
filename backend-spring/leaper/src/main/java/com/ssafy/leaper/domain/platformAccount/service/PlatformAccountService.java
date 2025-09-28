@@ -14,4 +14,5 @@ public interface PlatformAccountService {
     PlatformAccountResponse getPlatformAccountById(Integer platformAccountId);
 
     void deletePlatformAccount(Integer influencerId, Integer platformAccountId);
+    void connect();
 }

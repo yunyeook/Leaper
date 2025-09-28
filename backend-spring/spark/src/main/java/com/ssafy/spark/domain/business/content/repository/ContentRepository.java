@@ -69,6 +69,8 @@ public interface ContentRepository extends JpaRepository<Content, Integer> {
     Optional<Content> findByExternalContentId(String externalContentId); // 인스타
 
     List<Content> findByPlatformTypeId(String platformTypeId); // 인스타
+    List<Content> findByPlatformAccountId(Integer platformAccountId);
+
 
     @Query("SELECT COUNT(c) > 0 FROM Content c " +
         "WHERE c.platformAccount = :platformAccount " +
