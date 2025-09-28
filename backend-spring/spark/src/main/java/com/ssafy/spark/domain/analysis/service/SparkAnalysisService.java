@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;

@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import static org.apache.spark.sql.functions.*;
 
-
 import static org.apache.spark.sql.functions.*;
 
 @Slf4j
@@ -24,8 +23,9 @@ public class SparkTrendingContentService extends SparkBaseService {
 
   /**
    * DailyTrendingContent 생성
+   * 
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param targetDate 통계를 생성할 기준 날짜
+   * @param targetDate   통계를 생성할 기준 날짜
    */
   public void generateDailyTrendingContent(String platformType, LocalDate targetDate) {
     try {
@@ -49,9 +49,9 @@ public class SparkTrendingContentService extends SparkBaseService {
 
       // 5. 어제 조회수와 left 조인
       Dataset<Row> joined = contentWithCategory
-          .join(yesterdayViews, new String[]{"externalContentId"}, "left");
+          .join(yesterdayViews, new String[] { "externalContentId" }, "left");
 
-// 6. 증감량 계산 (어제 데이터가 없으면 증감량을 0으로)
+      // 6. 증감량 계산 (어제 데이터가 없으면 증감량을 0으로)
       Dataset<Row> trendingTop10 = joined
           .withColumn("deltaViews",
               when(col("yesterdayViews").isNull(), lit(0L))
@@ -59,8 +59,7 @@ public class SparkTrendingContentService extends SparkBaseService {
           .withColumn("contentRank",
               row_number().over(
                   Window.partitionBy("categoryName")
-                      .orderBy(col("deltaViews").desc())
-              ))
+                      .orderBy(col("deltaViews").desc())))
           .filter(col("contentRank").leq(10));
 
       // 7. 결과 수집
@@ -109,8 +108,7 @@ public class SparkTrendingContentService extends SparkBaseService {
           categoryTypeId,
           contentRank,
           targetDate,
-          LocalDateTime.now()
-      );
+          LocalDateTime.now());
 
     } catch (Exception e) {
       log.error("DailyTrendingContent 저장 실패", e);

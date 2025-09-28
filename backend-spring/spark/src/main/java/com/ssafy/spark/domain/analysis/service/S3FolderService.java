@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;

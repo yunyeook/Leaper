@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +22,9 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
 
   /**
    * DailyTrendingInfluencer 생성
+   * 
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param targetDate 통계를 생성할 기준 날짜
+   * @param targetDate   통계를 생성할 기준 날짜
    */
   public void generateDailyTrendingInfluencer(String platformType, LocalDate targetDate) {
     try {
@@ -31,19 +32,18 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
       Dataset<Row> todayData = readS3AccountData(platformType, targetDate)
           .select("accountNickname", "categoryName", "followersCount");
 
-// 2. 어제 팔로워 수만 조회
+      // 2. 어제 팔로워 수만 조회
       Dataset<Row> yesterdayFollowers = readS3AccountData(platformType, targetDate.minusDays(1))
           .select("accountNickname", "followersCount")
           .withColumnRenamed("followersCount", "yesterdayFollowers");
 
-// 3. 계정명으로 left 조인
+      // 3. 계정명으로 left 조인
       Dataset<Row> joined = todayData.join(
           yesterdayFollowers,
-          new String[]{"accountNickname"},
-          "left"
-      );
+          new String[] { "accountNickname" },
+          "left");
 
-// 4. 증감량 계산 (어제 데이터가 없으면 증감량을 0으로)
+      // 4. 증감량 계산 (어제 데이터가 없으면 증감량을 0으로)
       Dataset<Row> trendingTop10 = joined
           .withColumn("deltaFollowers",
               when(col("yesterdayFollowers").isNull(), lit(0L))
@@ -51,10 +51,9 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
           .withColumn("influencerRank",
               row_number().over(
                   Window.partitionBy("categoryName")
-                      .orderBy(col("deltaFollowers").desc())
-              ))
+                      .orderBy(col("deltaFollowers").desc())))
           .filter(col("influencerRank").leq(10));
-// 5. 결과 수집
+      // 5. 결과 수집
       List<Row> results = trendingTop10.collectAsList();
 
       log.info("[{}] DailyTrendingInfluencer Top10 개수: {}", platformType, results.size());
@@ -70,11 +69,12 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
         Integer influencerId = getInfluencerIdByPlatformAccount(platformAccountId);
 
         // 1) MySQL 저장
-        saveDailyTrendingInfluencer(platformType, categoryTypeId, targetDate, influencerId, influencerRank, deltaFollowers);
+        saveDailyTrendingInfluencer(platformType, categoryTypeId, targetDate, influencerId, influencerRank,
+            deltaFollowers);
 
         // 2) S3 저장
-        saveTrendingInfluencerToS3(platformType, categoryName, targetDate, platformAccountId, influencerId, influencerRank, accountNickname, followersCount, deltaFollowers
-        );
+        saveTrendingInfluencerToS3(platformType, categoryName, targetDate, platformAccountId, influencerId,
+            influencerRank, accountNickname, followersCount, deltaFollowers);
       }
 
     } catch (Exception e) {
@@ -100,8 +100,7 @@ public class SparkTrendingInfluencerService extends SparkBaseService {
           categoryTypeId,
           influencerRank,
           targetDate,
-          LocalDateTime.now()
-      );
+          LocalDateTime.now());
 
     } catch (Exception e) {
       log.error("DailyTrendingInfluencer 저장 실패", e);

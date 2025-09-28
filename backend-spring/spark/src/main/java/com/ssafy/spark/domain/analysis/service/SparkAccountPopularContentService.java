@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +17,13 @@ import static org.apache.spark.sql.functions.*;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SparkAccountPopularContentService extends SparkBaseService{
+public class SparkAccountPopularContentService extends SparkBaseService {
 
   /**
    * 각 계정별 인기 콘텐츠 Top 3 생성
+   * 
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param targetDate 통계를 생성할 기준 날짜
+   * @param targetDate   통계를 생성할 기준 날짜
    */
   public void generateAccountPopularContent(String platformType, LocalDate targetDate) {
     try {
@@ -33,10 +34,10 @@ public class SparkAccountPopularContentService extends SparkBaseService{
       Dataset<Row> accountTop3 = contentData
           .withColumn("contentRank", row_number().over(
               org.apache.spark.sql.expressions.Window
-                  .partitionBy("accountNickname")  // 계정별로 분할
-                  .orderBy(col("viewsCount").desc())  // 조회수 내림차순
+                  .partitionBy("accountNickname") // 계정별로 분할
+                  .orderBy(col("viewsCount").desc()) // 조회수 내림차순
           ))
-          .filter(col("contentRank").leq(3));  // Top 3만 선택
+          .filter(col("contentRank").leq(3)); // Top 3만 선택
 
       // . 결과를 MySQL에 저장
       List<Row> results = accountTop3.collectAsList();
@@ -54,7 +55,8 @@ public class SparkAccountPopularContentService extends SparkBaseService{
         saveAccountPopularContent(targetDate, contentId, contentRank, platformAccountId);
 
         // 2) S3에도 저장
-        saveAccountPopularContentToS3(platformType, row, targetDate, contentId, contentRank, externalContentId, platformAccountId,accountNickname);
+        saveAccountPopularContentToS3(platformType, row, targetDate, contentId, contentRank, externalContentId,
+            platformAccountId, accountNickname);
       }
 
     } catch (Exception e) {
@@ -63,7 +65,8 @@ public class SparkAccountPopularContentService extends SparkBaseService{
   }
 
   private void saveAccountPopularContentToS3(String platformType, Row row, LocalDate targetDate,
-      Integer contentId, Integer contentRank, String externalContentId, Integer platformAccountId, String accountNickname) {
+      Integer contentId, Integer contentRank, String externalContentId, Integer platformAccountId,
+      String accountNickname) {
     try {
 
       // 통계 결과를 JSON으로 변환
@@ -73,7 +76,7 @@ public class SparkAccountPopularContentService extends SparkBaseService{
       statisticsJson.put("contentId", contentId);
       statisticsJson.put("contentRank", contentRank);
       statisticsJson.put("externalContentId", externalContentId);
-      statisticsJson.put("accountNickname",accountNickname);
+      statisticsJson.put("accountNickname", accountNickname);
       statisticsJson.put("snapshotDate", targetDate.toString());
       statisticsJson.put("createdAt", LocalDateTime.now().toString());
 
@@ -84,8 +87,9 @@ public class SparkAccountPopularContentService extends SparkBaseService{
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
       String fileName = String.format("daily_account_popular_content_%s_%s.json",
-           contentId, timestamp);
-      String s3Path = String.format("processed_data/%s/daily_account_popular_content/%s/%s", platformType, dateFolder, fileName);
+          contentId, timestamp);
+      String s3Path = String.format("processed_data/%s/daily_account_popular_content/%s/%s", platformType, dateFolder,
+          fileName);
 
       // S3에 저장
       uploadFile(s3Path, jsonData.getBytes(), "application/json");
@@ -98,7 +102,7 @@ public class SparkAccountPopularContentService extends SparkBaseService{
     }
   }
 
-  private void saveAccountPopularContent( LocalDate targetDate,
+  private void saveAccountPopularContent(LocalDate targetDate,
       Integer contentId, Integer contentRank, Integer platformAccountId) {
     try {
       // 1. MySQL INSERT/UPDATE 쿼리
@@ -115,20 +119,22 @@ public class SparkAccountPopularContentService extends SparkBaseService{
           contentId,
           contentRank,
           targetDate,
-          LocalDateTime.now()
-      );
+          LocalDateTime.now());
 
     } catch (Exception e) {
       log.error("계정별 인기콘텐츠 저장 실패", e);
     }
   }
+
   /**
    * 특정 계정의 인기 콘텐츠 Top 3 생성 (오버로드)
-   * @param platformType 플랫폼 타입
-   * @param targetDate 통계를 생성할 기준 날짜
+   * 
+   * @param platformType              플랫폼 타입
+   * @param targetDate                통계를 생성할 기준 날짜
    * @param specificPlatformAccountId 특정 계정 ID
    */
-  public void generateAccountPopularContent(String platformType, LocalDate targetDate, Integer specificPlatformAccountId) {
+  public void generateAccountPopularContent(String platformType, LocalDate targetDate,
+      Integer specificPlatformAccountId) {
     try {
       // 특정 계정의 닉네임 조회
       String specificAccountNickname = getAccountNickname(specificPlatformAccountId);
@@ -147,8 +153,7 @@ public class SparkAccountPopularContentService extends SparkBaseService{
           .withColumn("contentRank", row_number().over(
               org.apache.spark.sql.expressions.Window
                   .partitionBy("accountNickname")
-                  .orderBy(col("viewsCount").desc())
-          ))
+                  .orderBy(col("viewsCount").desc())))
           .filter(col("contentRank").leq(3));
 
       // 3. 결과 저장

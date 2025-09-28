@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.format.DateTimeFormatter;
@@ -22,16 +22,17 @@ public class SparkAccountInsightService extends SparkBaseService {
 
   /**
    * DailyAccountInsight 생성
+   * 
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param targetDate 통계를 생성할 기준 날짜 (예: 2024-01-15)
+   * @param targetDate   통계를 생성할 기준 날짜 (예: 2024-01-15)
    */
-  public void generateDailyAccountInsight(String platformType,LocalDate targetDate) {
+  public void generateDailyAccountInsight(String platformType, LocalDate targetDate) {
     try {
       // 1. 콘텐츠 데이터 읽기 (조회수, 좋아요, 댓글 집계용)
-      Dataset<Row> contentData = readS3ContentDataByDate(platformType,targetDate);
+      Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate);
 
       // 2. 계정 프로필 데이터 읽기 (팔로워 수 정보용)
-      Dataset<Row> accountData = readS3AccountData(platformType,targetDate);
+      Dataset<Row> accountData = readS3AccountData(platformType, targetDate);
 
       // 3. 콘텐츠별 통계 집계 (계정별로 accountNickname 그룹핑)
       Dataset<Row> contentStatistics = contentData
@@ -45,8 +46,7 @@ public class SparkAccountInsightService extends SparkBaseService {
               // 게시물들의 댓글 합계
               sum(when(col("commentsCount").isNotNull(), col("commentsCount")).otherwise(0)).alias("totalComments"),
               // 해당 계정의 게시물 개수
-              count("*").alias("totalContents")
-          );
+              count("*").alias("totalContents"));
 
       // 4. 계정 프로필 정보에서 팔로워 수 추출
       Dataset<Row> accountFollowers = accountData
@@ -70,17 +70,18 @@ public class SparkAccountInsightService extends SparkBaseService {
         Integer platformAccountId = getPlatformAccountId(platformType.toUpperCase(), accountNickname);
 
         // 1) MySQL에 저장
-        saveDailyAccountInsight(platformType, row, targetDate,platformAccountId, accountNickname);
+        saveDailyAccountInsight(platformType, row, targetDate, platformAccountId, accountNickname);
 
         // 2) S3에도 저장
-        saveStatisticsToS3(platformType, row, targetDate,platformAccountId, accountNickname);
+        saveStatisticsToS3(platformType, row, targetDate, platformAccountId, accountNickname);
       }
     } catch (Exception e) {
-        throw new RuntimeException("DailyAccountInsight 생성 실패", e);
+      throw new RuntimeException("DailyAccountInsight 생성 실패", e);
     }
   }
 
-  private void saveStatisticsToS3(String platformType, Row row, LocalDate targetDate,Integer platformAccountId,String accountNickname) {
+  private void saveStatisticsToS3(String platformType, Row row, LocalDate targetDate, Integer platformAccountId,
+      String accountNickname) {
     try {
 
       // 통계 결과를 JSON으로 변환
@@ -90,8 +91,8 @@ public class SparkAccountInsightService extends SparkBaseService {
       statisticsJson.put("totalViews", row.getAs("totalViews").toString());
       statisticsJson.put("totalLikes", row.getAs("totalLikes").toString());
       statisticsJson.put("totalComments", row.getAs("totalComments").toString());
-      statisticsJson.put("totalContents",(Long) row.getAs("totalContents"));
-      statisticsJson.put("totalFollowers",(Long) row.getAs("totalFollowers"));
+      statisticsJson.put("totalContents", (Long) row.getAs("totalContents"));
+      statisticsJson.put("totalFollowers", (Long) row.getAs("totalFollowers"));
       statisticsJson.put("snapshotDate", targetDate.toString());
       statisticsJson.put("processedAt", LocalDateTime.now().toString());
 
@@ -116,7 +117,8 @@ public class SparkAccountInsightService extends SparkBaseService {
     }
   }
 
-  private void saveDailyAccountInsight(String platformType, Row row, LocalDate targetDate, Integer platformAccountId, String accountNickname) {
+  private void saveDailyAccountInsight(String platformType, Row row, LocalDate targetDate, Integer platformAccountId,
+      String accountNickname) {
     try {
 
       if (platformAccountId == null) {
@@ -135,7 +137,7 @@ public class SparkAccountInsightService extends SparkBaseService {
       Integer totalContents = getIntegerValue(row, "totalContents");
 
       // 3. like_score 계산
-      Double likeScore = calculateLikeScore(totalViews, totalLikes, totalComments,totalFollowers);
+      Double likeScore = calculateLikeScore(totalViews, totalLikes, totalComments, totalFollowers);
 
       // 4. MySQL INSERT/UPDATE 쿼리
       String sql = "INSERT INTO daily_account_insight " +
@@ -154,15 +156,15 @@ public class SparkAccountInsightService extends SparkBaseService {
 
       // 5. 파라미터 바인딩
       jdbcTemplate.update(sql,
-          platformAccountId,     // platform_account_id (INT UNSIGNED)
-          totalViews,            // total_views (BIGINT UNSIGNED) → BigInteger
-          totalFollowers,        // total_followers (INT UNSIGNED) → Integer
-          totalContents,         // total_contents (INT UNSIGNED) → Integer
-          totalLikes,            // total_likes (BIGINT UNSIGNED) → BigInteger
-          totalComments,         // total_comments (BIGINT UNSIGNED) → BigInteger
-          likeScore,             // like_score (DECIMAL(5,2)) → BigInteger (근데 이건 문제...)
-          targetDate,            // snapshot_date (DATE)
-          LocalDateTime.now()    // created_at (DATETIME)
+          platformAccountId, // platform_account_id (INT UNSIGNED)
+          totalViews, // total_views (BIGINT UNSIGNED) → BigInteger
+          totalFollowers, // total_followers (INT UNSIGNED) → Integer
+          totalContents, // total_contents (INT UNSIGNED) → Integer
+          totalLikes, // total_likes (BIGINT UNSIGNED) → BigInteger
+          totalComments, // total_comments (BIGINT UNSIGNED) → BigInteger
+          likeScore, // like_score (DECIMAL(5,2)) → BigInteger (근데 이건 문제...)
+          targetDate, // snapshot_date (DATE)
+          LocalDateTime.now() // created_at (DATETIME)
       );
 
     } catch (Exception e) {
@@ -170,8 +172,10 @@ public class SparkAccountInsightService extends SparkBaseService {
     }
   }
 
-  private Double calculateLikeScore(BigInteger totalViews, BigInteger totalLikes, BigInteger totalComments,Integer totalFollowers) {
-    if (totalViews.equals(BigInteger.ZERO)) return 0.0;
+  private Double calculateLikeScore(BigInteger totalViews, BigInteger totalLikes, BigInteger totalComments,
+      Integer totalFollowers) {
+    if (totalViews.equals(BigInteger.ZERO))
+      return 0.0;
 
     double views = totalViews.doubleValue();
     double likes = totalLikes.doubleValue();
@@ -179,7 +183,7 @@ public class SparkAccountInsightService extends SparkBaseService {
     double followers = totalFollowers.doubleValue();
 
     // 참여율 계산 (0~100%)
-    double denominator = views!=0.0?views:followers;
+    double denominator = views != 0.0 ? views : followers;
     double engagementRate = (likes + comments) / denominator * 100;
 
     // 0~100점 범위로 제한
@@ -187,13 +191,16 @@ public class SparkAccountInsightService extends SparkBaseService {
 
     return Math.round(score * 100.0) / 100.0;
   }
+
   /**
    * 특정 계정에 대한 DailyAccountInsight 생성 (오버로드)
-   * @param platformType 플랫폼 타입
-   * @param targetDate 통계를 생성할 기준 날짜
+   * 
+   * @param platformType              플랫폼 타입
+   * @param targetDate                통계를 생성할 기준 날짜
    * @param specificPlatformAccountId 특정 계정 ID
    */
-  public void generateDailyAccountInsight(String platformType, LocalDate targetDate, Integer specificPlatformAccountId) {
+  public void generateDailyAccountInsight(String platformType, LocalDate targetDate,
+      Integer specificPlatformAccountId) {
     try {
       // 특정 계정의 닉네임 조회
       String specificAccountNickname = getAccountNickname(specificPlatformAccountId);
@@ -220,8 +227,7 @@ public class SparkAccountInsightService extends SparkBaseService {
               sum(when(col("viewsCount").isNotNull(), col("viewsCount")).otherwise(0)).alias("totalViews"),
               sum(when(col("likesCount").isNotNull(), col("likesCount")).otherwise(0)).alias("totalLikes"),
               sum(when(col("commentsCount").isNotNull(), col("commentsCount")).otherwise(0)).alias("totalComments"),
-              count("*").alias("totalContents")
-          );
+              count("*").alias("totalContents"));
 
       // 4. 계정 프로필 정보에서 팔로워 수 추출
       Dataset<Row> accountFollowers = accountData
@@ -258,6 +264,5 @@ public class SparkAccountInsightService extends SparkBaseService {
       throw new RuntimeException("특정 계정 DailyAccountInsight 생성 실패", e);
     }
   }
-
 
 }

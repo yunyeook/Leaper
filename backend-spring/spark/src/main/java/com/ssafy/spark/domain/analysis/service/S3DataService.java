@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.*;
@@ -20,11 +20,11 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * 크롤링 후 row-data에 저장하는 기능 :
- * */
+ */
 @Service
 public class S3DataService {
 
-  //TODO: FILEINFO로 수정하기
+  // TODO: FILEINFO로 수정하기
   @Autowired
   private AmazonS3Client amazonS3Client;
 
@@ -40,7 +40,8 @@ public class S3DataService {
   /**
    * 콘텐츠와 썸네일을 함께 저장
    */
-  public String saveContentWithThumbnail(String platform, String contentType, Integer contentId, String jsonData, byte[] thumbnailData, String mimeType) {
+  public String saveContentWithThumbnail(String platform, String contentType, Integer contentId, String jsonData,
+      byte[] thumbnailData, String mimeType) {
     try {
       // 1. 썸네일 저장
       saveThumbnailImage(platform, contentType, contentId, thumbnailData, mimeType);
@@ -61,7 +62,8 @@ public class S3DataService {
   /**
    * 플랫폼 계정 정보와 프로필 이미지를 함께 저장
    */
-  public String savePlatformAccount(String platform, String accountId, String jsonData, byte[] profileImageData, String mimeType) {
+  public String savePlatformAccount(String platform, String accountId, String jsonData, byte[] profileImageData,
+      String mimeType) {
     try {
       // 1. 프로필 이미지 저장
       String folderPath = String.format("raw_data/%s/platform_account", platform.toLowerCase());
@@ -106,7 +108,8 @@ public class S3DataService {
   /**
    * 썸네일 이미지만 저장
    */
-  public String saveThumbnailImage(String platform, String contentType, Integer contentId, byte[] imageData, String mimeType) {
+  public String saveThumbnailImage(String platform, String contentType, Integer contentId, byte[] imageData,
+      String mimeType) {
     try {
       String folderPath = String.format("raw_data/%s/content/%s", platform, contentType.toLowerCase());
       String fileName = String.format("thumb_%s", contentId);
@@ -210,7 +213,8 @@ public class S3DataService {
 
   /**
    * YouTube 썸네일 이미지를 URL에서 다운로드하여 S3에 저장
-   * 경로: raw_data/youtube/content_thumbnail_images/{externalContentId}_{timestamp}.jpg
+   * 경로:
+   * raw_data/youtube/content_thumbnail_images/{externalContentId}_{timestamp}.jpg
    * File 테이블에도 저장
    */
   public String saveYouTubeThumbnailFromUrl(String username, String externalContentId, String thumbnailUrl) {
@@ -473,8 +477,7 @@ public class S3DataService {
           bucketName,
           accessKey,
           new ByteArrayInputStream(content),
-          metadata
-      );
+          metadata);
 
       amazonS3Client.putObject(request);
       return amazonS3Client.getUrl(bucketName, accessKey).toString();

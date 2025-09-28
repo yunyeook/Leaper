@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.format.DateTimeFormatter;
@@ -37,8 +37,7 @@ public class SparkTypeInsightService extends SparkBaseService {
               sum(when(col("viewsCount").isNotNull(), col("viewsCount")).otherwise(0)).alias("totalViews"),
               sum(when(col("likesCount").isNotNull(), col("likesCount")).otherwise(0)).alias("totalLikes"),
               sum(when(col("commentsCount").isNotNull(), col("commentsCount")).otherwise(0)).alias("totalComments"),
-              count("*").alias("totalContents")
-          );
+              count("*").alias("totalContents"));
 
       // 2. Spark → Java List 변환
       List<Row> results = typeStatistics.collectAsList();
@@ -57,9 +56,10 @@ public class SparkTypeInsightService extends SparkBaseService {
         Integer platformAccountId = getPlatformAccountId(platformType.toUpperCase(), accountNickname);
         String contentType = row.getAs("contentType");
 
-
-        saveDailyTypeInsight( row, targetDate, yesterdaySnapshot, lastMonthSnapshot,platformAccountId, accountNickname,contentType);
-        saveTypeStatisticsToS3(platformType, row, targetDate, yesterdaySnapshot, lastMonthSnapshot,platformAccountId, accountNickname,contentType);
+        saveDailyTypeInsight(row, targetDate, yesterdaySnapshot, lastMonthSnapshot, platformAccountId, accountNickname,
+            contentType);
+        saveTypeStatisticsToS3(platformType, row, targetDate, yesterdaySnapshot, lastMonthSnapshot, platformAccountId,
+            accountNickname, contentType);
       }
 
     } catch (Exception e) {
@@ -70,10 +70,9 @@ public class SparkTypeInsightService extends SparkBaseService {
   /**
    * DB 저장
    */
-  private void saveDailyTypeInsight( Row row, LocalDate targetDate,
+  private void saveDailyTypeInsight(Row row, LocalDate targetDate,
       Map<String, SnapshotRow> yesterdaySnapshot, Map<String, SnapshotRow> lastMonthSnapshot,
-      Integer platformAccountId, String accountNickname, String contentType
-  ) {
+      Integer platformAccountId, String accountNickname, String contentType) {
     try {
 
       // 오늘 total 값
@@ -126,8 +125,7 @@ public class SparkTypeInsightService extends SparkBaseService {
           totalContents,
           totalLikes,
           targetDate,
-          LocalDateTime.now()
-      );
+          LocalDateTime.now());
 
     } catch (Exception e) {
       log.error("DailyTypeInsight 저장 실패: {}", e.getMessage(), e);
@@ -139,8 +137,7 @@ public class SparkTypeInsightService extends SparkBaseService {
    */
   private void saveTypeStatisticsToS3(String platformType, Row row, LocalDate targetDate,
       Map<String, SnapshotRow> yesterdaySnapshot, Map<String, SnapshotRow> lastMonthSnapshot,
-      Integer platformAccountId, String accountNickname, String contentType
-  ) {
+      Integer platformAccountId, String accountNickname, String contentType) {
     try {
 
       BigInteger totalViews = getBigIntegerValue(row, "totalViews");
@@ -208,13 +205,14 @@ public class SparkTypeInsightService extends SparkBaseService {
   /**
    * DB에서 특정 일자의 스냅샷 불러오기
    */
-  private Map<String, SnapshotRow> loadSnapshotFromDB( LocalDate date) {
-    String sql = "SELECT da.content_type_id, da.platform_account_id, da.total_views, da.total_likes, da.total_contents, pa.external_account_id " +
+  private Map<String, SnapshotRow> loadSnapshotFromDB(LocalDate date) {
+    String sql = "SELECT da.content_type_id, da.platform_account_id, da.total_views, da.total_likes, da.total_contents, pa.external_account_id "
+        +
         "FROM daily_type_insight da " +
         "JOIN platform_account pa ON da.platform_account_id = pa.platform_account_id " +
         "WHERE da.snapshot_date = ?";
 
-    return jdbcTemplate.query(sql, new Object[]{date}, rs -> {
+    return jdbcTemplate.query(sql, new Object[] { date }, rs -> {
       Map<String, SnapshotRow> map = new java.util.HashMap<>();
       while (rs.next()) {
         String externalAccountId = rs.getString("external_account_id");
@@ -223,8 +221,7 @@ public class SparkTypeInsightService extends SparkBaseService {
         map.put(key, new SnapshotRow(
             rs.getBigDecimal("total_views").toBigInteger(),
             rs.getBigDecimal("total_likes").toBigInteger(),
-            rs.getInt("total_contents")
-        ));
+            rs.getInt("total_contents")));
       }
       return map;
     });
@@ -256,8 +253,7 @@ public class SparkTypeInsightService extends SparkBaseService {
               sum(when(col("viewsCount").isNotNull(), col("viewsCount")).otherwise(0)).alias("totalViews"),
               sum(when(col("likesCount").isNotNull(), col("likesCount")).otherwise(0)).alias("totalLikes"),
               sum(when(col("commentsCount").isNotNull(), col("commentsCount")).otherwise(0)).alias("totalComments"),
-              count("*").alias("totalContents")
-          );
+              count("*").alias("totalContents"));
 
       // 3. 결과 수집
       List<Row> results = typeStatistics.collectAsList();
@@ -294,7 +290,6 @@ public class SparkTypeInsightService extends SparkBaseService {
     }
   }
 
-
   /**
    * 스냅샷 값 담는 DTO
    */
@@ -315,8 +310,16 @@ public class SparkTypeInsightService extends SparkBaseService {
       this.contents = contents;
     }
 
-    public BigInteger getViews() { return views; }
-    public BigInteger getLikes() { return likes; }
-    public int getContents() { return contents; }
+    public BigInteger getViews() {
+      return views;
+    }
+
+    public BigInteger getLikes() {
+      return likes;
+    }
+
+    public int getContents() {
+      return contents;
+    }
   }
 }

@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -34,11 +34,11 @@ public class SparkKeywordTrendService extends SparkBaseService {
           .filter(col("tags").isNotNull())
           .select(explode(col("tags")).alias("keyword"))
           .filter(col("keyword").isNotNull())
-          .filter(length(col("keyword")).gt(1))  // 1글자 키워드 제외
+          .filter(length(col("keyword")).gt(1)) // 1글자 키워드 제외
           .groupBy("keyword")
           .agg(count("*").alias("frequency"))
           .orderBy(desc("frequency"))
-          .limit(10);  // 상위 10개만
+          .limit(10); // 상위 10개만
 
       // 3. 결과를 List로 변환
       List<Row> topKeywords = keywordStats.collectAsList();
@@ -86,8 +86,7 @@ public class SparkKeywordTrendService extends SparkBaseService {
           platformType.toUpperCase(),
           keywordsJson,
           targetDate,
-          LocalDateTime.now()
-      );
+          LocalDateTime.now());
 
       log.info("키워드 트렌드 DB 저장 완료 - Date: {}, Keywords: {}", targetDate, keywords);
 

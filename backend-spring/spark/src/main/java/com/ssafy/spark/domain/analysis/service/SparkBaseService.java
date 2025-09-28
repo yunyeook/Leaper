@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import static org.apache.spark.sql.functions.lit;
 
@@ -29,7 +29,7 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-@NoArgsConstructor  // 기본 생성자만
+@NoArgsConstructor // 기본 생성자만
 public class SparkBaseService {
 
   @Autowired
@@ -93,7 +93,7 @@ public class SparkBaseService {
   protected Dataset<Row> readS3ContentDataByDate(String platformType, LocalDate targetDate) {
     try {
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String s3Path = String.format("s3a://%s/raw_data/%s/content/%s/*.json", bucketName,platformType, dateFolder);
+      String s3Path = String.format("s3a://%s/raw_data/%s/content/%s/*.json", bucketName, platformType, dateFolder);
 
       return sparkSession.read()
           .option("multiline", "true")
@@ -118,14 +118,15 @@ public class SparkBaseService {
   protected Dataset<Row> readS3AccountData(String platformType, LocalDate targetDate) {
     try {
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-      String s3Path = String.format("s3a://%s/raw_data/%s/platform_account/%s/*.json",bucketName, platformType,dateFolder);
+      String s3Path = String.format("s3a://%s/raw_data/%s/platform_account/%s/*.json", bucketName, platformType,
+          dateFolder);
 
       return sparkSession.read()
           .option("multiline", "true")
           .json(s3Path);
 
     } catch (Exception e) {
-      log.error("S3 특정날짜 전체 계정 데이터 읽기 실패: platform={}, date={}", platformType,targetDate, e);
+      log.error("S3 특정날짜 전체 계정 데이터 읽기 실패: platform={}, date={}", platformType, targetDate, e);
       // 빈 DataFrame을 필요한 컬럼과 함께 생성
       return sparkSession.emptyDataFrame()
           .withColumn("accountNickname", lit("").cast("string"))
@@ -133,7 +134,6 @@ public class SparkBaseService {
           .withColumn("followersCount", lit(0L).cast("long"));
     }
   }
-
 
   /**
    * S3 파일 업로드 공통 메소드
@@ -150,8 +150,7 @@ public class SparkBaseService {
           bucketName,
           accessKey,
           new ByteArrayInputStream(content),
-          metadata
-      );
+          metadata);
 
       amazonS3Client.putObject(request);
       log.info("S3 업로드 성공: s3://{}/{}", bucketName, accessKey);
@@ -166,27 +165,30 @@ public class SparkBaseService {
   }
 
   /**
-   *  헬퍼 메소드
+   * 헬퍼 메소드
    */
   protected BigInteger getBigIntegerValue(Row row, String columnName) {
     Object value = row.getAs(columnName);
-    if (value == null) return BigInteger.ZERO;
+    if (value == null)
+      return BigInteger.ZERO;
     return new BigInteger(value.toString());
   }
 
   protected Integer getIntegerValue(Row row, String columnName) {
     Object value = row.getAs(columnName);
-    if (value == null) return 0;
+    if (value == null)
+      return 0;
     return Integer.valueOf(value.toString());
   }
 
   protected Double getDoubleValue(Row row, String columnName) {
     Object value = row.getAs(columnName);
-    if (value == null) return 0.0;
+    if (value == null)
+      return 0.0;
     return Double.valueOf(value.toString());
   }
 
-  //확인용
+  // 확인용
   public void readAndLogS3File(String s3Path) {
     try {
       log.info("S3 파일 읽기 시작: s3://{}/{}", bucketName, s3Path);
@@ -202,7 +204,7 @@ public class SparkBaseService {
   }
 
   /**
-   *  DB 조회 메소드
+   * DB 조회 메소드
    */
   /**
    * 외부 콘텐츠 ID -> DB content_id 조회
@@ -218,8 +220,7 @@ public class SparkBaseService {
       List<Integer> results = jdbcTemplate.query(sql,
           (rs, rowNum) -> rs.getInt("content_id"),
           platformType,
-          externalContentId
-      );
+          externalContentId);
 
       if (results.isEmpty()) {
         log.warn("Content not found for platform={}, externalContentId={}",
@@ -248,8 +249,7 @@ public class SparkBaseService {
 
       List<Integer> results = jdbcTemplate.query(sql,
           (rs, rowNum) -> rs.getInt("category_type_id"),
-          categoryName
-      );
+          categoryName);
 
       if (results.isEmpty()) {
         log.warn("CategoryType not found for categoryName={}",
@@ -265,8 +265,9 @@ public class SparkBaseService {
       return null;
     }
   }
+
   /**
-   * 외부 계정 닉네임 ->  PlatformAccount ID 조회
+   * 외부 계정 닉네임 -> PlatformAccount ID 조회
    */
   protected Integer getPlatformAccountId(String platformType, String accountNickname) {
     try {
@@ -279,7 +280,7 @@ public class SparkBaseService {
   }
 
   /**
-   * 외부 계정 닉네임 ->  PlatformAccount ID 조회
+   * 외부 계정 닉네임 -> PlatformAccount ID 조회
    */
   protected Integer getInfluencerIdByPlatformAccount(Integer platformAccountId) {
     String sql = "SELECT influencer_id FROM platform_account WHERE platform_account_id = ?";

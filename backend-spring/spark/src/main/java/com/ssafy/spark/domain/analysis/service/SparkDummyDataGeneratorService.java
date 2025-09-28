@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -25,8 +25,9 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
 
   /**
    * daily_account_insight 더미데이터 365일치 생성
+   * 
    * @param platformType 플랫폼 타입 (예: "instagram")
-   * @param baseDate 기준 날짜 (예: LocalDate.of(2025, 9, 22))
+   * @param baseDate     기준 날짜 (예: LocalDate.of(2025, 9, 22))
    */
   public void generateDummyAccountInsight(String platformType, LocalDate baseDate) {
     try {
@@ -47,16 +48,15 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
         log.info("계정 ID {} 처리 시작", platformAccountId);
 
         // 2. 365일 역순으로 데이터 생성
-        for (int i = 1; i <=365; i++) {
+        for (int i = 1; i <= 365; i++) {
           LocalDate targetDate = baseDate.minusDays(i);
 
           // 3. 랜덤값으로 감소시키기
           // totalViews: 0~10% 감소
           double viewsDecreaseRate = random.nextDouble() * 0.1;
           BigInteger totalViews = currentTotalViews.subtract(
-              currentTotalViews.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
-                  .divide(BigInteger.valueOf(100))
-          );
+              currentTotalViews.multiply(BigInteger.valueOf((long) (viewsDecreaseRate * 100)))
+                  .divide(BigInteger.valueOf(100)));
 
           // totalFollowers, totalContents: 90% 확률로 0 감소, 10% 확률로 1 감소
           int totalFollowers = Math.max(0, currentTotalFollowers - (random.nextDouble() < 0.9 ? 0 : 1));
@@ -64,13 +64,11 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
 
           // totalLikes, totalComments도 비슷하게 감소
           BigInteger totalLikes = currentTotalLikes.subtract(
-              currentTotalLikes.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
-                  .divide(BigInteger.valueOf(100))
-          );
+              currentTotalLikes.multiply(BigInteger.valueOf((long) (viewsDecreaseRate * 100)))
+                  .divide(BigInteger.valueOf(100)));
           BigInteger totalComments = currentTotalComments.subtract(
-              currentTotalComments.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
-                  .divide(BigInteger.valueOf(100))
-          );
+              currentTotalComments.multiply(BigInteger.valueOf((long) (viewsDecreaseRate * 100)))
+                  .divide(BigInteger.valueOf(100)));
 
           // 4. S3에 저장
           saveAccountInsightToS3(platformType, targetDate, platformAccountId,
@@ -100,8 +98,9 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
 
   /**
    * daily_type_insight 더미데이터 365일치 생성
+   * 
    * @param platformType 플랫폼 타입 (예: "instagram")
-   * @param baseDate 기준 날짜 (예: LocalDate.of(2025, 9, 22))
+   * @param baseDate     기준 날짜 (예: LocalDate.of(2025, 9, 22))
    */
   public void generateDummyTypeInsight(String platformType, LocalDate baseDate) {
     try {
@@ -307,15 +306,15 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
           "created_at = VALUES(created_at)";
 
       jdbcTemplate.update(sql,
-          platformAccountId,     // platform_account_id
-          totalViews,            // total_views
-          totalFollowers,        // total_followers
-          totalContents,         // total_contents
-          totalLikes,            // total_likes
-          totalComments,         // total_comments
-          likeScore,             // like_score
-          snapshotDate,          // snapshot_date
-          snapshotDate.atTime(LocalTime.now())   // created_at
+          platformAccountId, // platform_account_id
+          totalViews, // total_views
+          totalFollowers, // total_followers
+          totalContents, // total_contents
+          totalLikes, // total_likes
+          totalComments, // total_comments
+          likeScore, // like_score
+          snapshotDate, // snapshot_date
+          snapshotDate.atTime(LocalTime.now()) // created_at
       );
 
     } catch (Exception e) {
@@ -326,8 +325,10 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
   /**
    * Type Insight DB에 저장
    */
-  private void saveTypeInsightToDB(Long platformAccountId, String contentType, int todayViews, int todayContents, int todayLikes,
-      long monthViews, int monthContents, long monthLikes, BigInteger totalViews, int totalContents, BigInteger totalLikes, LocalDate snapshotDate) {
+  private void saveTypeInsightToDB(Long platformAccountId, String contentType, int todayViews, int todayContents,
+      int todayLikes,
+      long monthViews, int monthContents, long monthLikes, BigInteger totalViews, int totalContents,
+      BigInteger totalLikes, LocalDate snapshotDate) {
 
     try {
       String sql = "INSERT INTO daily_type_insight " +
@@ -349,19 +350,19 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
           "created_at = VALUES(created_at)";
 
       jdbcTemplate.update(sql,
-          contentType,           // content_type_id
-          platformAccountId,     // platform_account_id
-          todayViews,            // today_views
-          todayContents,         // today_contents
-          todayLikes,            // today_likes
-          monthViews,            // month_views
-          monthContents,         // month_contents
-          monthLikes,            // month_likes
-          totalViews,            // total_views
-          totalContents,         // total_contents
-          totalLikes,            // total_likes
-          snapshotDate,          // snapshot_date
-          snapshotDate.atTime(LocalTime.now())   // created_at
+          contentType, // content_type_id
+          platformAccountId, // platform_account_id
+          todayViews, // today_views
+          todayContents, // today_contents
+          todayLikes, // today_likes
+          monthViews, // month_views
+          monthContents, // month_contents
+          monthLikes, // month_likes
+          totalViews, // total_views
+          totalContents, // total_contents
+          totalLikes, // total_likes
+          snapshotDate, // snapshot_date
+          snapshotDate.atTime(LocalTime.now()) // created_at
       );
 
     } catch (Exception e) {
@@ -373,7 +374,8 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
    * 호감도 점수 계산 (SparkAccountInsightService와 동일한 로직)
    */
   private Double calculateLikeScore(BigInteger totalViews, BigInteger totalLikes, BigInteger totalComments) {
-    if (totalViews.equals(BigInteger.ZERO)) return 0.0;
+    if (totalViews.equals(BigInteger.ZERO))
+      return 0.0;
 
     double views = totalViews.doubleValue();
     double likes = totalLikes.doubleValue();
@@ -390,8 +392,9 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
 
   /**
    * 특정 계정에 대해서만 365일 더미데이터 생성
-   * @param platformType 플랫폼 타입 (예: "instagram")
-   * @param baseDate 기준 날짜 (예: LocalDate.of(2025, 9, 25))
+   * 
+   * @param platformType    플랫폼 타입 (예: "instagram")
+   * @param baseDate        기준 날짜 (예: LocalDate.of(2025, 9, 25))
    * @param targetAccountId 생성할 대상 계정 ID
    */
   public void generateDummyAccountInsightForOne(String platformType, LocalDate baseDate, Long targetAccountId) {
@@ -421,21 +424,18 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
         // 랜덤 감소
         double viewsDecreaseRate = random.nextDouble() * 0.1;
         BigInteger totalViews = currentTotalViews.subtract(
-            currentTotalViews.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
-                .divide(BigInteger.valueOf(100))
-        );
+            currentTotalViews.multiply(BigInteger.valueOf((long) (viewsDecreaseRate * 100)))
+                .divide(BigInteger.valueOf(100)));
 
         int totalFollowers = Math.max(0, currentTotalFollowers - (random.nextDouble() < 0.9 ? 0 : 1));
         int totalContents = Math.max(0, currentTotalContents - (random.nextDouble() < 0.9 ? 0 : 1));
 
         BigInteger totalLikes = currentTotalLikes.subtract(
-            currentTotalLikes.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
-                .divide(BigInteger.valueOf(100))
-        );
+            currentTotalLikes.multiply(BigInteger.valueOf((long) (viewsDecreaseRate * 100)))
+                .divide(BigInteger.valueOf(100)));
         BigInteger totalComments = currentTotalComments.subtract(
-            currentTotalComments.multiply(BigInteger.valueOf((long)(viewsDecreaseRate * 100)))
-                .divide(BigInteger.valueOf(100))
-        );
+            currentTotalComments.multiply(BigInteger.valueOf((long) (viewsDecreaseRate * 100)))
+                .divide(BigInteger.valueOf(100)));
 
         // 4. S3 저장
         saveAccountInsightToS3(platformType, targetDate, targetAccountId,
@@ -460,6 +460,7 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
       throw new RuntimeException("특정 계정 더미데이터 생성 실패", e);
     }
   }
+
   /**
    * 특정 계정에 대해서 daily_account_insight + daily_type_insight 더미데이터 365일치 생성
    */
@@ -513,12 +514,14 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
 
           // total 갱신
           BigInteger totalViews = currentTotalViews.subtract(BigInteger.valueOf(todayViews));
-          if (totalViews.compareTo(BigInteger.ZERO) < 0) totalViews = BigInteger.ZERO;
+          if (totalViews.compareTo(BigInteger.ZERO) < 0)
+            totalViews = BigInteger.ZERO;
 
           int totalContents = Math.max(0, currentTotalContents - todayContents);
 
           BigInteger totalLikes = currentTotalLikes.subtract(BigInteger.valueOf(todayLikes));
-          if (totalLikes.compareTo(BigInteger.ZERO) < 0) totalLikes = BigInteger.ZERO;
+          if (totalLikes.compareTo(BigInteger.ZERO) < 0)
+            totalLikes = BigInteger.ZERO;
 
           // month 값 생성
           long monthViews = todayViews * (20L + random.nextInt(11));
@@ -548,6 +551,5 @@ public class SparkDummyDataGeneratorService extends SparkBaseService {
       throw new RuntimeException("특정 계정 Type Insight 더미 생성 실패", e);
     }
   }
-
 
 }

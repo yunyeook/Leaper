@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +21,9 @@ public class SparkPopularContentService extends SparkBaseService {
 
   /**
    * DailyPopularContent 생성
+   * 
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param targetDate 통계를 생성할 기준 날짜
+   * @param targetDate   통계를 생성할 기준 날짜
    */
   public void generateDailyPopularContent(String platformType, LocalDate targetDate) {
     try {
@@ -30,7 +31,7 @@ public class SparkPopularContentService extends SparkBaseService {
       Dataset<Row> contentData = readS3ContentDataByDate(platformType, targetDate);
 
       // 2. 계정 데이터 읽기
-      Dataset<Row> accountData = readS3AccountData(platformType,targetDate)
+      Dataset<Row> accountData = readS3AccountData(platformType, targetDate)
           .select("accountNickname", "categoryName");
 
       // 3. 조인 (accountNickname 기준)
@@ -42,9 +43,8 @@ public class SparkPopularContentService extends SparkBaseService {
       Dataset<Row> top10 = joined
           .withColumn("contentRank", row_number().over(
               org.apache.spark.sql.expressions.Window
-                  .partitionBy("categoryName")  // 카테고리별 그룹
-                  .orderBy(col("viewsCount").desc())
-          ))
+                  .partitionBy("categoryName") // 카테고리별 그룹
+                  .orderBy(col("viewsCount").desc())))
           .filter(col("contentRank").leq(10));
 
       // 5. 결과 수집
@@ -72,8 +72,7 @@ public class SparkPopularContentService extends SparkBaseService {
   }
 
   private void savePopularContentToS3(String platformType, String categoryName, Row row, LocalDate targetDate,
-    Integer contentId,Integer contentRank,String externalContentId
-  ) {
+      Integer contentId, Integer contentRank, String externalContentId) {
     try {
 
       // 통계 결과를 JSON으로 변환
@@ -81,7 +80,7 @@ public class SparkPopularContentService extends SparkBaseService {
       statisticsJson.put("platformType", platformType.toUpperCase());
       statisticsJson.put("contentId", contentId);
       statisticsJson.put("categoryName", categoryName);
-      statisticsJson.put("contentRank",contentRank);
+      statisticsJson.put("contentRank", contentRank);
       statisticsJson.put("externalContentId", externalContentId);
       statisticsJson.put("snapshotDate", targetDate.toString());
       statisticsJson.put("createdAt", LocalDateTime.now().toString());
@@ -92,8 +91,10 @@ public class SparkPopularContentService extends SparkBaseService {
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
-      String fileName = String.format("daily_popular_content_%s_%s_%s.json", externalContentId, categoryName, timestamp);
-      String s3Path = String.format("processed_data/%s/daily_popular_content/%s/%s",platformType, dateFolder, fileName);
+      String fileName = String.format("daily_popular_content_%s_%s_%s.json", externalContentId, categoryName,
+          timestamp);
+      String s3Path = String.format("processed_data/%s/daily_popular_content/%s/%s", platformType, dateFolder,
+          fileName);
 
       // S3에 저장
       uploadFile(s3Path, jsonData.getBytes(), "application/json");
@@ -106,7 +107,8 @@ public class SparkPopularContentService extends SparkBaseService {
     }
   }
 
-  private void saveDailyPopularContent(String platformType, Integer categoryTypeId, Row row, LocalDate targetDate,Integer contentId,Integer contentRank) {
+  private void saveDailyPopularContent(String platformType, Integer categoryTypeId, Row row, LocalDate targetDate,
+      Integer contentId, Integer contentRank) {
     try {
       // 1. MySQL INSERT/UPDATE 쿼리
       String sql = "INSERT INTO daily_popular_content " +
@@ -124,8 +126,7 @@ public class SparkPopularContentService extends SparkBaseService {
           categoryTypeId,
           contentRank,
           targetDate,
-          LocalDateTime.now()
-      );
+          LocalDateTime.now());
 
     } catch (Exception e) {
       log.error("DailyPopularContent 저장 실패", e);

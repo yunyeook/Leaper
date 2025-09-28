@@ -1,4 +1,4 @@
-package com.ssafy.spark.domain.spark.service;
+package com.ssafy.spark.domain.analysis.service;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
@@ -22,26 +22,25 @@ public class SparkPopularInfluencerService extends SparkBaseService {
 
   /**
    * DailyPopularInfluencer 생성
+   * 
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
-   * @param targetDate 통계를 생성할 기준 날짜
+   * @param targetDate   통계를 생성할 기준 날짜
    */
   public void generateDailyPopularInfluencer(String platformType, LocalDate targetDate) {
     try {
       // 1. 계정 데이터 읽기
-      Dataset<Row> accountData = readS3AccountData(platformType,targetDate)
+      Dataset<Row> accountData = readS3AccountData(platformType, targetDate)
           .select("accountNickname", "categoryName", "followersCount");
 
       // 2. 카테고리별로 Top10 추출
       Dataset<Row> top10 = accountData
           .withColumn("influencerRank", row_number().over(
               Window.partitionBy("categoryName")
-                  .orderBy(col("followersCount").desc())
-          ))
+                  .orderBy(col("followersCount").desc())))
           .filter(col("influencerRank").leq(10));
 
-       // 3. 결과 수집
+      // 3. 결과 수집
       List<Row> results = top10.collectAsList();
-
 
       log.info("[{}] Top10 인플루언서 개수: {}", platformType, results.size());
 
@@ -54,12 +53,12 @@ public class SparkPopularInfluencerService extends SparkBaseService {
         Long followersCount = row.getAs("followersCount");
         Integer influencerId = getInfluencerIdByPlatformAccount(platformAccountId);
 
-
         // 1) MySQL에 저장
         saveDailyPopularInfluencer(platformType, categoryTypeId, row, targetDate, influencerRank, influencerId);
 
         // 2) S3에도 저장
-        savePopularInfluencerToS3(platformType, categoryName, row, targetDate, platformAccountId, influencerRank, accountNickname,followersCount,influencerId);
+        savePopularInfluencerToS3(platformType, categoryName, row, targetDate, platformAccountId, influencerRank,
+            accountNickname, followersCount, influencerId);
       }
 
     } catch (Exception e) {
@@ -68,7 +67,8 @@ public class SparkPopularInfluencerService extends SparkBaseService {
   }
 
   private void savePopularInfluencerToS3(String platformType, String categoryName, Row row, LocalDate targetDate,
-      Integer platformAccountId, Integer influencerRank, String accountNickname, Long followersCount, Integer influencerId) {
+      Integer platformAccountId, Integer influencerRank, String accountNickname, Long followersCount,
+      Integer influencerId) {
     try {
 
       // 통계 결과를 JSON으로 변환
@@ -89,8 +89,10 @@ public class SparkPopularInfluencerService extends SparkBaseService {
       // S3 저장 경로
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
-      String fileName = String.format("daily_popular_influencer_%s_%s_%s.json", accountNickname, categoryName, timestamp);
-      String s3Path = String.format("processed_data/%s/daily_popular_influencer/%s/%s", platformType, dateFolder, fileName);
+      String fileName = String.format("daily_popular_influencer_%s_%s_%s.json", accountNickname, categoryName,
+          timestamp);
+      String s3Path = String.format("processed_data/%s/daily_popular_influencer/%s/%s", platformType, dateFolder,
+          fileName);
 
       // S3에 저장
       uploadFile(s3Path, jsonData.getBytes(), "application/json");
@@ -124,8 +126,7 @@ public class SparkPopularInfluencerService extends SparkBaseService {
           categoryTypeId,
           influencerRank,
           targetDate,
-          LocalDateTime.now()
-      );
+          LocalDateTime.now());
 
     } catch (Exception e) {
       log.error("DailyPopularInfluencer 저장 실패", e);
