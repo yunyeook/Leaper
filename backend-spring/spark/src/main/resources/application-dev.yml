@@ -9,12 +9,6 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
-  data:
-    mongodb:
-      host: localhost
-      port: 27017
-      database: leaper
-
   jpa:
     hibernate:
       ddl-auto: update
