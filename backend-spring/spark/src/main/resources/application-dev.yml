@@ -31,6 +31,9 @@ spring:
         core-size: 5
         max-size: 20
 
+  jackson:
+    time-zone: Asia/Seoul
+
 cloud:
   aws:
     s3:

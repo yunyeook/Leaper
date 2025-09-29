@@ -2,6 +2,8 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '2.7.18'
 	id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+	id 'com.github.johnrengelman.shadow' version '7.1.2'
+
 }
 
 group = 'com.ssafy'
@@ -112,4 +114,19 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+// Shadow JAR 설정
+shadowJar {
+	archiveBaseName.set('spark-app')
+	archiveClassifier.set('')
+
+	manifest {
+		attributes 'Main-Class': 'com.ssafy.spark.SparkApplication'  // 실제 메인클래스명으로 변경!
+	}
+
+	mergeServiceFiles()
+
+	exclude 'META-INF/*.RSA'
+	exclude 'META-INF/*.SF'
+	exclude 'META-INF/*.DSA'
 }

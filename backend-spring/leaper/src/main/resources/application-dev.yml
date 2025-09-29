@@ -130,6 +130,10 @@ spring:
         max-size: 10
         queue-capacity: 100
         thread-name-prefix: "async-crawling-"
+
+  jackson:
+    time-zone: Asia/Seoul
+
 cloud:
   aws:
     s3:
