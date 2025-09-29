@@ -138,7 +138,7 @@ public class InstagramController {
   /**
    * 전체 콘텐츠 댓글 배치 수집 (기존 API 활용)
    */
-  @PostMapping("/comment/collect-all-batch-safe")
+  @PostMapping("/comment/collect/all")
   public String collectAllCommentsBatchSafe() {
     try {
   commentService.collectAllContentComments();

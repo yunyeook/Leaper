@@ -9,12 +9,6 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
-  data:
-    mongodb:
-      host: localhost
-      port: 27017
-      database: leaper
-
   jpa:
     hibernate:
       ddl-auto: update
@@ -30,6 +24,9 @@ spring:
       pool:
         core-size: 5
         max-size: 20
+
+  jackson:
+    time-zone: Asia/Seoul
 
 cloud:
   aws:

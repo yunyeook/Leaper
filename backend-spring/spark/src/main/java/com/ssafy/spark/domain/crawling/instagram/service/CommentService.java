@@ -121,7 +121,7 @@ public class CommentService extends BaseApifyService {
         String accountNickname = commentNode.path("ownerUsername").asText();
         String externalCommentId = commentNode.path("id").asText();
         String text = commentNode.path("text").asText();
-        Integer likesCount = commentNode.path("likesCount").asInt(0);
+        Integer likesCount = Math.max(0, commentNode.path("likesCount").asInt(0));
         String publishedAt = commentNode.path("timestamp").asText();
 
         if (accountNickname.isEmpty() || externalCommentId.isEmpty()) {
