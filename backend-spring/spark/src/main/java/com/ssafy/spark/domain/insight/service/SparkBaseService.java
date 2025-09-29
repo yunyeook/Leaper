@@ -62,6 +62,7 @@ public class SparkBaseService {
       return sparkSession.emptyDataFrame()
           .withColumn("externalContentId", lit("").cast("string"))
           .withColumn("accountNickname", lit("").cast("string"))
+          .withColumn("publishedAt", lit("").cast("string"))
           .withColumn("viewsCount", lit(0L).cast("long"))
           .withColumn("likesCount", lit(0L).cast("long"))
           .withColumn("commentsCount", lit(0L).cast("long"));

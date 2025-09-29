@@ -147,7 +147,7 @@ public class AccountPopularContentService extends SparkBaseService {
       String jsonData = objectMapper.writerWithDefaultPrettyPrinter()
           .writeValueAsString(statisticsJson);
 
-      // S3 저장 경로 (✅ 통일된 구조)
+      // S3 저장 경로 
       String dateFolder = targetDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
       String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
       String fileName = String.format("daily_account_popular_content_%s_%s.json",

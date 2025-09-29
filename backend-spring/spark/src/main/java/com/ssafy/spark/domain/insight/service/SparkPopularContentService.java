@@ -33,8 +33,12 @@ public class SparkPopularContentService extends SparkBaseService {
       Dataset<Row> accountData = accountDataBase
           .select("accountNickname", "categoryName");
 
-      // 3. 조인 (accountNickname 기준)
-      Dataset<Row> joined = contentData
+      // 3. 필터링 및 조인 (최근 30일 이내 콘텐츠 + 카테고리 매칭)
+      Dataset<Row> filteredContent = contentData
+          .filter(col("publishedAt").isNotNull())
+          .filter(to_date(col("publishedAt")).gt(lit(targetDate.minusDays(30).toString())));
+
+      Dataset<Row> joined = filteredContent
           .join(accountData, "accountNickname") // 공통 키로 조인
           .filter(col("categoryName").isNotNull());
 

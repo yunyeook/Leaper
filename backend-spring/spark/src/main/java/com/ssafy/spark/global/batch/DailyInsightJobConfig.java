@@ -132,6 +132,7 @@ public class DailyInsightJobConfig {
                                                                                 .generateDailyPopularInfluencer(
                                                                                                 platformType,
                                                                                                 targetDate,
+                                                                                                contentData,
                                                                                                 accountData)))
                                 .build();
         }

@@ -107,7 +107,7 @@ public class AnalysisController {
                                         .generateDailyPopularContent(platformType, date, contentData, accountData));
 
                         CompletableFuture<Void> task4 = CompletableFuture.runAsync(() -> sparkPopularInfluencerService
-                                        .generateDailyPopularInfluencer(platformType, date, accountData));
+                                        .generateDailyPopularInfluencer(platformType, date, contentData, accountData));
 
                         CompletableFuture<Void> task5 = CompletableFuture.runAsync(
                                         () -> accountPopularContentService.generateAccountPopularContent(platformType,
@@ -182,7 +182,7 @@ public class AnalysisController {
                                                                                 contentData, accountData)),
                                                 CompletableFuture.runAsync(() -> sparkPopularInfluencerService
                                                                 .generateDailyPopularInfluencer(platformType, date,
-                                                                                accountData)),
+                                                                                contentData, accountData)),
                                                 CompletableFuture.runAsync(() -> accountPopularContentService
                                                                 .generateAccountPopularContent(platformType, date,
                                                                                 contentData)),

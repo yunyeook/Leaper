@@ -66,7 +66,7 @@ public class AccountInsightService extends SparkBaseService {
       log.info("계정 몇개?");
       log.info(String.valueOf(results.size()));
 
-      // 🔥 Batch Insert를 위한 데이터 수집
+      // Batch Insert를 위한 데이터 수집
       List<AccountInsightBatch> batchData = new ArrayList<>();
 
       for (Row row : results) {
@@ -185,7 +185,7 @@ public class AccountInsightService extends SparkBaseService {
   }
 
   /**
-   * 🔥 Batch Insert로 대량 데이터 한 번에 저장
+   *  Batch Insert로 대량 데이터 한 번에 저장
    */
   private void saveDailyAccountInsightBatch(List<AccountInsightBatch> batchData) {
     if (batchData.isEmpty()) {

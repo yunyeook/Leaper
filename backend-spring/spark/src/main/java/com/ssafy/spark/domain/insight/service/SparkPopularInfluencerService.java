@@ -27,13 +27,22 @@ public class SparkPopularInfluencerService extends SparkBaseService {
    * @param platformType 플랫폼 타입 (예: "youtube", "instagram", "naver_blog")
    * @param targetDate   통계를 생성할 기준 날짜
    */
-  public void generateDailyPopularInfluencer(String platformType, LocalDate targetDate, Dataset<Row> accountDataBase) {
+  public void generateDailyPopularInfluencer(String platformType, LocalDate targetDate, Dataset<Row> contentData,
+      Dataset<Row> accountDataBase) {
     try {
-      // 1. 계정 데이터 읽기
+      // 1. 최근 30일 이내에 활동(포스팅)이 있는 계정 닉네임 추출
+      Dataset<Row> activeAccountNicknames = contentData
+          .filter(col("publishedAt").isNotNull())
+          .filter(to_date(col("publishedAt")).gt(lit(targetDate.minusDays(30).toString())))
+          .select("accountNickname")
+          .distinct();
+
+      // 2. 계정 데이터 필터링 (활동 중인 계정만)
       Dataset<Row> accountData = accountDataBase
+          .join(activeAccountNicknames, "accountNickname")
           .select("accountNickname", "categoryName", "followersCount");
 
-      // 2. 카테고리별로 Top10 추출
+      // 3. 카테고리별로 Top10 추출
       Dataset<Row> top10 = accountData
           .withColumn("influencerRank", row_number().over(
               Window.partitionBy("categoryName")

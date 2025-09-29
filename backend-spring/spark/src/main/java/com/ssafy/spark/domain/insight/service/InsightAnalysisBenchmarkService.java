@@ -77,7 +77,8 @@ public class InsightAnalysisBenchmarkService extends SparkBaseService {
 
             // 4. 인기 인플루언서 (daily_popular_influencer, platform_type_id, snapshot_date)
             results.add(measureSingleInsight("popularInfluencer", () -> {
-                sparkPopularInfluencerService.generateDailyPopularInfluencer(platformType, targetDate, accountData);
+                sparkPopularInfluencerService.generateDailyPopularInfluencer(platformType, targetDate, contentData,
+                        accountData);
                 return jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM daily_popular_influencer WHERE platform_type_id = ? AND snapshot_date = ?",
                         Long.class, platformType.toUpperCase(), targetDate);
@@ -192,7 +193,8 @@ public class InsightAnalysisBenchmarkService extends SparkBaseService {
 
             // 4. 인기 인플루언서
             futures.add(CompletableFuture.supplyAsync(() -> measureSingleInsight("popularInfluencer", () -> {
-                sparkPopularInfluencerService.generateDailyPopularInfluencer(platformType, targetDate, accountData);
+                sparkPopularInfluencerService.generateDailyPopularInfluencer(platformType, targetDate, contentData,
+                        accountData);
                 return jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM daily_popular_influencer WHERE platform_type_id = ? AND snapshot_date = ?",
                         Long.class, platformType.toUpperCase(), targetDate);
