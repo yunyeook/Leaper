@@ -3,6 +3,7 @@ package com.ssafy.spark.domain.crawling.instagram.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.spark.global.config.ApifyApiConfig;
+import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +32,63 @@ public class BaseApifyService {
   protected String baseUrl; // https://api.apify.com/v2
 
   private static final int MAX_RETRY_COUNT = 12;
+  /**
+   * ✅ Apify 실행 공통 메서드
+   */
+  protected String executeProfileScraper(String username) {
+    try {
+      String actorId = "apify~instagram-profile-scraper";
+      Map<String, Object> input = new HashMap<>();
+      input.put("resultsType", "details");
+      input.put("usernames", new String[]{username});
+      input.put("resultsLimit", 1);
+      return runActor(actorId, input);
+    } catch (Exception e) {
+      log.error("Apify 실행 중 오류 - 사용자: {}", username, e);
+      throw new RuntimeException("Apify 실행 실패", e);
+    }
+  }
+  /**
+   * ✅ Apify 콘텐츠 크롤러 실행
+   */
+  protected String executeContentScraper(String username) {
+    try {
+      String actorId = "apify~instagram-post-scraper";
+      Map<String, Object> input = new HashMap<>();
+      input.put("resultsLimit", 10);
+      input.put("skipPinnedPosts", false);
+      input.put("username", new String[]{username});
 
+      log.info("콘텐츠 수집 요청 - 사용자: {}", username);
+      return runActor(actorId, input);
+    } catch (Exception e) {
+      log.error("Apify 실행 중 오류 - 사용자: {}", username, e);
+      throw new RuntimeException("Apify 실행 실패", e);
+    }
+  }
+  /**
+   * Apify 실행 결과 대기 및 결과 반환
+   */
+  protected String waitForRunCompletion(String runId) {
+    try {
+      int maxAttempts = 30;
+
+      for (int i = 0; i < maxAttempts; i++) {
+        String status = checkRunStatus(runId);
+        if ("SUCCEEDED".equals(status)) {
+          return getRunResults(runId);
+        }
+        if ("FAILED".equals(status) || "ABORTED".equals(status)) {
+          throw new RuntimeException("크롤링 실패 상태: " + status);
+        }
+        Thread.sleep(5000);
+      }
+      throw new RuntimeException("크롤링 시간 초과");
+    } catch (Exception e) {
+      log.error("크롤링 대기 중 오류 - Run ID: {}", runId, e);
+      throw new RuntimeException("크롤링 실패", e);
+    }
+  }
   /**
    * Apify Actor 실행 (12번 재시도 포함)
    */
@@ -97,7 +154,7 @@ public class BaseApifyService {
   }
 
   /**
-   * Actor 실행 상태 확인 (12번 재시도 포함)
+   * Actor 실행 상태 확인
    */
   protected String checkRunStatus(String runId) {
     return checkRunStatusWithRetry(runId, 0);
@@ -149,7 +206,7 @@ public class BaseApifyService {
   }
 
   /**
-   * Actor 실행 결과 가져오기 (12번 재시도 포함)
+   * Actor 실행 결과 가져오기
    */
   protected String getRunResults(String runId) {
     return getRunResultsWithRetry(runId, 0);

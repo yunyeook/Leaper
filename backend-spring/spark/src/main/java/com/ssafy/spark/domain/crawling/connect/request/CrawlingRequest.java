@@ -19,7 +19,7 @@ public class CrawlingRequest {
   private String accountUrl;
   private String accountNickname;
   private String externalAccountId;
-  private Integer categoryTypeId;
+  private String categoryName; // BEAUTY, IT 등
   public static CrawlingRequest from(PlatformAccount platformAccount){
     return CrawlingRequest.builder()
     .influencerId(platformAccount.getInfluencer().getId())
@@ -28,7 +28,7 @@ public class CrawlingRequest {
     .accountUrl(platformAccount.getAccountUrl())
     .accountNickname(platformAccount.getAccountNickname())
     .externalAccountId(platformAccount.getExternalAccountId())
-    .categoryTypeId(platformAccount.getCategoryType().getId().intValue()) // 수정된 부분
-    .build(); // 수정된 부분
+    .categoryName(platformAccount.getCategoryType().getCategoryName())
+    .build();
   }
 }

@@ -9,14 +9,13 @@ import com.ssafy.spark.domain.crawling.instagram.service.CommentService;
 import com.ssafy.spark.domain.crawling.instagram.service.InstagramContentService;
 import com.ssafy.spark.domain.crawling.instagram.service.ProfileService;
 import com.ssafy.spark.domain.crawling.youtube.service.YoutubeCrawlingService;
-import com.ssafy.spark.domain.spark.service.S3FolderService;
-import com.ssafy.spark.domain.spark.service.SparkAccountInsightService;
-import com.ssafy.spark.domain.spark.service.SparkAccountPopularContentService;
-import com.ssafy.spark.domain.spark.service.SparkTypeInsightService;
+import com.ssafy.spark.domain.insight.service.AccountInsightService;
+import com.ssafy.spark.domain.insight.service.AccountPopularContentService;
+import com.ssafy.spark.domain.insight.service.S3FolderService;
+import com.ssafy.spark.domain.insight.service.SparkTypeInsightService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -31,8 +30,8 @@ public class CrawlingServiceInstagram implements CrawlingService {
   private final CommentService commentService;
   private final ContentRepository contentRepository;
   private final PlatformAccountRepository platformAccountRepository;
-  private final SparkAccountInsightService sparkAccountInsightService;
-  private final SparkAccountPopularContentService sparkAccountPopularContentService;
+  private final AccountInsightService sparkAccountInsightService;
+  private final AccountPopularContentService sparkAccountPopularContentService;
   private final SparkTypeInsightService sparkTypeInsightService;
   private final YoutubeCrawlingService youtubeCrawlingService;
   private final S3FolderService s3FolderService;
@@ -44,6 +43,7 @@ public class CrawlingServiceInstagram implements CrawlingService {
     String username = request.getAccountNickname();
     Integer platformAccountId = request.getPlatformAccountId();
     String platformTypeId = request.getPlatformTypeId(); //instagram , youtube
+    PlatformAccount platformAccount = platformAccountRepository.findById(platformAccountId).get();
 
     //일단 해당 경로 폴더 생성함.(있어도 상관 없음)
     s3FolderService.createDateFolders(platformTypeId, LocalDate.now());
@@ -64,11 +64,9 @@ public class CrawlingServiceInstagram implements CrawlingService {
     }
     else if (platformTypeId.equals("instagram")) {
 
-    //TODO : 이미 프로필 수집했는지를 db에도 저장해야한다.. 컬럼 추가하고 관련 로직에도 추가하도록 해야함..
     try {
       // 1. 프로필 수집
-      CompletableFuture<String> profileFuture = profileService.getProfileOnly(request);
-      profileFuture.get();
+       profileService.profileCrawling(platformAccount);
       log.info("프로필 생성 완료: {}", username);
     } catch (Exception e) {
       log.error("프로필 생성 실패: {}", username, e);
@@ -76,18 +74,17 @@ public class CrawlingServiceInstagram implements CrawlingService {
 
     try {
       // 2. 콘텐츠 수집 - 오늘 이미 수집됐는지 확인
-      PlatformAccount account = platformAccountRepository.findById(platformAccountId).orElse(null);
       LocalDate today = LocalDate.now();
 
-      boolean hasContentToday = (account != null) &&
-          contentRepository.existsByPlatformAccountAndSnapshotDate(account, today);
+      boolean hasContentToday = (platformAccount != null) &&
+          contentRepository.existsByPlatformAccountAndSnapshotDate(platformAccount, today);
 
       if (hasContentToday) {
         log.info("계정 {} - 오늘 이미 수집됨, 콘텐츠 수집 건너뜀", username);
       } else {
         log.info("콘텐츠 수집 요청: {}", username);
-        CompletableFuture<String> contentFuture = contentService.getContentsByUsername(username);
-        contentFuture.get();
+        CompletableFuture<String> contentFuture = contentService.contentCrawling(username);
+
         log.info("콘텐츠 수집 완료: {}", username);
       }
     } catch (Exception e) {

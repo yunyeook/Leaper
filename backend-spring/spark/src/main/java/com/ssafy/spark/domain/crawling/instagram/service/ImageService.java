@@ -16,7 +16,7 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class ImageService {
 
-  private final S3Service s3Service;
+  private final CrawlingDataSaveToS3Service s3Service;
   private final FileRepository fileRepository;
   private final RestTemplate restTemplate = new RestTemplate();
 

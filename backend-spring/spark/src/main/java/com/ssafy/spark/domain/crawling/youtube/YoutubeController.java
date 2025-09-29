@@ -3,7 +3,7 @@ package com.ssafy.spark.domain.crawling.youtube;
 import com.ssafy.spark.domain.crawling.youtube.dto.response.*;
 import com.ssafy.spark.domain.crawling.youtube.service.YoutubeApiService;
 import com.ssafy.spark.domain.crawling.youtube.service.YoutubeCrawlingService;
-import com.ssafy.spark.domain.spark.service.S3DataService;
+import com.ssafy.spark.domain.insight.service.ReadToS3DataService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -25,7 +25,7 @@ public class YoutubeController {
 
     private final YoutubeApiService youtubeApiService;
     private final YoutubeCrawlingService youtubeCrawlingService;
-    private final S3DataService s3DataService;
+    private final ReadToS3DataService s3DataService;
 
     /**
      * Influencer + platformAcount 생성 후 채널의 모든 데이터 조회 및 S3 저장 (원스톱 크롤링)

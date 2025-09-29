@@ -4,10 +4,10 @@ spring:
       - optional:file:.env.dev
 
   datasource:
-    url: ${DB_URL}
-    driver-class-name: ${DB_DRIVER}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: jdbc:mysql://localhost:3306/leaper?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: ssafy
 
   jpa:
     hibernate:
@@ -31,23 +31,16 @@ spring:
 cloud:
   aws:
     s3:
-      bucket: ${S3_BUCKET_NAME}
+      bucket: ${S3_BUCKET_NAME:test-bucket}
       expirationForPut: 1
       expirationForGet: 24
     credentials:
-      accessKey: ${S3_ACCESS_KEY}
-      secretKey: ${S3_SECRET_KEY}
+      accessKey: ${S3_ACCESS_KEY:dummy-key}
+      secretKey: ${S3_SECRET_KEY:dummy-secret}
     region:
       static: ap-northeast-2
       stack:
         auto: false
-        dialect: ${JPA_DIALECT:org.hibernate.dialect.H2Dialect}
-
-
-
-#  mvc:
-#    favicon:
-#      enabled: false
 
 # Frontend URL for CORS configuration
 front:
@@ -64,38 +57,47 @@ logging:
 # Apify API 설정 : 인스타그램 설정
 apify:
   api:
-    key1: ${APIFY_API_KEY_1}
-    key2: ${APIFY_API_KEY_2}
-    key3: ${APIFY_API_KEY_3}
-    key4: ${APIFY_API_KEY_4}
-    key5: ${APIFY_API_KEY_5}
-    key6: ${APIFY_API_KEY_6}
-    key7: ${APIFY_API_KEY_7}
-    key8: ${APIFY_API_KEY_8}
-    key9: ${APIFY_API_KEY_9}
-    key10: ${APIFY_API_KEY_10}
-    key11: ${APIFY_API_KEY_11}
-    key12: ${APIFY_API_KEY_12}
+    key1: ${APIFY_API_KEY_1:dummy}
+    key2: ${APIFY_API_KEY_2:dummy}
+    key3: ${APIFY_API_KEY_3:dummy}
+    key4: ${APIFY_API_KEY_4:dummy}
+    key5: ${APIFY_API_KEY_5:dummy}
+    key6: ${APIFY_API_KEY_6:dummy}
+    key7: ${APIFY_API_KEY_7:dummy}
+    key8: ${APIFY_API_KEY_8:dummy}
+    key9: ${APIFY_API_KEY_9:dummy}
+    key10: ${APIFY_API_KEY_10:dummy}
+    key11: ${APIFY_API_KEY_11:dummy}
+    key12: ${APIFY_API_KEY_12:dummy}
   base-url: https://api.apify.com/v2
 
 api:
-  key: ${API_KEY}  # Leaper와 같은 키
-
+  key: ${API_KEY:dummy}
 
 youtube:
   api:
-    key1: ${YOUTUBE_API_V3_KEY_1}
-    key2: ${YOUTUBE_API_V3_KEY_2}
-    key3: ${YOUTUBE_API_V3_KEY_3}
+    key1: ${YOUTUBE_API_V3_KEY_1:dummy}
+    key2: ${YOUTUBE_API_V3_KEY_2:dummy}
+    key3: ${YOUTUBE_API_V3_KEY_3:dummy}
     base-url: https://www.googleapis.com/youtube/v3
 
 spark:
   server:
-    protocol: ${SPARK_SERVER_PROTOCOL}
-    host: ${SPARK_SERVER_HOST}  # 또는 실제 Spark 서버 주소
-    port: ${SPARK_SERVER_PORT}      # Spark 서버 포트
+    protocol: ${SPARK_SERVER_PROTOCOL:http}
+    host: ${SPARK_SERVER_HOST:localhost}
+    port: ${SPARK_SERVER_PORT:8080}
   api:
-    key: ${SPARK_API_KEY}
+    key: ${SPARK_API_KEY:dummy}
 
 server:
   port: 8080
+
+# monitoring settings
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  endpoint:
+    prometheus:
+      enabled: true

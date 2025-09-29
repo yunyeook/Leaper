@@ -37,9 +37,6 @@ public class CrawlingController{
         return ResponseEntity.status(401).body(false);
       }
 
-      log.info("크롤링 요청 수신 - 계정 ID: {}, 플랫폼: {}",
-          crawlingRequest.getPlatformAccountId(), crawlingRequest.getPlatformTypeId());
-
       // 크롤링 서비스 호출
       crawlingService.startCrawlingAsync(crawlingRequest);
 

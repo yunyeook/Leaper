@@ -2,6 +2,7 @@ package com.ssafy.spark.domain.crawling.instagram;
 
 import com.ssafy.spark.domain.business.content.entity.Content;
 import com.ssafy.spark.domain.business.content.repository.ContentRepository;
+import com.ssafy.spark.domain.business.platformAccount.entity.PlatformAccount;
 import com.ssafy.spark.domain.business.platformAccount.repository.PlatformAccountRepository;
 import com.ssafy.spark.domain.business.type.repository.PlatformTypeRepository;
 import com.ssafy.spark.domain.crawling.connect.request.CrawlingRequest;
@@ -29,19 +30,15 @@ public class InstagramController {
   private final ContentRepository contentRepository;
 
   /**
-   * 1-2. 특정 계정의 프로필 정보 일괄 업데이트(s3에만 저장)
+   * 특정 계정의 프로필 정보 일괄 업데이트
    */
   @PostMapping("/profile/{platformAccountId}")
   public String updateProfile(@PathVariable Integer platformAccountId) {
     try {
-      CrawlingRequest crawlingRequest = CrawlingRequest.from(
-          platformAccountRepository.findById(platformAccountId).get());
-      log.info("전체 Instagram 계정 프로필 일괄 업데이트 요청");
-      profileService.getProfileOnly(crawlingRequest);
-      log.info("전체 Instagram 계정 프로필 일괄 업데이트 완료");
+      PlatformAccount platformAccount = platformAccountRepository.findById(platformAccountId).get();
+      profileService.profileCrawling(platformAccount);
       return "{\"message\": \"전체 계정 프로필 업데이트가 완료되었습니다.\", \"status\": \"success\"}";
     } catch (Exception e) {
-      log.error("전체 프로필 업데이트 실패: ", e);
       return "{\"error\": \"전체 프로필 업데이트 실패: " + e.getMessage() + "\", \"status\": \"failed\"}";
     }
   }
@@ -53,7 +50,7 @@ public class InstagramController {
   public String updateAllProfiles() {
     try {
       log.info("전체 Instagram 계정 프로필 일괄 업데이트 요청");
-      profileService.updateAllRegisteredUsersProfiles();
+      profileService.allProfilesCrawling();
       log.info("전체 Instagram 계정 프로필 일괄 업데이트 완료");
       return "{\"message\": \"전체 계정 프로필 업데이트가 완료되었습니다.\", \"status\": \"success\"}";
     } catch (Exception e) {
@@ -68,13 +65,10 @@ public class InstagramController {
   @GetMapping("/content/{username}")
   public String getContentsByUsername(@PathVariable String username) {
     try {
-      log.info("콘텐츠 수집 요청: {}", username);
-      CompletableFuture<String> future = contentService.getContentsByUsername(username);
+      CompletableFuture<String> future = contentService.contentCrawling(username);
       String result = future.get();
-      log.info("콘텐츠 수집 완료: {}", username);
       return result;
     } catch (Exception e) {
-      log.error("콘텐츠 수집 실패: {}", username, e);
       return "{\"error\": \"" + e.getMessage() + "\"}";
     }
   }
@@ -87,7 +81,7 @@ public class InstagramController {
   public String collectAllContent() {
     try {
       log.info("전체 Instagram 계정 콘텐츠 일괄 수집 요청");
-      contentService.collectAllRegisteredUsersContent();
+      contentService.allContentsCrawling();
       log.info("전체 Instagram 계정 콘텐츠 일괄 수집 완료");
       return "{\"message\": \"전체 계정 콘텐츠 수집이 완료되었습니다.\", \"status\": \"success\"}";
     } catch (Exception e) {

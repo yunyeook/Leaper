@@ -1,13 +1,12 @@
 package com.ssafy.spark.domain.crawling.youtube.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.spark.domain.business.content.dto.response.ContentResponse;
 import com.ssafy.spark.domain.business.content.entity.Content;
 import com.ssafy.spark.domain.business.content.service.ContentService;
-import com.ssafy.spark.domain.business.platformAccount.entity.PlatformAccount;
 import com.ssafy.spark.domain.business.platformAccount.service.PlatformAccountService;
+import com.ssafy.spark.domain.crawling.instagram.service.CrawlingDataSaveToS3Service;
 import com.ssafy.spark.domain.crawling.youtube.dto.response.*;
-import com.ssafy.spark.domain.spark.service.S3DataService;
+import com.ssafy.spark.domain.insight.service.ReadToS3DataService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,10 +24,12 @@ import java.util.Optional;
 @Slf4j
 public class YoutubeS3StorageService {
 
-    private final S3DataService s3DataService;
+    private final ReadToS3DataService s3DataService;
     private final ObjectMapper objectMapper;
     private final ContentService contentService;
     private final PlatformAccountService platformAccountService;
+    private final CrawlingDataSaveToS3Service crawlingDataSaveToS3Service;
+    private final String platform = "youtube";
 
     /**
      * 비디오 정보에서 comments 필드를 완전히 제거한 VideoInfoResponse 생성
@@ -127,11 +128,9 @@ public class YoutubeS3StorageService {
                 log.info("채널 정보 저장(프로필 이미지 포함)");
                 ChannelInfoResponse processedChannelInfo = processChannelInfoWithProfileImage(channelData.getChannelInfo());
                 String channelJson = objectMapper.writeValueAsString(processedChannelInfo);
-                String channelS3Url = s3DataService.saveYouTubeChannelInfo(processedChannelInfo.getExternalAccountId(), channelJson);
+                crawlingDataSaveToS3Service.uploadProfileData(channelJson,platform,processedChannelInfo.getExternalAccountId());
 
                 // 2. 각 비디오 정보 저장 및 썸네일 업데이트
-                int savedVideos = 0;
-                int savedComments = 0;
                 List<VideoInfoWithCommentsResponse> updatedVideos = new ArrayList<>();
 
                 for (VideoInfoWithCommentsResponse video : channelData.getVideos()) {
@@ -142,23 +141,19 @@ public class YoutubeS3StorageService {
                     // 비디오 정보 저장 (comments 제거)
                     VideoInfoResponse videoWithoutComments = createVideoWithoutComments(updatedVideo);
                     String videoJson = objectMapper.writeValueAsString(videoWithoutComments);
-                    s3DataService.saveYouTubeVideoInfo(updatedVideo.getExternalContentId(), videoJson);
-                    savedVideos++;
+                    crawlingDataSaveToS3Service.uploadContentData(videoJson,platform,updatedVideo.getExternalContentId());
 
                     // 댓글이 있으면 새로운 형태로 저장
                     if (updatedVideo.getComments() != null && !updatedVideo.getComments().isEmpty()) {
                         String commentsJson = createCommentsJsonFormat(updatedVideo);
                         Optional<Content> content = contentService.findEntityByExternalContentIdAndPlatformType(updatedVideo.getExternalContentId(), updatedVideo.getPlatformType());
                         if (content.isPresent()) {
-                            s3DataService.saveYouTubeComments(updatedVideo.getExternalContentId(), commentsJson, content.get().getId());
-                            savedComments++;
+                            crawlingDataSaveToS3Service.uploadCommentData(commentsJson,platform,updatedVideo.getExternalContentId());
                         }
                     }
                 }
 
-                log.info("채널 전체 데이터 S3 저장 완료: {} - 채널정보: {}, 비디오: {}개, 댓글: {}개",
-                        processedChannelInfo.getExternalAccountId(),
-                        channelS3Url, savedVideos, savedComments);
+
 
                 // 업데이트된 데이터로 응답 생성
                 ChannelWithVideosResponse updatedResponse = new ChannelWithVideosResponse(processedChannelInfo, updatedVideos);
@@ -244,7 +239,7 @@ public class YoutubeS3StorageService {
                 String externalAccountId = original.getExternalAccountId();
 
                 // S3에 프로필 이미지 저장하고 accessKey, fileId 받기
-                S3DataService.ProfileImageSaveResult saveResult = s3DataService.saveProfileImageFromUrl(username, profileImageUrl);
+                ReadToS3DataService.ProfileImageSaveResult saveResult = s3DataService.saveProfileImageFromUrl(username, profileImageUrl);
 
                 // 새로운 ProfileImageInfo 생성
                 ChannelInfoResponse.ProfileImageInfo newProfileImageInfo = new ChannelInfoResponse.ProfileImageInfo();

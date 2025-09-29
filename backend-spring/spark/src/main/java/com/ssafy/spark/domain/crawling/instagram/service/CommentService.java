@@ -24,7 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommentService extends BaseApifyService {
 
   private final ContentRepository contentRepository;
-  private final S3Service s3Service;
+  private final CrawlingDataSaveToS3Service s3Service;
+  private final String platformType = "instagram";
 
   /**
    * 특정 콘텐츠(1개)의 댓글 수집
@@ -155,17 +156,13 @@ public class CommentService extends BaseApifyService {
 
       String jsonData = objectMapper.writerWithDefaultPrettyPrinter()
           .writeValueAsString(commentRawData);
-      LocalDate now = LocalDate.now();
-      String s3Key = String.format("raw_data/instagram/comment/%d/%02d/%02d/content_%d_%d.json",
-          now.getYear(),
-          now.getMonthValue(),
-          now.getDayOfMonth(),
-          content.getId(),
-          System.currentTimeMillis());
 
-      s3Service.uploadContentData(jsonData, s3Key);
-
-      log.info("댓글 S3 저장 완료 - Content ID: {}, 댓글 수: {}", content.getId(), commentItems.size());
+      // JSON + Parquet 저장
+      var paths = s3Service.uploadCommentData(jsonData, platformType, content.getId().toString());
+      
+      log.info("댓글 저장 완료 - Content ID: {}, 댓글 수: {}", content.getId(), commentItems.size());
+      log.debug("  - JSON: {}", paths.get("json"));
+      log.debug("  - Parquet: {}", paths.get("parquet"));
 
     } catch (Exception e) {
       log.error("댓글 S3 저장 중 오류: ", e);
