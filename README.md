@@ -1,93 +1,96 @@
-# 📌 스캐폴딩 기획 진행 상황
+# 🚀 Leaper (리퍼)
+> **인플루언서로 도약하고자 하는 사용자를 위한 컨텐츠 분석부터 광고주 매칭까지 지원하는 인플루언서 분석 및 매칭 플랫폼**
 
-## 1. 개요
-- **서비스 목표**: 인플루언서와 광고주를 연결하고, 플랫폼별 데이터를 기반으로 성과 분석 및 인사이트 제공  
-- **주요 사용자**  
-  - **인플루언서**: 유튜브, 인스타그램, 네이버 블로그 등 외부 계정 데이터를 연결해 자신의 성과와 트렌드를 확인  
-  - **광고주**: 인플루언서를 검색·조회하고 협업 가능성 탐색  
+Leaper는 인플루언서의 플랫폼별 성과 데이터를 통합 관리하고, AI 기반의 인사이트를 제공하며, 광고주와의 효율적인 협업을 지원하는 종합 플랫폼입니다.
 
 ---
 
-## 2. 주요 페이지 및 기능
-
-### 🔸 공통
-- **랜딩 페이지**
-  - 서비스 소개
-  - 로그인/회원가입 진입
-  - 인플루언서 로그인 버튼 / 광고주 배너 구분
-
-- **로그인 페이지**
-  - 인플루언서: 소셜 로그인 (Google) 지원
-  - 광고주: 아이디/비밀번호 기반 로그인
-
-- **회원가입**
-  - **인플루언서**: 닉네임, 생년월일, 대표 이미지, 연결할 계정(OAuth), 한 줄 소개
-  - **광고주**: 브랜드명, 회사명, 대표자 성명, 사업자 등록번호, 개업일자, 회사 이미지(로고), 회사 소개, 아이디/비밀번호  
+## 📅 Project Overview
+- **진행 기간**: 2025. 08. 25 ~ 2025. 10. 02 (7주)
+- **팀 구성**: 백엔드 3명, 프론트엔드 3명 (총 6명)
 
 ---
 
-### 🔸 인플루언서 대시보드
-- **종합 대시보드**
-  - 프로필 정보 (닉네임, 이미지, 소개, 전체 조회수 등)
-  - 플랫폼별 성과 차트 (최근 12개월 or 최근 30일)
-  - 키워드 트렌드 Top10, Google Trends
-  - 플랫폼별 계정별 현황 (총 조회수, 구독자, 콘텐츠 수, 최신 4개 콘텐츠)
+## 🏗️ System Architecture
 
-- **플랫폼별 대시보드**
-  - 채널 프로필 정보 (닉네임, 팔로워 수, 카테고리 등)
-  - 댓글 감성 분석 결과(긍정/부정 비율)
-  - 오늘의 인기도 지표 (조회수 기반)
-  - 연관 급상승/인기 인플루언서 및 콘텐츠
+본 프로젝트는 서비스의 안정성과 확장성을 위해 멀티 모듈 아키텍처로 구성되어 있습니다.
 
-- **콘텐츠별 대시보드**
-  - 콘텐츠 상세 정보 (제목, 설명, 날짜, 길이, 조회수, 좋아요, 댓글 수)
-  - 키워드 기반 검색 순위 (TOP50)
-  - 댓글 분석 (긍정/부정 상위 댓글)
-  - 유사 콘텐츠 비교 (TOP 3)
+### 🧩 Backend Modules
+- **`leaper` (API 서버)**: 사용자 인증, 대시보드 데이터 제공, 실시간 채팅 등 비즈니스 로직을 담당하는 메인 API 모듈
+- **`spark` (데이터 처리)**: 대용량 데이터 수집(Crawling), 분산 처리(Spark), 정기 작업(Batch)을 담당하는 데이터 엔진 모듈
 
 ---
 
-### 🔸 광고주 기능
-- **인플루언서 검색**
-  - 카테고리/플랫폼별 검색
-  - 필터링 및 상세 정보 조회
-  - 광고주용 인플루언서 프로필 제공
+## 🛠️ Tech Stack
+
+### 🔹 Backend
+- **Framework**: `Spring Boot 3.3.4`, `FastAPI`
+- **Data Processing**: `Apache Spark 3.4.3`, `Spring Batch`
+- **Language**: `Java 17`, `Java 11`
+- **Security**: `Spring Security`, `JWT`, `OAuth2 (Google)`
+- **Communication**: `WebSocket`, `SockJS`
+
+### 🔹 Database & Storage
+- **Database**: `MySQL` (RDS), `MongoDB`
+- **Caching**: `Redis`
+- **Storage**: `AWS S3`
+
+### 🔹 Frontend
+- **Framework & Language**: `React`, `Typescript`
+
+### 🔹 Infrastructure & DevOps
+- **Cloud**: `AWS` (EC2, RDS, S3, Route53, CloudFront)
+- **Deployment**: `Jenkins`, `Docker`, `Docker Compose`
+- **Web Server**: `Caddy`
 
 ---
 
-## 3. 데이터베이스(ERD 기반)
-![ERD](./images/스캐폴딩_ERD.png)
+## ✨ Key Features
 
-### 📂 주요 엔티티
-1. **광고주 (advertiser)**  
-   - 회사 정보, 사업자 등록번호, 로그인 계정 관리  
+### 📊 활동 데이터 분석 (Activity Data Analysis)
+- **통합 분석**: 여러 SNS 플랫폼 계정 연동을 통한 조회수, 팔로워, 좋아요 등 주요 지표 통합 관리
+- **상세 인사이트**: 플랫폼별·게시물별 성과 분석 및 시각화된 대시보드 제공
 
-2. **인플루언서 (influencer)**  
-   - 닉네임, 프로필, 연결 계정, 소셜 로그인 관리  
+ ![대시보드](./images/종합대시보드.png) 
+### 📈 트렌드 분석 (Trend Analysis)
+- **인사이트 제공**: 인기 콘텐츠 Top 10, 급상승 키워드, 연관 카테고리 트렌드 등 플랫폼 전체 인사이트 제공
+- **AI 분석**: 댓글 감성 분석 및 유사 콘텐츠 비교 분석
 
-3. **플랫폼 계정 (platform_account)**  
-   - 유튜브/블로그/인스타 계정 정보 및 카테고리 연동  
+ ![트렌드](./images/트렌드.png)
+ ![분석](./images/댓글분석.png)
 
-4. **콘텐츠 (content)**  
-   - 플랫폼별 게시물/영상 메타 정보  
+### 🔍 인플루언서 검색 (Influencer Search)
+- **맞춤 검색**: 플랫폼, 카테고리, 구독자 규모, 키워드, 콘텐츠 형태 등 다양한 필터링 제공
+- **데이터 기반 검증**: 실제 성과 지표를 바탕으로 한 인플루언서 영향력 확인
 
-5. **인사이트 데이터**
-   - `daily_account_insight`: 계정 단위 일별 성과  
-   - `daily_type_diff_insight`: 콘텐츠 유형별 일별 성과  
-   - `content_analysis`: AI 기반 분석 (감성 점수, 요약, 키워드)  
-   - `content_comment`: 긍정/부정 댓글 스냅샷  
+![검색](./images/검색.png)![검색](./images/검색2.png)
 
-6. **트렌드/랭킹**
-   - `keyword_trend_daily`: 키워드 트렌드  
-   - `daily_trending_influencer`, `daily_popular_influencer`: 인플루언서 랭킹  
-   - `daily_trending_content`, `daily_popular_content`: 콘텐츠 랭킹  
+### 💬 협업 문의 (Collaboration Inquiry)
+- **직접 소통**: 서비스 내 실시간 채팅 기능을 통해 광고주가 인플루언서에게 직접 협업 제안 가능
+ ![채팅](./images/채팅.png)
+
 
 ---
 
-## 4. 진행 상황 요약
-✅ **정의 완료**
-- 기능 요구사항
-- 페이지별 기능 명세서 작성 완료
-- ERD 작성 완료
-- 간략한 피그마 작성 완료
+## 📂 Project Structure
+
+```text
+.
+├── backend-spring
+│   ├── leaper          # Spring Boot 3 & Java 17 (API Server)
+│   └── spark           # Spring Boot 2 & Java 11 (Spark/Batch Engine)
+├── images              # 프로젝트 리소스 및 다이어그램
+└── README.md           # 프로젝트 가이드
+```
+
+---
+
+## 🗃️ Database Schema
+![ERD](./images/ERD.png)
+
+---
+
+## 👥 Team
+-  SSAFY 13기 특화프로젝트 A302 팀
+
 
